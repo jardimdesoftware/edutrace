@@ -1,0 +1,85 @@
+version: 2
+
+updates:
+  # ─────────────────────────────────────────────
+  # Backend — NestJS / Prisma (npm)
+  # ─────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/back"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore: "
+    labels:
+      - "type: chore"
+    groups:
+      nestjs:
+        patterns:
+          - "@nestjs/*"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+      types:
+        patterns:
+          - "@types/*"
+      eslint:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "globals"
+      jest:
+        patterns:
+          - "jest"
+          - "@jest/*"
+          - "ts-jest"
+          - "@types/jest"
+          - "supertest"
+          - "@types/supertest"
+      swc:
+        patterns:
+          - "@swc/*"
+
+  # ─────────────────────────────────────────────
+  # Frontend — Next.js / React (npm)
+  # ─────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/front"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore: "
+    labels:
+      - "type: chore"
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+      govbr-ds:
+        patterns:
+          - "@govbr-ds/*"
+          - "@govbr-ds-testing/*"
+      tailwindcss:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+      types:
+        patterns:
+          - "@types/*"
