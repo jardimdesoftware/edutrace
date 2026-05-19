@@ -97,7 +97,7 @@ function AdminUserCreatePage() {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-x-hidden bg-gradient-to-b from-emerald-100 to-white md:min-h-screen md:flex-row md:bg-gradient-to-r">
       <Link
-        href="/"
+        href="/home"
         className="br-button primary absolute left-4 top-4 z-20 inline-block min-w-max whitespace-nowrap text-sm sm:left-6 sm:top-5 md:left-8 md:top-6 md:text-base"
       >
         <span className="inline-flex items-center gap-2">
