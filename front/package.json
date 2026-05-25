@@ -17,7 +17,7 @@
     "next": "15.4.7",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "sweetalert2": "^11.26.3",
+    "sweetalert2": "^11.26.25",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
