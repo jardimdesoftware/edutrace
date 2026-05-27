@@ -1,0 +1,87 @@
+name: pr-checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+# --------------------------------------------------------------------
+# BACKEND TESTS ------------------------------------------------------
+# --------------------------------------------------------------------
+  backend-tests:
+    name: Backend – Testes (Jest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/testdb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: back/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: ./back
+        run: npm ci
+
+      - name: Gerar cliente Prisma
+        working-directory: ./back
+        run: npx prisma generate
+
+      - name: Rodar testes
+        working-directory: ./back
+        run: npm test -- --forceExit --passWithNoTests
+
+# --------------------------------------------------------------------
+# FRONTEND LINT + BUILD ----------------------------------------------
+# --------------------------------------------------------------------
+  frontend-checks:
+    name: Frontend – Lint + Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: front/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: ./front
+        run: npm ci
+
+      - name: Lint
+        working-directory: ./front
+        run: npm run lint
+
+      - name: Build
+        working-directory: ./front
+        env:
+          NEXT_PUBLIC_API_EDU_TRACE: http://localhost:3001
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build
