@@ -3,7 +3,6 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { IS_PUBLIC_KEY } from 'src/auth/constants/constants';
 
 function createMockExecutionContext(
   headers: Record<string, string> = {},
