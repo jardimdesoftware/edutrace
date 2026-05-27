@@ -61,6 +61,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
     "jest": "^30.4.2",
+    "jest-util": "^30.4.1",
     "prettier": "^3.8.3",
     "prisma": "^6.6.0",
     "source-map-support": "^0.5.21",
