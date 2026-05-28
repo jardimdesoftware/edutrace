@@ -17,6 +17,8 @@ describe('ScreeningsService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
             },
           },
         },
@@ -248,6 +250,60 @@ describe('ScreeningsService', () => {
         where: { email: email },
       });
       expect(result).toEqual(screening);
+    });
+  });
+
+  describe('update', () => {
+    it('should update a screening when it exists', async () => {
+      const email = 'joao@example.com';
+      const updateDto = { full_name: 'João Atualizado' };
+      const existingScreening = { id: 1, email, full_name: 'João Silva' } as any;
+      const updatedScreening = { ...existingScreening, ...updateDto };
+
+      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(existingScreening);
+      jest.spyOn(prisma.screening, 'update').mockResolvedValue(updatedScreening);
+
+      const result = await service.update(email, updateDto);
+
+      expect(prisma.screening.findUnique).toHaveBeenCalledWith({ where: { email } });
+      expect(prisma.screening.update).toHaveBeenCalledWith({
+        where: { email },
+        data: updateDto,
+      });
+      expect(result).toEqual(updatedScreening);
+    });
+
+    it('should throw NotFoundException when screening does not exist', async () => {
+      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.update('notfound@example.com', {})).rejects.toThrow(
+        'Triagem com email notfound@example.com não encontrada',
+      );
+      expect(prisma.screening.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('should delete a screening when it exists', async () => {
+      const email = 'joao@example.com';
+      const existingScreening = { id: 1, email } as any;
+
+      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(existingScreening);
+      jest.spyOn(prisma.screening, 'delete').mockResolvedValue(existingScreening);
+
+      const result = await service.remove(email);
+
+      expect(prisma.screening.delete).toHaveBeenCalledWith({ where: { email } });
+      expect(result).toEqual({ message: `Triagem com email ${email} foi removida com sucesso` });
+    });
+
+    it('should throw NotFoundException when screening does not exist', async () => {
+      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.remove('notfound@example.com')).rejects.toThrow(
+        'Triagem com email notfound@example.com não encontrada',
+      );
+      expect(prisma.screening.delete).not.toHaveBeenCalled();
     });
   });
 });
