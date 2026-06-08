@@ -18,6 +18,8 @@ describe('PlansEducationController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
           },
         },
       ],
@@ -617,6 +619,31 @@ describe('PlansEducationController', () => {
 
       expect(await controller.findOne(email, request)).toEqual(result);
       expect(service.findOne).toHaveBeenCalledWith(email, request);
+    });
+  });
+
+  describe('update', () => {
+    it('should update a plans education by email', async () => {
+      const email = 'estudante@example.com';
+      const updateDto = { student_name: 'Novo Nome' } as any;
+      const result = { id: 1, student_email: email, ...updateDto } as any;
+
+      jest.spyOn(service, 'update').mockResolvedValue(result);
+
+      expect(await controller.update(email, updateDto)).toEqual(result);
+      expect(service.update).toHaveBeenCalledWith(email, updateDto);
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove a plans education by email', async () => {
+      const email = 'estudante@example.com';
+      const result = { message: `PEI do aluno ${email} removido com sucesso` };
+
+      jest.spyOn(service, 'remove').mockResolvedValue(result as any);
+
+      expect(await controller.remove(email)).toEqual(result);
+      expect(service.remove).toHaveBeenCalledWith(email);
     });
   });
 });

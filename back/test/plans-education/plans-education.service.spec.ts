@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { LEVELS } from 'src/constants';
 import { PlansEducationService } from 'src/plans-education/plans-education.service';
 
@@ -19,6 +19,8 @@ describe('PlansEducationService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
             },
           },
         },
@@ -818,6 +820,78 @@ describe('PlansEducationService', () => {
       expect(thrownError.message).toBe(
         'Você não tem permissão para visualizar este PEI',
       );
+    });
+
+    it('should throw NotFoundException when plans education is not found', async () => {
+      const email = 'notfound@example.com';
+      const request = {
+        user: { email, id_level: 2 },
+      } as any;
+
+      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.findOne(email, request)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('should update a plans education when it exists', async () => {
+      const email = 'estudante@example.com';
+      const updateDto = { student_name: 'Novo Nome' } as any;
+      const existing = { id: 1, student_email: email } as any;
+      const updated = { ...existing, ...updateDto };
+
+      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(existing);
+      jest.spyOn(prisma.plansEducation, 'update').mockResolvedValue(updated);
+
+      const result = await service.update(email, updateDto);
+
+      expect(prisma.plansEducation.findUnique).toHaveBeenCalledWith({
+        where: { student_email: email },
+      });
+      expect(prisma.plansEducation.update).toHaveBeenCalledWith({
+        where: { student_email: email },
+        data: updateDto,
+      });
+      expect(result).toEqual(updated);
+    });
+
+    it('should throw NotFoundException when plans education does not exist', async () => {
+      const email = 'notfound@example.com';
+
+      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.update(email, {})).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove a plans education when it exists', async () => {
+      const email = 'estudante@example.com';
+      const existing = { id: 1, student_email: email } as any;
+
+      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(existing);
+      jest.spyOn(prisma.plansEducation, 'delete').mockResolvedValue(existing);
+
+      const result = await service.remove(email);
+
+      expect(prisma.plansEducation.findUnique).toHaveBeenCalledWith({
+        where: { student_email: email },
+      });
+      expect(prisma.plansEducation.delete).toHaveBeenCalledWith({
+        where: { student_email: email },
+      });
+      expect(result).toEqual({ message: `PEI do aluno ${email} removido com sucesso` });
+    });
+
+    it('should throw NotFoundException when plans education does not exist', async () => {
+      const email = 'notfound@example.com';
+
+      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.remove(email)).rejects.toThrow(NotFoundException);
     });
   });
 });
