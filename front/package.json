@@ -14,7 +14,7 @@
     "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.17.0",
-    "next": "15.4.7",
+    "next": "16.2.7",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "sweetalert2": "^11.26.25",
@@ -30,7 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "9.26.0",
-    "eslint-config-next": "15.3.1",
+    "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
