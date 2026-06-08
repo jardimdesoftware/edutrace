@@ -1,12 +1,12 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 // Importe a função de POST junto com a de GET
 import { getAllCommentsByIdUser, postComment } from '@/api/comments'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentData } from '@/interfaces/CommentData';
-import { decodeToken } from '@/services/auth/decodeToken';
+import { TokenPayload, decodeToken } from '@/services/auth/decodeToken';
 import { formatarData } from '@/utils/formatDate';
 import { ESTUDANTE } from '@/consts';
 import { useSearchParams, useRouter } from 'next/navigation'; // Importe useRouter
@@ -25,48 +25,49 @@ function ComentariosMultiprofissionais() {
   const nome = searchParams.get("nome");
   const router = useRouter(); // Adicione o router para navegação
 
-  const [targetId, setTargetId] = useState<number | null>(null);
   const [comentarios, setComentarios] = useState<CommentData[]>([]);
   const [novoComentario, setNovoComentario] = useState('');
   const [mostrarModal, setMostrarModal] = useState(false);
   const { user, loading } = useAuth();
-  const [isStudent, setIsStudent] = useState(true);
+  const token = useMemo<TokenPayload | null>(() => decodeToken(), []);
+  const isStudent = token?.id_level === ESTUDANTE;
+  const targetId = useMemo(() => {
+    if (!token) return null;
+    return isStudent ? token.sub : (id ? +id : null);
+  }, [token, isStudent, id]);
 
-  const carregarComentarios = useCallback(async () => {
-    try {
-      const token = decodeToken();
-      if (!token) {
-        router.push('/login');
-        return;
-      }
+  useEffect(() => {
+    if (!token) {
+      router.push('/login');
+    }
+  }, [token, router]);
 
-      const userIsStudent = token.id_level === ESTUDANTE;
-      setIsStudent(userIsStudent);
+  useEffect(() => {
+    if (!targetId) return;
 
-      // O ID do usuário alvo é o do estudante (seja pelo 'id' da URL ou pelo token do próprio estudante)
+    let cancelled = false;
 
-      if (userIsStudent) {
-        setTargetId(token.sub);
-      } else {
-        setTargetId((id ? +id : null));
-      }
-
-      if (targetId) {
+    (async () => {
+      try {
         const data = await getAllCommentsByIdUser(targetId);
         const ordenado = data.sort((a: CommentData, b: CommentData) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        setComentarios(ordenado);
+        if (!cancelled) {
+          setComentarios(ordenado);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar comentários:", err);
+        if (!cancelled) {
+          setComentarios([]);
+        }
       }
-    } catch (err) {
-      console.error("Erro ao buscar comentários:", err);
-      setComentarios([]); // Garante que a lista fique vazia em caso de erro
-    }
-  }, [id, targetId, router]); // Add all dependencies used inside the function
+    })();
 
-  useEffect(() => {
-    carregarComentarios();
-  }, [carregarComentarios]); // Now we can safely add it to dependencies
+    return () => {
+      cancelled = true;
+    };
+  }, [targetId]);
   // Função para lidar com a submissão do novo comentário
   const handleAdicionarComentario = async () => {
     // Validação dos dados necessários
