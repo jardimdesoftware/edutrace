@@ -87,6 +87,24 @@ describe('AuthGuard', () => {
       expect(mockRequest.user).toEqual(payload);
     });
 
+    it('should use fallback empty array when reflector.get returns undefined', async () => {
+      const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
+      jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+
+      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const context = {
+        switchToHttp: () => ({ getRequest: () => mockRequest }),
+        getHandler: () => ({}),
+        getClass: () => ({}),
+      } as any;
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+    });
+
     it('should throw UnauthorizedException when token is invalid', async () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(new Error('invalid token'));
