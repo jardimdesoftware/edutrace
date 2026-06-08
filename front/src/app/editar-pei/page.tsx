@@ -94,7 +94,7 @@ function PEIPage() {
       }
     }
     fetchData();
-  }, [email, router]);
+  }, [email, nome, router]);
 
 
   const handleInputChange = (name: string, value: string) => {
