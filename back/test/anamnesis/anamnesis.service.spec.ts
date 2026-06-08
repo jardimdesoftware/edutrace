@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { PHASES } from 'src/constants';
 import { AnamnesisService } from 'src/anamnesis/anamnesis.service';
+import { NotFoundException } from '@nestjs/common';
 
 describe('AnamnesisService', () => {
   let service: AnamnesisService;
@@ -18,6 +19,8 @@ describe('AnamnesisService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
             },
             user: {
               update: jest.fn(),
@@ -779,6 +782,59 @@ describe('AnamnesisService', () => {
         where: { email: email },
       });
       expect(result).toEqual(anamnesis);
+    });
+  });
+
+  describe('update', () => {
+    it('should update an anamnesis when it exists', async () => {
+      const email = 'joao@example.com';
+      const updateDto = { identification: { nome_completo: 'Novo Nome' } } as any;
+      const existing = { id: 1, email } as any;
+      const updated = { ...existing, ...updateDto };
+
+      jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(existing);
+      jest.spyOn(prisma.anamnesis, 'update').mockResolvedValue(updated);
+
+      const result = await service.update(email, updateDto);
+
+      expect(prisma.anamnesis.findUnique).toHaveBeenCalledWith({ where: { email } });
+      expect(prisma.anamnesis.update).toHaveBeenCalledWith({
+        where: { email },
+        data: updateDto,
+      });
+      expect(result).toEqual(updated);
+    });
+
+    it('should throw NotFoundException when anamnesis does not exist', async () => {
+      const email = 'notfound@example.com';
+
+      jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.update(email, {})).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove an anamnesis when it exists', async () => {
+      const email = 'joao@example.com';
+      const existing = { id: 1, email } as any;
+
+      jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(existing);
+      jest.spyOn(prisma.anamnesis, 'delete').mockResolvedValue(existing);
+
+      const result = await service.remove(email);
+
+      expect(prisma.anamnesis.findUnique).toHaveBeenCalledWith({ where: { email } });
+      expect(prisma.anamnesis.delete).toHaveBeenCalledWith({ where: { email } });
+      expect(result).toEqual({ message: `Anamnese com email ${email} foi removida com sucesso` });
+    });
+
+    it('should throw NotFoundException when anamnesis does not exist', async () => {
+      const email = 'notfound@example.com';
+
+      jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.remove(email)).rejects.toThrow(NotFoundException);
     });
   });
 });
