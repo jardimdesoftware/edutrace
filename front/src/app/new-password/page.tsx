@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import Image from "next/image";
 import React from "react";
 import "@govbr-ds/core/dist/core.min.css";
@@ -25,11 +25,7 @@ function NewPasswordPage() {
 //     confirmarSenha: ""
 //   });
 
-  const [mensagem, setMensagem] = useState("");
-
-  React.useEffect(() => {
-    setMensagem("");
-  }, []);
+  const mensagem = "";
 
 
   return (
