@@ -72,27 +72,37 @@ function VisualizarEstudante() {
         >
           ← Voltar para Home
         </button>
-        <div className="overflow-auto rounded shadow">
-          <table className="min-w-full table-auto text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 text-left">Nome</th>
-                <th className="p-3 text-left">CPF</th>
-                <th className="p-3 text-left">E-mail</th>
-                <th className="p-3 text-left">Responsável Pedagógico</th>
-                <th className="p-3 text-left">Nível de Acesso</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-t">
-                <td className="p-3">{nome}</td>
-                <td className="p-3">{cpf}</td>
-                <td className="p-3">{email}</td>
-                <td className="p-3">{responsavel === "null" ? "Responsável não atribuído" : responsavel }</td>
-                <td className="p-3">{getLevelName(nivelAcesso)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="rounded shadow bg-white">
+          <div className="md:hidden p-4 space-y-2 text-sm">
+            <p><span className="font-semibold">Nome:</span> {nome}</p>
+            <p><span className="font-semibold">CPF:</span> {cpf}</p>
+            <p className="break-all"><span className="font-semibold">E-mail:</span> {email}</p>
+            <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavel === "null" ? "Responsável não atribuído" : responsavel }</p>
+            <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(nivelAcesso)}</p>
+          </div>
+
+          <div className="hidden md:block overflow-auto">
+            <table className="min-w-full table-auto text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-3 text-left">Nome</th>
+                  <th className="p-3 text-left">CPF</th>
+                  <th className="p-3 text-left">E-mail</th>
+                  <th className="p-3 text-left">Responsável Pedagógico</th>
+                  <th className="p-3 text-left">Nível de Acesso</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t">
+                  <td className="p-3">{nome}</td>
+                  <td className="p-3">{cpf}</td>
+                  <td className="p-3">{email}</td>
+                  <td className="p-3">{responsavel === "null" ? "Responsável não atribuído" : responsavel }</td>
+                  <td className="p-3">{getLevelName(nivelAcesso)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">

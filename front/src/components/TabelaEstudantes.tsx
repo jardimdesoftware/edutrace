@@ -67,39 +67,62 @@ export default function TabelaEstudantes() {
           placeholder="Por quem você busca?"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="w-80 border rounded px-3 py-2"
+          className="w-full sm:w-80 border rounded px-3 py-2"
         />
       </div>
 
-      <table className="min-w-full table-auto text-sm text-left">
-        <thead className="bg-gray-100 text-gray-700">
-          <tr>
-            <th className="p-3">Nome</th>
-            <th className="p-3">CPF</th>
-            <th className="p-3">E-mail</th>
-            <th className="p-3">Responsável Pedagógico</th>
-            <th className="p-3">Nível de Acesso</th>
-            <th className="p-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtrados?.map((estudante, index) => (
-            <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="p-3">{estudante.full_name}</td>
-              <td className="p-3">{estudante.cpf}</td>
-              <td className="p-3">{estudante.email}</td>
-              <td className="p-3">{estudante.pedagogical_manager}</td>
-              <td className="p-3">{getLevelName(estudante.id_level)}</td>
-              <td className="p-3 text-center">
-                <Eye
-                  className="w-5 h-5 text-gray-600 cursor-pointer"
-                  onClick={() => handleVerEstudante(estudante)}
-                />
-              </td>
+      <div className="md:hidden px-4 pb-4 space-y-3">
+        {filtrados?.map((estudante, index) => (
+          <div key={index} className="border rounded-lg p-4 shadow-sm">
+            <div className="space-y-1 text-sm">
+              <p><span className="font-semibold">Nome:</span> {estudante.full_name}</p>
+              <p><span className="font-semibold">CPF:</span> {estudante.cpf}</p>
+              <p className="break-all"><span className="font-semibold">E-mail:</span> {estudante.email}</p>
+              <p><span className="font-semibold">Responsável Pedagógico:</span> {estudante.pedagogical_manager}</p>
+              <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(estudante.id_level)}</p>
+            </div>
+            <button
+              onClick={() => handleVerEstudante(estudante)}
+              className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <Eye className="w-4 h-4" />
+              Visualizar
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full table-auto text-sm text-left">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="p-3">Nome</th>
+              <th className="p-3">CPF</th>
+              <th className="p-3">E-mail</th>
+              <th className="p-3">Responsável Pedagógico</th>
+              <th className="p-3">Nível de Acesso</th>
+              <th className="p-3"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtrados?.map((estudante, index) => (
+              <tr key={index} className="border-b hover:bg-gray-50">
+                <td className="p-3">{estudante.full_name}</td>
+                <td className="p-3">{estudante.cpf}</td>
+                <td className="p-3">{estudante.email}</td>
+                <td className="p-3">{estudante.pedagogical_manager}</td>
+                <td className="p-3">{getLevelName(estudante.id_level)}</td>
+                <td className="p-3 text-center">
+                  <Eye
+                    className="w-5 h-5 text-gray-600 cursor-pointer"
+                    onClick={() => handleVerEstudante(estudante)}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="flex justify-between items-center px-4 py-3 text-sm text-gray-600 border-t">
         <div>Exibir <span className="font-semibold">{students?.length}</span> de 100 itens</div>
