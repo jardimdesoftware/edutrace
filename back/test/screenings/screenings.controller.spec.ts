@@ -17,6 +17,8 @@ describe('ScreeningsController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
           },
         },
       ],
@@ -232,6 +234,31 @@ describe('ScreeningsController', () => {
 
       expect(await controller.findOne(email)).toEqual(result);
       expect(service.findOne).toHaveBeenCalledWith(email);
+    });
+  });
+
+  describe('update', () => {
+    it('should update a screening by email', async () => {
+      const email = 'joao@example.com';
+      const updateDto = { full_name: 'Novo Nome' } as any;
+      const result = { id: 1, email, ...updateDto } as any;
+
+      jest.spyOn(service, 'update').mockResolvedValue(result);
+
+      expect(await controller.update(email, updateDto)).toEqual(result);
+      expect(service.update).toHaveBeenCalledWith(email, updateDto);
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove a screening by email', async () => {
+      const email = 'joao@example.com';
+      const result = { message: `Triagem com email ${email} foi removida com sucesso` };
+
+      jest.spyOn(service, 'remove').mockResolvedValue(result as any);
+
+      expect(await controller.remove(email)).toEqual(result);
+      expect(service.remove).toHaveBeenCalledWith(email);
     });
   });
 });
