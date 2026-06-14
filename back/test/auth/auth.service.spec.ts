@@ -5,6 +5,8 @@ import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
 
+jest.mock('bcrypt');
+
 describe('AuthService', () => {
   let service: AuthService;
   let usersService: UsersService;
@@ -56,7 +58,7 @@ describe('AuthService', () => {
   describe('signIn', () => {
     it('should return an access token when credentials are valid', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
-      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+      jest.mocked(bcrypt.compare).mockResolvedValue(true);
 
       const result = await service.signIn('user@test.com', 'plainPassword');
 
@@ -80,7 +82,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException when password is invalid', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
-      jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
+      jest.mocked(bcrypt.compare).mockResolvedValue(false);
 
       await expect(service.signIn('user@test.com', 'wrongPassword')).rejects.toThrow(
         new UnauthorizedException('credenciais inválidas'),
