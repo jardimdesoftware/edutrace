@@ -4,6 +4,8 @@ import { UsersService } from 'src/users/users.service';
 import { LEVELS, PHASES } from 'src/constants';
 import * as bcryptjs from 'bcryptjs';
 
+jest.mock('bcryptjs');
+
 describe('UsersService', () => {
   let service: UsersService;
   let prisma: PrismaService;
@@ -61,7 +63,7 @@ describe('UsersService', () => {
         pedagogical_manager: 'Manager',
       };
 
-      jest.spyOn(bcryptjs, 'hash').mockResolvedValue('hashedPassword' as never);
+      jest.mocked(bcryptjs.hash).mockResolvedValue('hashedPassword' as never);
       jest.spyOn(prisma.user, 'create').mockResolvedValue(mockUser);
 
       const result = await service.create(createDto as any);
@@ -90,7 +92,7 @@ describe('UsersService', () => {
         id_level: LEVELS.ADMIN,
       };
 
-      jest.spyOn(bcryptjs, 'hash').mockResolvedValue('hashedPassword' as never);
+      jest.mocked(bcryptjs.hash).mockResolvedValue('hashedPassword' as never);
       jest.spyOn(prisma.user, 'create').mockResolvedValue({ ...mockUser, id_level: LEVELS.ADMIN });
 
       await service.create(createDto as any);
