@@ -58,7 +58,7 @@ describe('AuthService', () => {
   describe('signIn', () => {
     it('should return an access token when credentials are valid', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
-      jest.mocked(bcrypt.compare).mockResolvedValue(true);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.signIn('user@test.com', 'plainPassword');
 
@@ -82,7 +82,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException when password is invalid', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
-      jest.mocked(bcrypt.compare).mockResolvedValue(false);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(service.signIn('user@test.com', 'wrongPassword')).rejects.toThrow(
         new UnauthorizedException('credenciais inválidas'),
