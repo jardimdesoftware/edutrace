@@ -81,9 +81,55 @@ jobs:
         working-directory: ./back
         run: npx prisma generate
 
+      # Compila o projeto (nest build / tsc). Garante que erros de tipo
+      # e de geração do Prisma Client quebrem o PR (ex.: upgrade do Prisma v7).
+      - name: Build do backend
+        working-directory: ./back
+        run: npm run build
+
       - name: Rodar testes
         working-directory: ./back
         run: npm test -- --ci
+
+      # Aplica as migrations no banco de teste antes do smoke test do seed.
+      - name: Aplicar migrations
+        working-directory: ./back
+        run: npx prisma migrate deploy
+
+      # Smoke test do seed: garante que `prisma db seed` continua funcionando.
+      # Cobre regressões do Prisma v7 como: config do seed migrada para
+      # prisma.config.ts e PrismaClient exigindo driver adapter.
+      - name: Smoke test do seed
+        working-directory: ./back
+        env:
+          ADMIN_PASSWORD: admin123
+        run: |
+          npm run seed 2>&1 | tee seed-output.log
+          if ! grep -q "Seed concluída" seed-output.log; then
+            echo "❌ O seed não foi executado com sucesso."
+            echo "   Verifique a config do seed em prisma.config.ts e o driver adapter em prisma/seed.ts."
+            exit 1
+          fi
+          echo "✅ Seed executado com sucesso."
+
+# --------------------------------------------------------------------
+# BACKEND DOCKER BUILD -----------------------------------------------
+# --------------------------------------------------------------------
+  backend-docker-build:
+    name: Backend – Build da imagem Docker
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true' }}
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builda a imagem exatamente como em produção. Reproduz a ordem do
+      # Dockerfile (prisma generate -> nest build) e pega regressões que só
+      # aparecem no build do container, não nos testes unitários.
+      - name: Build da imagem Docker do backend
+        run: docker build ./back -f back/Dockerfile -t edutrace-back:pr-check
 
 # --------------------------------------------------------------------
 # FRONTEND LINT + BUILD ----------------------------------------------
