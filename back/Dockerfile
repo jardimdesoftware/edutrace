@@ -6,6 +6,9 @@ COPY . .
 
 RUN npm install --quiet --no-optional --no-fund --loglevel=error
 
+# Prisma v7 removeu o postinstall automático: precisa gerar o client antes do build
+RUN npx prisma generate
+
 RUN npm run build
 
 EXPOSE 3000
