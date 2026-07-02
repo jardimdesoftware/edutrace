@@ -25,6 +25,10 @@ jobs:
   prepare-tag:
     name: 1. Preparar nova tag
     runs-on: ubuntu-latest
+    # PR fechada sem merge também dispara o evento 'closed' — sem esta
+    # condição o pipeline publicaria/deployaria código não mesclado.
+    # Os demais jobs dependem deste (needs) e são pulados junto.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     outputs:
       new_tag: ${{ steps.nova_tag.outputs.nova_tag }}
       tipo:    ${{ steps.tipo.outputs.tipo }}
