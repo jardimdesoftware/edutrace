@@ -7,7 +7,13 @@ on:
     paths:
       - 'front/**'
   workflow_dispatch:
-  
+
+# O GITHUB_TOKEN precisa de escrita para publicar a imagem no GHCR
+# e criar a release.
+permissions:
+  contents: write
+  packages: write
+
 env:
   IMAGE_NAME: front-${{ github.event.repository.name }}
   REGISTRY: ghcr.io
@@ -19,6 +25,10 @@ jobs:
   prepare-tag:
     name: 1. Preparar nova tag
     runs-on: ubuntu-latest
+    # PR fechada sem merge também dispara o evento 'closed' — sem esta
+    # condição o pipeline publicaria/deployaria código não mesclado.
+    # Os demais jobs dependem deste (needs) e são pulados junto.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     outputs:
       new_tag: ${{ steps.nova_tag.outputs.nova_tag }}
       tipo:    ${{ steps.tipo.outputs.tipo }}
@@ -29,10 +39,14 @@ jobs:
       - name: Instalar GitHub CLI
         run: sudo apt-get install -y gh
 
+      # O corpo da PR entra via env para não ser interpolado no shell
+      # (corpos com aspas/crases — ex.: dependabot — quebravam o passo).
       - name: Extrair tipo de mudança da PR
         id: tipo
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          echo "${{ github.event.pull_request.body }}" > body.txt
+          printf '%s\n' "$PR_BODY" > body.txt
       
           tipo=""
           if grep -q "\[x\] marco-no-projeto" body.txt; then
@@ -146,8 +160,10 @@ jobs:
           docker tag ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
       # Push Docker image
+      # GITHUB_TOKEN com permissions.packages: write substitui o PAT
+      # (GHCR_PAT), que vinha falhando com permission_denied no push.
       - name: Login no GHCR
-        run: echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
       - name: Push Docker image
         run: |
@@ -177,7 +193,7 @@ jobs:
             Release gerada automaticamente a partir da Pull Request #${{ github.event.pull_request.number }}
             Tipo de mudança: ${{ env.TIPO }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 # --------------------------------------------------------------------
 # 5) DEPLOY APP --------------------------------------------------
