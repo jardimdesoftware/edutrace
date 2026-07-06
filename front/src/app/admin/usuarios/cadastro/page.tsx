@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ADMIN } from "@/consts";
+import TermoConsentimento from "@/components/TermoConsentimento";
 
 const BrInput = dynamic(
   () =>
@@ -44,6 +45,8 @@ function AdminUserCreatePage() {
   const { user, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [mostrarTermos, setMostrarTermos] = useState(false);
 
   useEffect(() => {
     if (!loading && user?.id_level !== ADMIN) {
@@ -58,6 +61,11 @@ function AdminUserCreatePage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!aceitouTermos) {
+      alert("É necessário aceitar o Termo de Consentimento.");
+      return;
+    }
 
     if (formData.senha !== formData.confirmarSenha) {
       alert("As senhas nao coincidem.");
@@ -251,12 +259,85 @@ function AdminUserCreatePage() {
             </BrInput>
           </div>
 
-          <BrButton type="submit" active block class="w-full">
+          <div className="w-full">
+            <div className="flex items-start gap-2">
+              <input
+                id="aceiteTermos"
+                type="checkbox"
+                checked={aceitouTermos}
+                onChange={(e) => setAceitouTermos(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-emerald-600"
+              />
+              <label htmlFor="aceiteTermos" className="text-sm text-slate-700">
+                Li e concordo com o{" "}
+                <button
+                  type="button"
+                  onClick={() => setMostrarTermos(true)}
+                  className="font-semibold text-blue-700 underline hover:text-blue-900"
+                >
+                  Termo de Consentimento Livre e Esclarecido
+                </button>
+                .
+              </label>
+            </div>
+          </div>
+
+          <BrButton
+            type="submit"
+            active={aceitouTermos}
+            disabled={!aceitouTermos}
+            block
+            class="w-full"
+          >
             Finalizar
           </BrButton>
         </form>
       </section>
 
+      {mostrarTermos && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setMostrarTermos(false)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                aria-label="Fechar"
+                onClick={() => setMostrarTermos(false)}
+                className="text-2xl leading-none text-slate-500 hover:text-slate-800"
+              >
+                &times;
+              </button>
+            </div>
+
+            <TermoConsentimento />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="br-button"
+                onClick={() => setMostrarTermos(false)}
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                className="br-button primary"
+                onClick={() => {
+                  setAceitouTermos(true);
+                  setMostrarTermos(false);
+                }}
+              >
+                Li e concordo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
