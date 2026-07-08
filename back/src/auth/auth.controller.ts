@@ -10,6 +10,9 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto/auth.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from './auth.guard';
 import { Public } from './constants/constants';
 import { ApiBody } from '@nestjs/swagger';
@@ -27,6 +30,43 @@ export class AuthController {
   @Post('login')
   async signIn(@Body() auth: AuthDto): Promise<any> {
     return await this.authService.signIn(auth.email, auth.password);
+  }
+
+  @Public()
+  @ApiBody({
+    type: ForgotPasswordDto,
+    description: 'Objeto para solicitar o código de recuperação de senha.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<any> {
+    return await this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @ApiBody({
+    type: VerifyResetCodeDto,
+    description: 'Objeto para verificar o código de recuperação de senha.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('verify-reset-code')
+  async verifyResetCode(@Body() dto: VerifyResetCodeDto): Promise<any> {
+    return await this.authService.verifyResetCode(dto.email, dto.code);
+  }
+
+  @Public()
+  @ApiBody({
+    type: ResetPasswordDto,
+    description: 'Objeto para redefinir a senha com o código de recuperação.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<any> {
+    return await this.authService.resetPassword(
+      dto.email,
+      dto.code,
+      dto.password,
+    );
   }
 
   @UseGuards(AuthGuard)

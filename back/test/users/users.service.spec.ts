@@ -18,6 +18,9 @@ describe('UsersService', () => {
     password: 'hashedPassword',
     affliation: 'Test',
     pedagogical_manager: 'Manager',
+    password_reset_token: null,
+    password_reset_expires: null,
+    password_reset_attempts: 0,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
@@ -151,6 +154,90 @@ describe('UsersService', () => {
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { email: 'test@test.com' },
         data: { full_name: updateDto.full_name, id_level: updateDto.id_level },
+      });
+      expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('setPasswordResetToken', () => {
+    it('should store the token hash, its expiration and reset the attempts', async () => {
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      const updatedUser = {
+        ...mockUser,
+        password_reset_token: 'hashedCode',
+        password_reset_expires: expiresAt,
+      };
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
+
+      const result = await service.setPasswordResetToken(
+        'test@test.com',
+        'hashedCode',
+        expiresAt,
+      );
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: {
+          password_reset_token: 'hashedCode',
+          password_reset_expires: expiresAt,
+          password_reset_attempts: 0,
+        },
+      });
+      expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('incrementPasswordResetAttempts', () => {
+    it('should increment the attempts counter', async () => {
+      const updatedUser = { ...mockUser, password_reset_attempts: 1 };
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
+
+      const result = await service.incrementPasswordResetAttempts('test@test.com');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { password_reset_attempts: { increment: 1 } },
+      });
+      expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('clearPasswordResetToken', () => {
+    it('should clear the token, its expiration and the attempts', async () => {
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
+
+      const result = await service.clearPasswordResetToken('test@test.com');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: {
+          password_reset_token: null,
+          password_reset_expires: null,
+          password_reset_attempts: 0,
+        },
+      });
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('updatePassword', () => {
+    it('should update the password and invalidate the reset token in the same update', async () => {
+      const updatedUser = { ...mockUser, password: 'newHashedPassword' };
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
+
+      const result = await service.updatePassword(
+        'test@test.com',
+        'newHashedPassword',
+      );
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: {
+          password: 'newHashedPassword',
+          password_reset_token: null,
+          password_reset_expires: null,
+          password_reset_attempts: 0,
+        },
       });
       expect(result).toEqual(updatedUser);
     });

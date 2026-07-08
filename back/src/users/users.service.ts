@@ -42,7 +42,7 @@ export class UsersService {
         id_level: true,
         level: true,
         updated_at: true,
-      }
+      },
     });
   }
 
@@ -57,9 +57,56 @@ export class UsersService {
   async update(email: string, updateUserDto: UpdateUserDto) {
     return this.prisma.user.update({
       where: { email: email },
-      data: { 
+      data: {
         full_name: updateUserDto.full_name,
         id_level: updateUserDto.id_level,
+      },
+    });
+  }
+
+  async setPasswordResetToken(
+    email: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        password_reset_token: tokenHash,
+        password_reset_expires: expiresAt,
+        password_reset_attempts: 0,
+      },
+    });
+  }
+
+  async incrementPasswordResetAttempts(email: string) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        password_reset_attempts: { increment: 1 },
+      },
+    });
+  }
+
+  async clearPasswordResetToken(email: string) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        password_reset_token: null,
+        password_reset_expires: null,
+        password_reset_attempts: 0,
+      },
+    });
+  }
+
+  async updatePassword(email: string, hashedPassword: string) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        password: hashedPassword,
+        password_reset_token: null,
+        password_reset_expires: null,
+        password_reset_attempts: 0,
       },
     });
   }
