@@ -155,6 +155,14 @@ function LoginPage() {
           >
             Entrar
           </BrButton>
+          <div className="flex items-center justify-center w-full">
+            <a
+              className="text-sm font-semibold text-emerald-800 underline"
+              href="/forgot-password"
+            >
+              Esqueci minha senha
+            </a>
+          </div>
           <div className="flex items-center justify-center w-full text-center">
             <div className="text-sm">
               <button
@@ -179,12 +187,7 @@ function LoginPage() {
         </form>
         <div>
           <p className="text-sm ">Versão {version}</p>
-        </div>      
-        {/* <div className="flex items-center justify-center w-full">
-          <a className="text-sm" href="/forgot-password">
-            Precisa de Ajuda?
-          </a>
-        </div> */}
+        </div>
       </section>
     </div>
   );

@@ -16,6 +16,9 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: {
             signIn: jest.fn(),
+            forgotPassword: jest.fn(),
+            verifyResetCode: jest.fn(),
+            resetPassword: jest.fn(),
           },
         },
       ],
@@ -65,6 +68,88 @@ describe('AuthController', () => {
 
       await expect(controller.signIn(authDto)).rejects.toThrow(UnauthorizedException);
       expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password);
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should delegate to the service and return its result', async () => {
+      const dto = { email: 'user@test.com' };
+      const response = {
+        message:
+          'Se o e-mail informado estiver cadastrado, um código de recuperação foi enviado.',
+      };
+
+      jest.spyOn(service, 'forgotPassword').mockResolvedValue(response);
+
+      const result = await controller.forgotPassword(dto);
+
+      expect(service.forgotPassword).toHaveBeenCalledWith(dto.email);
+      expect(result).toEqual(response);
+    });
+  });
+
+  describe('verifyResetCode', () => {
+    it('should delegate to the service and return its result', async () => {
+      const dto = { email: 'user@test.com', code: '123456' };
+      const response = { message: 'Código válido.' };
+
+      jest.spyOn(service, 'verifyResetCode').mockResolvedValue(response);
+
+      const result = await controller.verifyResetCode(dto);
+
+      expect(service.verifyResetCode).toHaveBeenCalledWith(dto.email, dto.code);
+      expect(result).toEqual(response);
+    });
+
+    it('should propagate UnauthorizedException from the service', async () => {
+      const dto = { email: 'user@test.com', code: '000000' };
+
+      jest
+        .spyOn(service, 'verifyResetCode')
+        .mockRejectedValue(new UnauthorizedException('Código inválido ou expirado.'));
+
+      await expect(controller.verifyResetCode(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(service.verifyResetCode).toHaveBeenCalledWith(dto.email, dto.code);
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should delegate to the service and return its result', async () => {
+      const dto = {
+        email: 'user@test.com',
+        code: '123456',
+        password: 'novaSenha123',
+      };
+      const response = { message: 'Senha redefinida com sucesso.' };
+
+      jest.spyOn(service, 'resetPassword').mockResolvedValue(response);
+
+      const result = await controller.resetPassword(dto);
+
+      expect(service.resetPassword).toHaveBeenCalledWith(
+        dto.email,
+        dto.code,
+        dto.password,
+      );
+      expect(result).toEqual(response);
+    });
+
+    it('should propagate UnauthorizedException from the service', async () => {
+      const dto = {
+        email: 'user@test.com',
+        code: '000000',
+        password: 'novaSenha123',
+      };
+
+      jest
+        .spyOn(service, 'resetPassword')
+        .mockRejectedValue(new UnauthorizedException('Código inválido ou expirado.'));
+
+      await expect(controller.resetPassword(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
