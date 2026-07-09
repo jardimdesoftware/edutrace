@@ -12,6 +12,11 @@ services:
      - SECRET_KEY=${SECRET_KEY}
      - FRONTEND_URL=${FRONTEND_URL}
      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+     - SMTP_HOST=${SMTP_HOST}
+     - SMTP_PORT=${SMTP_PORT}
+     - SMTP_USER=${SMTP_USER}
+     - SMTP_PASS=${SMTP_PASS}
+     - MAIL_FROM=${MAIL_FROM}
     networks:
       - app-net
       - proxy-net
