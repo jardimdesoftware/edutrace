@@ -26,7 +26,7 @@ export default function TermoConsentimento() {
         </p>
         <p>
           <span className="font-semibold">Contato da Pesquisadora:</span>{" "}
-          sayane.marlla@belojardim.ifpe.edu.be, (81) 97306-3357
+          sayane.marlla@belojardim.ifpe.edu.br, (81) 97306-3357
         </p>
       </div>
 
