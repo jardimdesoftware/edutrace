@@ -12,9 +12,13 @@ services:
      - SECRET_KEY=${SECRET_KEY}
      - FRONTEND_URL=${FRONTEND_URL}
      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+     - SMTP_HOST=${SMTP_HOST}
+     - SMTP_PORT=${SMTP_PORT}
+     - SMTP_USER=${SMTP_USER}
+     - SMTP_PASS=${SMTP_PASS}
+     - MAIL_FROM=${MAIL_FROM}
     networks:
       - app-net
-      - proxy-net
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -53,7 +57,6 @@ services:
      - NEXT_PUBLIC_API_EDU_TRACE=${NEXT_PUBLIC_API_EDU_TRACE}
     networks:
       - app-net
-      - proxy-net
     depends_on:
       - nest-app
     restart: unless-stopped
@@ -61,8 +64,6 @@ services:
 networks:
   app-net:
     driver: bridge
-  proxy-net:
-    external: true
 
 volumes:
   pgdata:
