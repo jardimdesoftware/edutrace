@@ -19,7 +19,6 @@ services:
      - MAIL_FROM=${MAIL_FROM}
     networks:
       - app-net
-      - proxy-net
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -58,7 +57,6 @@ services:
      - NEXT_PUBLIC_API_EDU_TRACE=${NEXT_PUBLIC_API_EDU_TRACE}
     networks:
       - app-net
-      - proxy-net
     depends_on:
       - nest-app
     restart: unless-stopped
@@ -66,8 +64,6 @@ services:
 networks:
   app-net:
     driver: bridge
-  proxy-net:
-    external: true
 
 volumes:
   pgdata:
