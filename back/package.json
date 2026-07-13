@@ -21,12 +21,12 @@
     "seed": "prisma db seed"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.27",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.27",
+    "@nestjs/core": "^11.1.28",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/mapped-types": "*",
-    "@nestjs/platform-express": "^11.1.27",
+    "@nestjs/platform-express": "^11.1.28",
     "@nestjs/swagger": "^11.4.5",
     "@nestjs/typeorm": "^11.0.3",
     "@prisma/adapter-pg": "^7.8.0",
@@ -45,9 +45,9 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
-    "@nestjs/cli": "^11.0.23",
+    "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
-    "@nestjs/testing": "^11.1.27",
+    "@nestjs/testing": "^11.1.28",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.43",
     "@types/bcrypt": "^6.0.0",
