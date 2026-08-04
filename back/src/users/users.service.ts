@@ -64,6 +64,49 @@ export class UsersService {
     });
   }
 
+  // Atualização self-service dos próprios dados (e-mail e/ou senha).
+  // O e-mail é a chave de negócio que liga o usuário aos seus registros de
+  // Triagem/Anamnese/PEI, então a troca precisa propagar em todas as tabelas
+  // dentro de uma transação para não deixar dados órfãos.
+  async updateProfile(
+    currentEmail: string,
+    data: { newEmail?: string; hashedPassword?: string },
+  ) {
+    const { newEmail, hashedPassword } = data;
+    const isChangingEmail = !!newEmail && newEmail !== currentEmail;
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { email: currentEmail },
+        data: {
+          ...(isChangingEmail ? { email: newEmail } : {}),
+          ...(hashedPassword ? { password: hashedPassword } : {}),
+        },
+      });
+
+      if (isChangingEmail) {
+        await tx.screening.updateMany({
+          where: { email: currentEmail },
+          data: { email: newEmail },
+        });
+        await tx.anamnesis.updateMany({
+          where: { email: currentEmail },
+          data: { email: newEmail },
+        });
+        await tx.plansEducation.updateMany({
+          where: { student_email: currentEmail },
+          data: { student_email: newEmail },
+        });
+        await tx.plansEducation.updateMany({
+          where: { professor_email: currentEmail },
+          data: { professor_email: newEmail },
+        });
+      }
+
+      return user;
+    });
+  }
+
   async setPasswordResetToken(
     email: string,
     tokenHash: string,

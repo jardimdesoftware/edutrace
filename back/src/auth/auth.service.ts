@@ -1,8 +1,10 @@
 import {
+  ConflictException,
   Injectable,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
@@ -45,6 +47,54 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload),
     };
     return token;
+  }
+
+  // Permite que qualquer usuário autenticado altere o próprio e-mail e/ou senha.
+  // A identidade vem do token (currentEmail), nunca do corpo da requisição.
+  async updateProfile(
+    currentEmail: string,
+    dto: UpdateProfileDto,
+  ): Promise<{ access_token: string }> {
+    const user = await this.userService.findOne(currentEmail);
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Senha atual incorreta');
+    }
+
+    const newEmail = dto.email?.trim();
+    const isChangingEmail = !!newEmail && newEmail !== currentEmail;
+
+    if (isChangingEmail) {
+      const existing = await this.userService.findOne(newEmail);
+      if (existing) {
+        throw new ConflictException('Este e-mail já está em uso.');
+      }
+    }
+
+    const hashedPassword = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : undefined;
+
+    const updated = await this.userService.updateProfile(currentEmail, {
+      newEmail: isChangingEmail ? newEmail : undefined,
+      hashedPassword,
+    });
+
+    const payload = {
+      sub: updated.id,
+      email: updated.email,
+      name: updated.full_name,
+      id_level: updated.id_level,
+    };
+
+    return { access_token: await this.jwtService.signAsync(payload) };
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
