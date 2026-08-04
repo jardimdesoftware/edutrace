@@ -14,20 +14,13 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { login, authHeaders } from '../../helpers/auth.js';
+import { smokeOptions } from '../../config/options.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 
-export const options = {
-  vus: 1,
-  duration: '30s',
-  thresholds: {
-    http_req_duration: ['p(99)<200'],
-    http_req_failed: ['rate<0.01'],
-    checks: ['rate>0.95'],
-  },
-};
+export const options = smokeOptions;
 
 export function setup() {
   // Validar login antes de iniciar

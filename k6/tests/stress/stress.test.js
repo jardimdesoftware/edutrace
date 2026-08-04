@@ -24,27 +24,14 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { getToken, authHeaders } from '../../helpers/auth.js';
+import { stressOptions } from '../../config/options.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 
-export const options = {
-  stages: [
-    { duration: '30s', target: 10  }, // aquecimento
-    { duration: '1m',  target: 20  }, // carga leve
-    { duration: '30s', target: 40  }, // carga média
-    { duration: '1m',  target: 40  }, // sustenta carga média
-    { duration: '30s', target: 80  }, // carga pesada
-    { duration: '1m',  target: 80  }, // sustenta carga pesada
-    { duration: '30s', target: 0   }, // ramp-down
-  ],
-  thresholds: {
-    // Mais permissivo — queremos ver onde a API começa a falhar
-    http_req_duration: ['p(95)<1000', 'p(99)<2000'],
-    http_req_failed: ['rate<0.05'],
-  },
-};
+// Mais permissivo — queremos ver onde a API começa a falhar
+export const options = stressOptions;
 
 export function setup() {
   const token = getToken(BASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD);

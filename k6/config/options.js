@@ -21,6 +21,16 @@ export const strictThresholds = {
 // ─── Cenários de estágios ─────────────────────────────────────────────────────
 
 /**
+ * Endpoint: usado pelos scripts de k6/tests/endpoints/*.test.js.
+ * 1 VU por 30 segundos, thresholds padrão.
+ */
+export const endpointOptions = {
+  vus: 1,
+  duration: '30s',
+  thresholds: defaultThresholds,
+};
+
+/**
  * Smoke: validação rápida com carga mínima.
  * 1 VU por 30 segundos.
  */
@@ -30,6 +40,7 @@ export const smokeOptions = {
   thresholds: {
     http_req_duration: ['p(99)<200'],
     http_req_failed: ['rate<0.01'],
+    checks: ['rate>0.95'],
   },
 };
 
@@ -45,7 +56,11 @@ export const loadOptions = {
     { duration: '1m',  target: 20 }, // sustenta 20 VUs por 1 min
     { duration: '30s', target: 0  }, // ramp-down
   ],
-  thresholds: defaultThresholds,
+  thresholds: {
+    http_req_duration: ['p(95)<500', 'p(99)<1000'],
+    http_req_failed: ['rate<0.01'],
+    checks: ['rate>0.95'],
+  },
 };
 
 /**
@@ -63,7 +78,7 @@ export const stressOptions = {
     { duration: '30s', target: 0   }, // ramp-down
   ],
   thresholds: {
-    http_req_duration: ['p(95)<1000'], // mais tolerante no stress
+    http_req_duration: ['p(95)<1000', 'p(99)<2000'], // mais tolerante no stress
     http_req_failed: ['rate<0.05'],
   },
 };
