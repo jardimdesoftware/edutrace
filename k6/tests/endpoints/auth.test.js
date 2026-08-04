@@ -4,14 +4,17 @@
  * Endpoints testados:
  *   POST /auth/login
  *   POST /auth/forgot-password
- *   POST /auth/verify-reset-code
- *   POST /auth/reset-password
  *   GET  /auth/profile
+ *
+ * Não testados neste script: POST /auth/verify-reset-code e
+ * POST /auth/reset-password — dependem de um código de reset gerado
+ * por e-mail, sem forma direta de obtê-lo via API.
  */
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { login } from '../../helpers/auth.js';
+import { endpointOptions } from '../../config/options.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
@@ -19,14 +22,7 @@ const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-export const options = {
-  vus: 1,
-  duration: '30s',
-  thresholds: {
-    http_req_duration: ['p(95)<500'],
-    http_req_failed: ['rate<0.01'],
-  },
-};
+export const options = endpointOptions;
 
 export default function () {
   // ─── 1. Login com credenciais válidas ─────────────────────────────────────
