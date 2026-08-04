@@ -77,7 +77,7 @@ function VisualizarEstudanteConfig() {
                             if (email) {
                               await updateUser(email, novoNivel)
                             }
-                            router.push('/estudantes')
+                            router.push('/home')
                             alert("Nível de acesso atualizado com sucesso!");
                         } catch (err) {
                             console.error(err);
