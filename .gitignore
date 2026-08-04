@@ -2,3 +2,7 @@ env
 .env
 .env.production
 .env.development
+k6_bin/
+k6-bin/
+*.zip
+k6/.env
