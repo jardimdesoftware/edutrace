@@ -22,7 +22,6 @@ export default function ComentariosMultiprofissionaisPageWrapper() {
 function ComentariosMultiprofissionais() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const nome = searchParams.get("nome");
   const router = useRouter(); // Adicione o router para navegação
 
   const [comentarios, setComentarios] = useState<CommentData[]>([]);
@@ -109,11 +108,6 @@ function ComentariosMultiprofissionais() {
 
   return (
     <AppLayout
-      breadcrumbs={[
-        { href: '/home', label: 'Página Inicial' },
-        { href: '#', label: nome || 'Estudante' },
-        { href: '/comentarios', label: 'Comentários Multiprofissionais' },
-      ]}
     >
       <div className="p-6 space-y-8 w-full">
         <button

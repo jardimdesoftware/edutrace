@@ -73,7 +73,7 @@ function TriagemPage() {
   const email = searchParams.get("email");
   const nome = searchParams.get("nome");
 
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const router = useRouter();
 
   const [screening, setScreening] = useState<ScreeningData | null>(null);
@@ -171,11 +171,6 @@ function TriagemPage() {
   if (screening === null) {
     return (
       <AppLayout
-        breadcrumbs={[
-          { href: "/home", label: "Página Inicial" },
-          { href: "#", label: user?.name || "Estudante" },
-          { href: "/triagem", label: "Triagem" },
-        ]}
       >
         <div className="p-6 text-center">
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui uma Triagem cadastrada</h2>
@@ -190,11 +185,6 @@ function TriagemPage() {
 
     return (
       <AppLayout
-        breadcrumbs={[
-          { href: "/home", label: "Página Inicial" },
-          { href: "#", label: nome || "Estudante" },
-          { href: "/triagem", label: "Criar Triagem" },
-        ]}
       >
         <div className="p-6 space-y-8 w-full">
           <h1 className="text-2xl font-bold text-green-800">Criar Nova Triagem</h1>

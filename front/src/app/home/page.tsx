@@ -33,11 +33,7 @@ function HomePage() {
   const isAdmin = user.id_level === ADMIN;
 
   return (
-    <AppLayout
-      breadcrumbs={[
-        { href: '/home', label: 'Página Inicial' }
-      ]}
-    >
+    <AppLayout showBack={false}>
       <main className="p-6">
         <h1 className="text-3xl font-light mb-6">Página inicial</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -33,10 +33,10 @@ function VisualizarEstudante() {
   const responsavel = searchParams.get("responsavel");
   const id = searchParams.get("id");
   const nivelAcesso = searchParams.get("nivelAcesso")
-  
+
   const router = useRouter();
   const { user, loading } = useAuth();
-  
+
   function getLevelName(id_level: string | null) {
     switch(id_level) {
       case '1':
@@ -59,12 +59,7 @@ function VisualizarEstudante() {
   )
 
   return (
-    <AppLayout
-      breadcrumbs={[
-        { href: "/home", label: "Página inicial" },
-        { href: "/estudantes", label: nome || "Estudante" },
-      ]}
-    >
+    <AppLayout>
       <div className="p-6">
         <button
           onClick={() => router.push("/home")}
