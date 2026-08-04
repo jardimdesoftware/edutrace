@@ -4,7 +4,7 @@ import AppLayout from "@/components/AppLayout";
 import { updateProfile } from "@/api/user";
 import { useAuth } from "@/contexts/AuthContext";
 import { decodeToken } from "@/services/auth/decodeToken";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
@@ -18,9 +18,14 @@ export default function AlterarDadosPage() {
   const [senhaAtual, setSenhaAtual] = useState("");
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => {
-    if (user?.email) setEmail(user.email);
-  }, [user?.email]);
+  // Pré-preenche o e-mail assim que o AuthContext terminar de carregar o
+  // usuário (chega em um render posterior). Ajuste de estado durante a
+  // renderização (não em efeito) para não disparar um render em cascata.
+  const [emailPreenchidoPara, setEmailPreenchidoPara] = useState<string | null>(null);
+  if (user?.email && user.email !== emailPreenchidoPara) {
+    setEmailPreenchidoPara(user.email);
+    setEmail(user.email);
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
