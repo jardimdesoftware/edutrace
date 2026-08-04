@@ -14,11 +14,7 @@ export default function EstudantesPageWrapper() {
 
 function EstudantesPage() {
   return (
-    <AppLayout
-      breadcrumbs={[
-        { href: "/home", label: "Página inicial" }
-      ]}
-    >
+    <AppLayout>
       <main className="p-6">
         <h1 className="text-2xl font-light mb-6">Estudantes</h1>
         <TabelaEstudantes />
