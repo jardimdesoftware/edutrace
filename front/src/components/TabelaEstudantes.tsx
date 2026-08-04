@@ -3,17 +3,23 @@
 "use client";
 
 import { getAllStudents } from "@/api/students";
+import { updateUser } from "@/api/user";
+import { ADMIN } from "@/consts";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
-import { Eye } from "lucide-react";
+import { exportStudentReportXlsx } from "@/lib/exportStudentReport";
+import { Eye, FileDown, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 
 export default function TabelaEstudantes() {
   const [busca, setBusca] = useState("");
   const router = useRouter();
   const [ students, setStudents ] = useState<StudentData[] | null>(null);
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
+
+  const isAdmin = user?.id_level === ADMIN;
 
   const filtrados = students?.filter(e =>
     e.full_name.toLowerCase().includes(busca.toLowerCase())
@@ -24,10 +30,74 @@ export default function TabelaEstudantes() {
     const cpf = estudante.cpf;
     const email = estudante.email;
     const responsavel = estudante.pedagogical_manager;
-    const id = estudante.id; 
+    const id = estudante.id;
     const id_level = estudante.id_level
 
     router.push(`/estudantes/visualizar?id=${id}&nome=${nome}&cpf=${cpf}&email=${email}&responsavel=${responsavel}&nivelAcesso=${id_level}`);
+  };
+
+  const handleExportar = async (email: string) => {
+    try {
+      const resultado = await exportStudentReportXlsx(email);
+      if (resultado === "empty") {
+        Swal.fire({
+          icon: "info",
+          title: "Nenhum relatório encontrado",
+          text: "Não foram encontrados relatórios para o paciente.",
+          confirmButtonColor: "#047857",
+          confirmButtonText: "Entendi",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao exportar relatório:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Falha ao exportar",
+        text: "Ocorreu um erro inesperado ao gerar o relatório.",
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Entendi",
+      });
+    }
+  };
+
+  const handleAlterarNivel = async (estudante: StudentData, novoNivel: string) => {
+    const confirmacao = await Swal.fire({
+      icon: "warning",
+      title: "Alterar nível de acesso",
+      text: `Tem certeza que deseja alterar o nível de acesso para "${getLevelName(Number(novoNivel))}"?`,
+      showCancelButton: true,
+      confirmButtonColor: "#047857",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sim, alterar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirmacao.isConfirmed) return;
+
+    try {
+      await updateUser(estudante.email, novoNivel);
+      setStudents((prev) =>
+        prev
+          ? prev.map((e) =>
+              e.email === estudante.email ? { ...e, id_level: Number(novoNivel) } : e,
+            )
+          : prev,
+      );
+      Swal.fire({
+        icon: "success",
+        title: "Nível de acesso atualizado com sucesso!",
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Ok",
+      });
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Falha ao atualizar o nível de acesso",
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Entendi",
+      });
+    }
   };
 
   useEffect(() => {
@@ -61,13 +131,23 @@ export default function TabelaEstudantes() {
 
   return (
     <div className="bg-white rounded shadow-md">
-      <div className="p-4 flex justify-end">
+      <div className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => router.push("/admin/usuarios/cadastro")}
+            className="inline-flex items-center justify-center gap-2 rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
+          >
+            <UserPlus className="w-4 h-4" />
+            Cadastrar novas pessoas
+          </button>
+        )}
         <input
           type="text"
           placeholder="Por quem você busca?"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="w-full sm:w-80 border rounded px-3 py-2"
+          className="w-full sm:w-80 border rounded px-3 py-2 sm:ml-auto"
         />
       </div>
 
@@ -79,15 +159,42 @@ export default function TabelaEstudantes() {
               <p><span className="font-semibold">CPF:</span> {estudante.cpf}</p>
               <p className="break-all"><span className="font-semibold">E-mail:</span> {estudante.email}</p>
               <p><span className="font-semibold">Responsável Pedagógico:</span> {estudante.pedagogical_manager}</p>
-              <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(estudante.id_level)}</p>
+              {isAdmin ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Nível de Acesso:</span>
+                  <select
+                    className="border rounded px-2 py-1"
+                    value={String(estudante.id_level)}
+                    onChange={(e) => handleAlterarNivel(estudante, e.target.value)}
+                  >
+                    <option value="1">Admin</option>
+                    <option value="2">Estudante/Família</option>
+                    <option value="3">Profissional da Educação</option>
+                    <option value="4">Profissional da Saúde</option>
+                  </select>
+                </div>
+              ) : (
+                <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(estudante.id_level)}</p>
+              )}
             </div>
-            <button
-              onClick={() => handleVerEstudante(estudante)}
-              className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Eye className="w-4 h-4" />
-              Visualizar
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => handleVerEstudante(estudante)}
+                title="Mais informações"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
+              >
+                <Eye className="w-4 h-4" />
+                Visualizar
+              </button>
+              <button
+                onClick={() => handleExportar(estudante.email)}
+                title="Exportar relatório"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
+              >
+                <FileDown className="w-4 h-4" />
+                Exportar
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -111,12 +218,41 @@ export default function TabelaEstudantes() {
                 <td className="p-3">{estudante.cpf}</td>
                 <td className="p-3">{estudante.email}</td>
                 <td className="p-3">{estudante.pedagogical_manager}</td>
-                <td className="p-3">{getLevelName(estudante.id_level)}</td>
-                <td className="p-3 text-center">
-                  <Eye
-                    className="w-5 h-5 text-gray-600 cursor-pointer"
-                    onClick={() => handleVerEstudante(estudante)}
-                  />
+                <td className="p-3">
+                  {isAdmin ? (
+                    <select
+                      className="border rounded px-2 py-1"
+                      value={String(estudante.id_level)}
+                      onChange={(e) => handleAlterarNivel(estudante, e.target.value)}
+                    >
+                      <option value="1">Admin</option>
+                      <option value="2">Estudante/Família</option>
+                      <option value="3">Profissional da Educação</option>
+                      <option value="4">Profissional da Saúde</option>
+                    </select>
+                  ) : (
+                    getLevelName(estudante.id_level)
+                  )}
+                </td>
+                <td className="p-3">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      title="Mais informações"
+                      onClick={() => handleVerEstudante(estudante)}
+                      className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Exportar relatório"
+                      onClick={() => handleExportar(estudante.email)}
+                      className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
+                    >
+                      <FileDown className="w-5 h-5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
