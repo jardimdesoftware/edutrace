@@ -179,6 +179,24 @@ export default function (data) {
   const headers = authHeaders(data.token);
   const testEmail = `k6.anamnesis.${Date.now()}.${Math.floor(Math.random() * 10000)}@test.com`;
 
+  // ─── 0. POST /users — cria o usuário exigido pela pré-condição acima ──────
+  // POST /anamnesis atualiza id_current_phase do usuário com esse email;
+  // sem essa criação prévia a API retorna 500 (usuário inexistente).
+  const createUserRes = http.post(
+    `${BASE_URL}/users`,
+    JSON.stringify({
+      full_name: 'Estudante k6 Anamnese',
+      cpf: `${Math.floor(10000000000 + Math.random() * 89999999999)}`,
+      email: testEmail,
+      password: 'senhaSegura123',
+      id_level: 2,
+    }),
+    { headers },
+  );
+  check(createUserRes, {
+    '[anamnesis] POST /users (setup) retorna 201': (r) => r.status === 201,
+  });
+
   // ─── 1. POST /anamnesis ───────────────────────────────────────────────────
   const createRes = http.post(
     `${BASE_URL}/anamnesis`,
@@ -240,6 +258,18 @@ export default function (data) {
   check(deleteRes, {
     '[anamnesis] DELETE /anamnesis/:email retorna 200': (r) => r.status === 200,
   });
+
+  // ─── 6. DELETE /users/:id — limpa o usuário criado no passo 0 ─────────────
+  const userRes = http.get(`${BASE_URL}/users/${testEmail}`, { headers });
+  if (userRes.status === 200) {
+    try {
+      const userId = JSON.parse(userRes.body).id;
+      const deleteUserRes = http.del(`${BASE_URL}/users/${userId}`, null, { headers });
+      check(deleteUserRes, {
+        '[anamnesis] DELETE /users/:id (cleanup) retorna 200': (r) => r.status === 200,
+      });
+    } catch {}
+  }
 
   sleep(1);
 }
