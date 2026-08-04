@@ -4,12 +4,12 @@ import { VerifyResetCodeDto } from './verify-reset-code.dto';
 
 export class ResetPasswordDto extends VerifyResetCodeDto {
   @ApiProperty({
-    description: 'Nova senha do usuário com no mínimo 6 caracteres.',
+    description: 'Nova senha do usuário com no mínimo 8 caracteres.',
     example: 'senhaSegura123',
-    minLength: 6,
+    minLength: 8,
   })
   @IsNotEmpty({ message: 'O campo password não deve estar vazio.' })
   @IsString({ message: 'O campo password deve ser uma string' })
-  @MinLength(6, { message: 'A senha deve ter no minímo 6 caracteres' })
+  @MinLength(8, { message: 'A senha deve ter no mínimo 8 caracteres' })
   password: string;
 }
