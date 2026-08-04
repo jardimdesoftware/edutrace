@@ -30,7 +30,7 @@ export function login(baseUrl, email, password) {
     '[auth] token presente na resposta': (r) => {
       try {
         const body = JSON.parse(r.body);
-        return body.access_token !== undefined;
+        return typeof body.access_token === 'string' && body.access_token.length > 0;
       } catch(e) {
         return false;
       }
