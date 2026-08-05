@@ -112,7 +112,6 @@ function LoginPage() {
               label="Senha"
               type={showPassword ? "text" : "password"}
               required
-              pattern="[0-9]{8,11}"
               icon
               button
               class="w-full"
