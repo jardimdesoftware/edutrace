@@ -1,21 +1,21 @@
 'use client';
 
 import Navbar from './Navbar';
-import Breadcrumbs from './Breadcrumbs';
+import BackButton from './BackButton';
 
 export default function AppLayout({
   children,
-  breadcrumbs = [],
+  showBack = true,
 }: {
   children: React.ReactNode;
-  breadcrumbs?: { href: string; label: string }[];
+  showBack?: boolean;
 }) {
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <div className="">
-        <Breadcrumbs items={breadcrumbs} />
+        {showBack && <BackButton />}
 
         <main className="">{children}</main>
       </div>

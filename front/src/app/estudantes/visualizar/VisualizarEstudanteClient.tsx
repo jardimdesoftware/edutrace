@@ -48,10 +48,6 @@ export default function VisualizarEstudanteClient() {
 
   return (
     <AppLayout
-      breadcrumbs={[
-        { href: "/home", label: "Página inicial" },
-        { href: "/estudantes", label: nome || "Estudante" },
-      ]}
     >
       <div className="p-6">
         <div className="overflow-auto rounded shadow">

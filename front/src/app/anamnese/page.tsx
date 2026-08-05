@@ -46,7 +46,7 @@ function AnamnesePage() {
   const email = searchParams.get("email");
   const nome = searchParams.get("nome");
 
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const router = useRouter();
 
   const [anamnesis, setAnamnesis] = useState<AnamnesisData | null>(null);
@@ -168,11 +168,6 @@ function AnamnesePage() {
   if (anamnesis === null  && !userIsReadOnly) {
     return (
         <AppLayout
-          breadcrumbs={[
-            { href: '/home', label: 'Página Inicial' },
-            { href: '#', label: nome || 'Estudante' },
-            { href: '/anamnese', label: 'Criar Anamnese' },
-          ]}
         >
           <div className="p-6 space-y-8 w-full">
             <h1 className="text-3xl font-bold text-gray-800">Criar Nova Anamnese</h1>
@@ -478,11 +473,6 @@ function AnamnesePage() {
   } else if ( anamnesis && !userIsReadOnly ) {
     return (
       <AppLayout
-        breadcrumbs={[
-          { href: '/home', label: 'Página Inicial' },
-          { href: '#', label: user?.name || 'Estudante' },
-          { href: '/anamnese', label: 'Anamnese' },
-        ]}
       >
         <div className="p-6 space-y-8 w-full">
           <h1 className="text-3xl font-bold text-gray-800">Anamnese</h1>
@@ -803,11 +793,6 @@ function AnamnesePage() {
   } else if (anamnesis === null && userIsReadOnly) {
     return (
       <AppLayout
-          breadcrumbs={[
-            { href: '/home', label: 'Página Inicial' },
-            { href: '#', label: nome || 'Estudante' },
-            { href: '/anamnese', label: 'Criar Anamnese' },
-          ]}
         >
           <div className="p-6 text-center">
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui uma Anamnese cadastrada</h2>
@@ -821,11 +806,6 @@ function AnamnesePage() {
 
   return (
     <AppLayout
-      breadcrumbs={[
-        { href: '/home', label: 'Página Inicial' },
-        { href: '#', label: user?.name || 'Estudante' },
-        { href: '/anamnese', label: 'Anamnese' },
-      ]}
     >
       <div className="p-6 space-y-8 w-full">
         <h1 className="text-3xl font-bold text-gray-800">Anamnese</h1>

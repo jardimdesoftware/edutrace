@@ -56,7 +56,7 @@ function PEIPage() {
   const nome = searchParams.get("nome");
 
   const [pei, setPei] = useState<PlansEducationData | null>(null);
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -148,11 +148,6 @@ function PEIPage() {
     if (pei === null) {
       return (
         <AppLayout
-          breadcrumbs={[
-            { href: '/home', label: 'Página Inicial' },
-            { href: "#", label: user?.name || "Estudante" },
-            { href: '/pei', label: 'Criar PEI' },
-          ]}
         >
           <div className="p-6 text-center">
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui um PEI cadastrado</h2>
@@ -166,11 +161,6 @@ function PEIPage() {
     
     return (
       <AppLayout
-        breadcrumbs={[
-          { href: '/home', label: 'Página Inicial' },
-          { href: '#', label: nome || 'Estudante' },
-          { href: '/pei', label: 'Criar PEI' },
-        ]}
       >
         <div className="p-6 space-y-8 w-full">
           <h1 className="text-3xl font-bold text-gray-800">PEI - Criar Plano de Ensino Individualizado</h1>

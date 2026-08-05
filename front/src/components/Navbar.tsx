@@ -47,17 +47,22 @@ export default function Navbar() {
     //    Usar replace: true é melhor para logout, pois impede o usuário
     //    de clicar no botão "voltar" do navegador e retornar a uma página protegida.
     setUser(null);
-    router.replace('/login'); 
+    router.replace('/login');
   };
 
   return (
     <div className="bg-emerald-700 text-white w-full shadow-md p-4">
       <div className="flex justify-between items-center">
-        
+
         <div className="flex flex-col">
-          <div className="w-44 h-16 -ml-2">
+          <button
+            type="button"
+            onClick={() => router.push('/home')}
+            aria-label="Ir para a página inicial"
+            className="w-44 h-16 -ml-2 cursor-pointer"
+          >
             <Image src="/logo.svg" width="100" height="100" alt="logo" className="w-full h-full object-contain"/>
-          </div>
+          </button>
           <div className="hidden md:block text-lg font-semibold text-white mt-2">
             <span>Prontuário Eletrônico para Estudantes com Necessidades Educacionais Específicas</span>
           </div>
@@ -68,8 +73,8 @@ export default function Navbar() {
             Perfil: {levelLabel}
           </span>
 
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={handleLogout}
             className="flex items-center px-4 py-2 rounded-md text-white font-semibold hover:bg-emerald-600 transition-colors mt-2"
           >
             <LogOut className="mr-2 h-5 w-5" />
@@ -78,7 +83,7 @@ export default function Navbar() {
         </div>
 
 
-      </div>  
+      </div>
     </div>
   );
 }

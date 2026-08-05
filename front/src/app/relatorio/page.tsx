@@ -22,11 +22,6 @@ function RelatorioPage() {
 
   return (
     <AppLayout
-      breadcrumbs={[
-        { href: "/home", label: "Página Inicial" },
-        { href: `/estudantes/visualizar?email=${email}&nome=${nome}`, label: nome || "Estudante" },
-        { href: "#", label: "Exportar Relatório" }
-      ]}
     >
       <ExportReport email={email} nome={nome} />
     </AppLayout>
