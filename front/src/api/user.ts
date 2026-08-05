@@ -23,3 +23,39 @@ export async function updateUser(email: string, id_level: string) {
   }
   return data;
 }
+
+// Alteração self-service dos próprios dados (e-mail e/ou senha).
+// Ao ter sucesso, o backend devolve um novo token com o e-mail atualizado;
+// persistimos ele em localStorage e cookie para refletir em toda a aplicação.
+export async function updateProfile(payload: {
+  email?: string;
+  password?: string;
+  currentPassword: string;
+}) {
+  const API_URL = getApiUrl();
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const res = await fetch(`${API_URL}/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const isJson = res.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await res.json() : null;
+
+  if (!res.ok) {
+    throw new Error(data?.message || 'Erro ao atualizar os dados');
+  }
+
+  if (data?.access_token) {
+    localStorage.setItem('token', data.access_token);
+    document.cookie = `token=${data.access_token}; path=/;`;
+  }
+
+  return data;
+}

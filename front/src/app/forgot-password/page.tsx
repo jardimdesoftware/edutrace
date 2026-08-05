@@ -130,11 +130,11 @@ function ForgotPasswordPage() {
   const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       Swal.fire({
         icon: "error",
         title: "Senha inválida",
-        text: "A senha deve ter no mínimo 6 caracteres.",
+        text: "A senha deve ter no mínimo 8 caracteres.",
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
@@ -296,7 +296,7 @@ function ForgotPasswordPage() {
                 label="Nova senha"
                 type={showPassword ? "text" : "password"}
                 required
-                minlength={6}
+                minlength={8}
                 icon
                 button
                 class="w-full"
@@ -335,7 +335,7 @@ function ForgotPasswordPage() {
                 label="Confirmar senha"
                 type={showConfirmPassword ? "text" : "password"}
                 required
-                minlength={6}
+                minlength={8}
                 icon
                 button
                 class="w-full"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -73,13 +73,24 @@ export default function Navbar() {
             Perfil: {levelLabel}
           </span>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center px-4 py-2 rounded-md text-white font-semibold hover:bg-emerald-600 transition-colors mt-2"
-          >
-            <LogOut className="mr-2 h-5 w-5" />
-            Sair
-          </button>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => router.push('/alterar-dados')}
+              className="flex items-center px-4 py-2 rounded-md text-white font-semibold hover:bg-emerald-600 transition-colors"
+            >
+              <UserCog className="mr-2 h-5 w-5" />
+              Meus dados
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-4 py-2 rounded-md text-white font-semibold hover:bg-emerald-600 transition-colors"
+            >
+              <LogOut className="mr-2 h-5 w-5" />
+              Sair
+            </button>
+          </div>
         </div>
 
 
