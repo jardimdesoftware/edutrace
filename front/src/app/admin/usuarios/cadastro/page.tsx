@@ -88,7 +88,7 @@ function AdminUserCreatePage() {
         throw new Error("Erro ao realizar o cadastro.");
       }
       alert("Cadastro realizado com sucesso!");
-      router.push("/estudantes");
+      router.push("/home");
     } catch (error: unknown) {
       if (error instanceof Error) {
         alert(error.message || "Erro no cadastro.");
