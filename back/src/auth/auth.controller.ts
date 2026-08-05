@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Request,
   UseGuards,
@@ -13,6 +14,7 @@ import { AuthDto } from './dto/auth.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthGuard } from './auth.guard';
 import { Public } from './constants/constants';
 import { ApiBody } from '@nestjs/swagger';
@@ -77,5 +79,17 @@ export class AuthController {
   })
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  // Sem @Levels: qualquer usuário autenticado pode alterar os próprios dados.
+  // A identidade é lida do token (req.user.email), não do corpo.
+  @UseGuards(AuthGuard)
+  @ApiBody({
+    type: UpdateProfileDto,
+    description: 'Altera o e-mail e/ou a senha do próprio usuário autenticado.',
+  })
+  @Patch('me')
+  async updateMe(@Request() req, @Body() dto: UpdateProfileDto) {
+    return await this.authService.updateProfile(req.user.email, dto);
   }
 }
