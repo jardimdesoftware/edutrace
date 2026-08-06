@@ -18,7 +18,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "sweetalert2": "^11.26.25",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@govbr-ds-testing/webcomponents": "^1.23.5",
