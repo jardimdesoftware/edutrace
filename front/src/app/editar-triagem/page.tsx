@@ -120,6 +120,8 @@ function TriagemPage() {
   // Manipulador para inputs de texto (BrInput)
   const handleInputChange = (name: string, value: string) => {
     const keys = name.split('.');
+    // Rejeita chaves que permitiriam poluir o protótipo do objeto
+    if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) return;
     setFormData(prevData => {
       const newData = JSON.parse(JSON.stringify(prevData));
       let current = newData;
@@ -134,6 +136,8 @@ function TriagemPage() {
   // Manipulador para o CLIQUE no checkbox que inverte o valor no estado
   const handleCheckboxClick = (name: string) => {
     const keys = name.split('.');
+    // Rejeita chaves que permitiriam poluir o protótipo do objeto
+    if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) return;
     setFormData(prevData => {
       const newData = JSON.parse(JSON.stringify(prevData));
       let current = newData;

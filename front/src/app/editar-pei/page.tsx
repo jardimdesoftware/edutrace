@@ -99,6 +99,7 @@ function PEIPage() {
 
   const handleInputChange = (name: string, value: string) => {
     const keys = name.split('.');
+    if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) return;
     setFormData(prevData => {
       const newData = JSON.parse(JSON.stringify(prevData));
       let current = newData;
@@ -112,6 +113,7 @@ function PEIPage() {
 
   const handleCheckboxClick = (name: string) => {
     const keys = name.split('.');
+    if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) return;
     setFormData(prevData => {
       const newData = JSON.parse(JSON.stringify(prevData));
       let current = newData;
