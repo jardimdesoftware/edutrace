@@ -16,6 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBody } from '@nestjs/swagger';
 import { Levels } from 'src/auth/decorators/levels.decorator';
 import { LEVELS } from 'src/constants';
+import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 
 @Controller('users')
 export class UsersController {
@@ -32,26 +33,27 @@ export class UsersController {
       'Objeto para criação de um novo usuário por um administrador.',
   })
   @Post()
-  create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
+  async create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
     const user = (req as Request & { user?: { id_level?: number } }).user;
 
     if (user?.id_level !== LEVELS.ADMIN) {
       throw new ForbiddenException('Apenas administradores podem cadastrar usuários');
     }
 
-    return this.usersService.create(createUserDto);
+    return maskUserCpf(await this.usersService.create(createUserDto));
   }
 
   @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  async findAll() {
+    return maskUsersCpf(await this.usersService.findAll());
   }
 
   @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get(':email')
-  findOne(@Param('email') email: string) {
-    return this.usersService.findOne(email);
+  async findOne(@Param('email') email: string) {
+    const user = await this.usersService.findOne(email);
+    return user ? maskUserCpf(user) : user;
   }
 
   @Levels(

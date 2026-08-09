@@ -26,6 +26,8 @@ describe('UsersController', () => {
     deleted_at: null,
   };
 
+  const maskedUser = { ...mockUser, cpf: '***.456.789-**' };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -60,39 +62,47 @@ describe('UsersController', () => {
       const result = await controller.create(createDto as any, adminRequest);
 
       expect(service.create).toHaveBeenCalledWith(createDto);
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(maskedUser);
     });
 
-    it('should throw ForbiddenException when requester is not admin', () => {
+    it('should throw ForbiddenException when requester is not admin', async () => {
       const createDto = { full_name: 'New User', email: 'new@test.com', password: '123' };
       const nonAdminRequest = { user: { id_level: LEVELS.PROFISSIONAL_EDUCACAO } } as any;
 
-      expect(() => controller.create(createDto as any, nonAdminRequest)).toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        controller.create(createDto as any, nonAdminRequest),
+      ).rejects.toThrow(ForbiddenException);
       expect(service.create).not.toHaveBeenCalled();
     });
   });
 
   describe('findAll', () => {
-    it('should return an array of users', async () => {
+    it('should return an array of users with masked cpf', async () => {
       jest.spyOn(service, 'findAll').mockResolvedValue([mockUser as any]);
 
       const result = await controller.findAll();
 
       expect(service.findAll).toHaveBeenCalled();
-      expect(result).toEqual([mockUser]);
+      expect(result).toEqual([maskedUser]);
     });
   });
 
   describe('findOne', () => {
-    it('should return a user by email', async () => {
+    it('should return a user by email with masked cpf', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(mockUser);
 
       const result = await controller.findOne('test@test.com');
 
       expect(service.findOne).toHaveBeenCalledWith('test@test.com');
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(maskedUser);
+    });
+
+    it('should return null when the user does not exist', async () => {
+      jest.spyOn(service, 'findOne').mockResolvedValue(null);
+
+      const result = await controller.findOne('missing@test.com');
+
+      expect(result).toBeNull();
     });
   });
 

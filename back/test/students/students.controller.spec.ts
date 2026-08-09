@@ -30,7 +30,7 @@ describe('PlansEducationController', () => {
   });
 
   describe('findAll', () => {
-    it('should return an array of students', async () => {
+    it('should return an array of students with masked cpf', async () => {
       const result = [
         {
           id: 1,
@@ -69,7 +69,12 @@ describe('PlansEducationController', () => {
       ];
       jest.spyOn(service, 'findAll').mockResolvedValue(result);
 
-      expect(await controller.findAll()).toEqual(result);
+      const masked = result.map((student) => ({
+        ...student,
+        cpf: '***.456.789-**',
+      }));
+
+      expect(await controller.findAll()).toEqual(masked);
       expect(service.findAll).toHaveBeenCalled();
     });
   });
