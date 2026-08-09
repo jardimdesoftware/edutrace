@@ -63,6 +63,7 @@ async function main() {
             password: encryptedPassword,
             id_level: adminLevel.id,
             id_current_phase: triagePhase.id,
+            must_change_password: true,
           },
         });
       }

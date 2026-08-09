@@ -10,13 +10,10 @@ export function middleware(request: NextRequest) {
 
   const isLoginPage = pathname === '/'
   const isPublicPage = isLoginPage || pathname === '/forgot-password'
+  const changePasswordPage = '/alterar-dados'
 
   if (!token && !isPublicPage) {
     return NextResponse.redirect(new URL('/', request.url))
-  }
-
-  if (token && isLoginPage) {
-    return NextResponse.redirect(new URL('/home', request.url))
   }
 
   if (token) {
@@ -34,6 +31,17 @@ export function middleware(request: NextRequest) {
         });
 
         return response;
+      }
+
+      // A senha do primeiro acesso foi definida pelo administrador. Até que o
+      // usuário troque, nenhuma outra tela fica acessível — o backend recusa as
+      // demais rotas de qualquer forma.
+      if (payload.must_change_password && pathname !== changePasswordPage) {
+        return NextResponse.redirect(new URL(changePasswordPage, request.url));
+      }
+
+      if (isLoginPage) {
+        return NextResponse.redirect(new URL('/home', request.url));
       }
 
       const isStudent = payload.id_level === ESTUDANTE;

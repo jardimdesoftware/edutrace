@@ -27,6 +27,11 @@ e marcar se o resultado ocorreu (OK / Falhou) e anotar observações.
 > **Observação:** cadastro e redefinição de senha exigem **8+ caracteres** (podem ser
 > alfanuméricos); o login aceita qualquer senha válida, sem restrição de formato.
 
+> **Troca obrigatória no primeiro acesso:** toda conta criada pelo administrador
+> (e o próprio administrador padrão) é levada para a tela **"Defina sua nova senha"**
+> no primeiro login e não acessa mais nada até trocar. Anote as senhas novas que
+> você escolher — elas substituem as da tabela acima nos blocos seguintes.
+
 > **Ordem de execução:** os blocos devem ser feitos **na ordem** (2 → 3 → 4 dependem de dados criados no bloco 1).
 
 ---
@@ -37,7 +42,9 @@ Objetivo: entrar como administrador, criar os demais usuários e usar as funçõ
 
 | # | Ação | Resultado esperado |
 |---|---|---|
-| 1.1 | Acesse o sistema com as credenciais de **administrador** (`admin@edutrace.com` / `admin123`) e clique em **Entrar**. | Login efetuado; abre a página inicial com a **lista de pessoas** (tabela) e o topo mostra "Perfil: Admin". |
+| 1.1 | Acesse o sistema com as credenciais de **administrador** (`admin@edutrace.com` / `admin123`) e clique em **Entrar**. | Abre a tela **"Defina sua nova senha"** com o aviso de que a senha atual foi cadastrada pelo administrador. Nenhuma outra tela fica acessível. |
+| 1.1.1 | Tente salvar informando `admin123` nos três campos (nova senha, confirmação e senha atual). | Recusado com a mensagem "A nova senha deve ser diferente da senha atual." |
+| 1.1.2 | Informe uma **nova senha** de 8+ caracteres, confirme, preencha **Senha atual** com `admin123` e salve. | Mensagem "Dados atualizados!"; o sistema libera e abre a página inicial com a **lista de pessoas** (tabela), com o topo mostrando "Perfil: Admin". |
 | 1.2 | Clique em **Cadastrar novas pessoas**. Preencha os dados do **Profissional da Saúde** (tabela acima), selecione o nível **Profissional de Saúde**, marque o **Termo de Consentimento** ("Li e concordo") e clique em **Finalizar**. | Mensagem "Cadastro realizado com sucesso!" e retorno à lista de pessoas com o novo usuário listado. |
 | 1.3 | Repita o cadastro para o **Profissional da Educação** (nível **Profissional de Educação**). | Usuário criado e visível na lista. |
 | 1.4 | Repita o cadastro para o **Estudante/Família** (nível **Pais/Responsáveis e Estudante**). | Usuário criado e visível na lista. |
@@ -55,7 +62,7 @@ Objetivo: registrar triagem e anamnese do estudante e comentar. Este perfil **n�
 
 | # | Ação | Resultado esperado |
 |---|---|---|
-| 2.1 | Acesse o sistema com as credenciais do **Profissional da Saúde** (`saude.teste@edutrace.com` / `12345678`). | Login efetuado; abre a lista de pessoas; topo mostra "Perfil: Profissional Saúde". |
+| 2.1 | Acesse o sistema com as credenciais do **Profissional da Saúde** (`saude.teste@edutrace.com` / `12345678`). Na tela **"Defina sua nova senha"**, escolha uma senha nova de 8+ caracteres, confirme e informe `12345678` como senha atual. | A troca é exigida antes de qualquer outra tela. Após salvar, abre a lista de pessoas; topo mostra "Perfil: Profissional Saúde". |
 | 2.2 | Abra o **Estudante de teste** pelo ícone de **olho** e clique no cartão **Triagem**. | Abre a tela **"Criar Nova Triagem"** (com Nome e E-mail do estudante já preenchidos e bloqueados). |
 | 2.3 | Preencha o **Relatório médico**, marque algumas **Necessidades Específicas** (ex.: "Baixa Visão") e opções relacionadas, e clique em **Salvar Triagem**. | Mensagem "Triagem criada com sucesso!" e retorno à tela do estudante. |
 | 2.4 | Abra novamente o cartão **Triagem**, clique em **Editar Triagem**, altere um campo e salve. | Alteração salva; ao reabrir a triagem os novos valores aparecem. |
@@ -72,7 +79,7 @@ Objetivo: registrar o PEI. Este perfil **visualiza** triagem/anamnese, mas **nã
 
 | # | Ação | Resultado esperado |
 |---|---|---|
-| 3.1 | Acesse o sistema com as credenciais do **Profissional da Educação** (`educacao.teste@edutrace.com` / `12345678`). | Login efetuado; abre a lista de pessoas; topo mostra "Perfil: Profissional Educação". |
+| 3.1 | Acesse o sistema com as credenciais do **Profissional da Educação** (`educacao.teste@edutrace.com` / `12345678`). Faça a troca de senha exigida no primeiro acesso. | A troca é exigida antes de qualquer outra tela. Após salvar, abre a lista de pessoas; topo mostra "Perfil: Profissional Educação". |
 | 3.2 | Abra o **Estudante de teste** e clique no cartão **Triagem**. | A triagem abre em **modo somente leitura** (sem botões de editar/excluir). |
 | 3.3 | Volte e abra o cartão **Anamnese**. | A anamnese abre em **modo somente leitura**. |
 | 3.4 | Volte e clique no cartão **PEI**. Preencha os campos e **salve**. | Mensagem de PEI criado com sucesso; ao reabrir, os dados aparecem. |
@@ -88,7 +95,7 @@ Objetivo: confirmar que o estudante consulta os **próprios** registros e **não
 
 | # | Ação | Resultado esperado |
 |---|---|---|
-| 4.1 | Acesse o sistema com as credenciais do **Estudante/Família** (`estudante.teste@edutrace.com` / `12345678`). | Login efetuado; a página inicial mostra **4 cartões** (Triagem, Anamnese, Comentários Multiprofissionais, PEI) — **não** a lista de pessoas. |
+| 4.1 | Acesse o sistema com as credenciais do **Estudante/Família** (`estudante.teste@edutrace.com` / `12345678`). Faça a troca de senha exigida no primeiro acesso. | A troca é exigida antes de qualquer outra tela. Após salvar, a página inicial mostra **4 cartões** (Triagem, Anamnese, Comentários Multiprofissionais, PEI) — **não** a lista de pessoas. |
 | 4.2 | Clique no cartão **Triagem**. | Abre a triagem **do próprio estudante** em modo somente leitura (a que o Profissional da Saúde criou). |
 | 4.3 | Volte e clique no cartão **Anamnese**. | Abre a anamnese do próprio estudante, somente leitura. |
 | 4.4 | Volte e clique no cartão **PEI**. | Abre o PEI do próprio estudante, somente leitura. |

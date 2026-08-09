@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
@@ -26,11 +26,14 @@ describe('AuthService', () => {
     password_reset_token: null,
     password_reset_expires: null,
     password_reset_attempts: 0,
+    must_change_password: false,
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
   };
+
+  const mockUserFirstAccess = { ...mockUser, must_change_password: true };
 
   const mockUserWithResetToken = {
     ...mockUser,
@@ -53,6 +56,7 @@ describe('AuthService', () => {
             incrementPasswordResetAttempts: jest.fn(),
             clearPasswordResetToken: jest.fn(),
             updatePassword: jest.fn(),
+            updateProfile: jest.fn(),
           },
         },
         {
@@ -93,8 +97,20 @@ describe('AuthService', () => {
         email: mockUser.email,
         name: mockUser.full_name,
         id_level: mockUser.id_level,
+        must_change_password: false,
       });
       expect(result).toEqual({ access_token: 'mock.jwt.token' });
+    });
+
+    it('should carry must_change_password in the token payload on first access', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserFirstAccess);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.signIn('user@test.com', 'plainPassword');
+
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ must_change_password: true }),
+      );
     });
 
     it('should throw UnauthorizedException when user is not found', async () => {
@@ -112,6 +128,87 @@ describe('AuthService', () => {
       await expect(service.signIn('user@test.com', 'wrongPassword')).rejects.toThrow(
         new UnauthorizedException('credenciais inválidas'),
       );
+    });
+  });
+
+  describe('updateProfile', () => {
+    const dtoComSenha = {
+      password: 'novaSenha123',
+      currentPassword: 'senhaAtual123',
+    };
+
+    it('should reject when the new password is equal to the current one', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      // Primeira chamada valida a senha atual, segunda compara a nova com a atual.
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.updateProfile('user@test.com', dtoComSenha),
+      ).rejects.toThrow(
+        new BadRequestException('A nova senha deve ser diferente da senha atual.'),
+      );
+      expect(usersService.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it('should reject an update without a new password on first access', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserFirstAccess);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.updateProfile('user@test.com', {
+          email: 'novo@test.com',
+          currentPassword: 'senhaAtual123',
+        }),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'É obrigatório definir uma nova senha no primeiro acesso.',
+        ),
+      );
+      expect(usersService.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it('should accept an email-only update when the password was already changed', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValueOnce(mockUser);
+      jest.spyOn(usersService, 'findOne').mockResolvedValueOnce(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      jest
+        .spyOn(usersService, 'updateProfile')
+        .mockResolvedValue({ ...mockUser, email: 'novo@test.com' });
+
+      const result = await service.updateProfile('user@test.com', {
+        email: 'novo@test.com',
+        currentPassword: 'senhaAtual123',
+      });
+
+      expect(result).toEqual({ access_token: 'mock.jwt.token' });
+    });
+
+    it('should issue a token without the flag after the first access change', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserFirstAccess);
+      (bcrypt.compare as jest.Mock)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('novoHash');
+      jest.spyOn(usersService, 'updateProfile').mockResolvedValue(mockUser);
+
+      await service.updateProfile('user@test.com', dtoComSenha);
+
+      expect(usersService.updateProfile).toHaveBeenCalledWith('user@test.com', {
+        newEmail: undefined,
+        hashedPassword: 'novoHash',
+      });
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ must_change_password: false }),
+      );
+    });
+
+    it('should throw UnauthorizedException when the current password is wrong', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.updateProfile('user@test.com', dtoComSenha),
+      ).rejects.toThrow(new UnauthorizedException('Senha atual incorreta'));
     });
   });
 

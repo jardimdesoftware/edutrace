@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -41,6 +42,7 @@ export class AuthService {
       email: user.email,
       name: user.full_name,
       id_level: user.id_level,
+      must_change_password: user.must_change_password,
     };
 
     const token = {
@@ -68,6 +70,22 @@ export class AuthService {
       throw new UnauthorizedException('Senha atual incorreta');
     }
 
+    // Quem está no primeiro acesso não pode alterar só o e-mail e seguir usando
+    // a senha que o administrador cadastrou.
+    if (user.must_change_password && !dto.password) {
+      throw new BadRequestException(
+        'É obrigatório definir uma nova senha no primeiro acesso.',
+      );
+    }
+
+    // Sem esta checagem o usuário "troca" a senha pela mesma e o administrador
+    // continua conhecendo a credencial em uso.
+    if (dto.password && (await bcrypt.compare(dto.password, user.password))) {
+      throw new BadRequestException(
+        'A nova senha deve ser diferente da senha atual.',
+      );
+    }
+
     const newEmail = dto.email?.trim();
     const isChangingEmail = !!newEmail && newEmail !== currentEmail;
 
@@ -92,6 +110,7 @@ export class AuthService {
       email: updated.email,
       name: updated.full_name,
       id_level: updated.id_level,
+      must_change_password: updated.must_change_password,
     };
 
     return { access_token: await this.jwtService.signAsync(payload) };

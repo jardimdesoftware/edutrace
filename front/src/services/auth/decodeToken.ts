@@ -5,6 +5,7 @@ export type TokenPayload = {
   email: string;
   name: string;
   id_level: number;
+  must_change_password?: boolean;
   iat: number;
   exp: number;
 };
