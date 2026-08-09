@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { Levels } from 'src/auth/decorators/levels.decorator';
 import { LEVELS } from 'src/constants';
+import { maskUsersCpf } from 'src/common/mask-cpf';
 
 @Controller('students')
 export class StudentsController {
@@ -9,7 +10,7 @@ export class StudentsController {
 
   @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get()
-  findAll() {
-    return this.studentsService.findAll();
+  async findAll() {
+    return maskUsersCpf(await this.studentsService.findAll());
   }
 }
