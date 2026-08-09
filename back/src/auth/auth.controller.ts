@@ -17,6 +17,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthGuard } from './auth.guard';
 import { Public } from './constants/constants';
+import { AllowPasswordChange } from './decorators/allow-password-change.decorator';
 import { ApiBody } from '@nestjs/swagger';
 
 @Controller('auth')
@@ -71,6 +72,7 @@ export class AuthController {
     );
   }
 
+  @AllowPasswordChange()
   @UseGuards(AuthGuard)
   @Get('profile')
   @ApiBody({
@@ -83,6 +85,7 @@ export class AuthController {
 
   // Sem @Levels: qualquer usuário autenticado pode alterar os próprios dados.
   // A identidade é lida do token (req.user.email), não do corpo.
+  @AllowPasswordChange()
   @UseGuards(AuthGuard)
   @ApiBody({
     type: UpdateProfileDto,

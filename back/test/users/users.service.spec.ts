@@ -21,6 +21,7 @@ describe('UsersService', () => {
     password_reset_token: null,
     password_reset_expires: null,
     password_reset_attempts: 0,
+    must_change_password: false,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
@@ -28,7 +29,21 @@ describe('UsersService', () => {
     deleted_at: null,
   };
 
+  let tx: {
+    user: { update: jest.Mock };
+    screening: { updateMany: jest.Mock };
+    anamnesis: { updateMany: jest.Mock };
+    plansEducation: { updateMany: jest.Mock };
+  };
+
   beforeEach(async () => {
+    tx = {
+      user: { update: jest.fn().mockResolvedValue(mockUser) },
+      screening: { updateMany: jest.fn() },
+      anamnesis: { updateMany: jest.fn() },
+      plansEducation: { updateMany: jest.fn() },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
@@ -42,6 +57,9 @@ describe('UsersService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
+            $transaction: jest.fn((callback: (client: unknown) => unknown) =>
+              callback(tx),
+            ),
           },
         },
       ],
@@ -78,6 +96,7 @@ describe('UsersService', () => {
             password: 'hashedPassword',
             id_level: LEVELS.ALUNO_ESTUDANTE,
             id_current_phase: PHASES.TRIAGEM,
+            must_change_password: true,
           }),
         }),
       );
@@ -237,9 +256,60 @@ describe('UsersService', () => {
           password_reset_token: null,
           password_reset_expires: null,
           password_reset_attempts: 0,
+          must_change_password: false,
         },
       });
       expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should clear must_change_password when a new password is stored', async () => {
+      await service.updateProfile('test@test.com', {
+        hashedPassword: 'newHashedPassword',
+      });
+
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: {
+          password: 'newHashedPassword',
+          must_change_password: false,
+        },
+      });
+    });
+
+    it('should not touch must_change_password when only the email changes', async () => {
+      await service.updateProfile('test@test.com', {
+        newEmail: 'novo@test.com',
+      });
+
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { email: 'novo@test.com' },
+      });
+    });
+
+    it('should propagate the new email to the related records', async () => {
+      await service.updateProfile('test@test.com', {
+        newEmail: 'novo@test.com',
+      });
+
+      expect(tx.screening.updateMany).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { email: 'novo@test.com' },
+      });
+      expect(tx.anamnesis.updateMany).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { email: 'novo@test.com' },
+      });
+      expect(tx.plansEducation.updateMany).toHaveBeenCalledWith({
+        where: { student_email: 'test@test.com' },
+        data: { student_email: 'novo@test.com' },
+      });
+      expect(tx.plansEducation.updateMany).toHaveBeenCalledWith({
+        where: { professor_email: 'test@test.com' },
+        data: { professor_email: 'novo@test.com' },
+      });
     });
   });
 

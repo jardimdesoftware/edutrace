@@ -23,6 +23,7 @@ model User {
   password_reset_token    String?
   password_reset_expires  DateTime?
   password_reset_attempts Int        @default(0)
+  must_change_password    Boolean    @default(false)
   comments                Comments[]
   created_at              DateTime   @default(now())
   updated_at              DateTime?  @updatedAt

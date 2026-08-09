@@ -19,6 +19,7 @@ describe('UsersController', () => {
     password_reset_token: null,
     password_reset_expires: null,
     password_reset_attempts: 0,
+    must_change_password: false,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: 1,
     created_at: new Date(),

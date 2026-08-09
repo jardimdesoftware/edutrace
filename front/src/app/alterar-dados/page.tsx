@@ -18,6 +18,8 @@ export default function AlterarDadosPage() {
   const [senhaAtual, setSenhaAtual] = useState("");
   const [salvando, setSalvando] = useState(false);
 
+  const trocaObrigatoria = user?.must_change_password ?? false;
+
   // Pré-preenche o e-mail assim que o AuthContext terminar de carregar o
   // usuário (chega em um render posterior). Ajuste de estado durante a
   // renderização (não em efeito) para não disparar um render em cascata.
@@ -34,6 +36,15 @@ export default function AlterarDadosPage() {
     const emailLimpo = email.trim();
     const emailMudou = emailLimpo !== "" && emailLimpo !== user.email;
     const querTrocarSenha = novaSenha !== "" || confirmarSenha !== "";
+
+    if (trocaObrigatoria && !querTrocarSenha) {
+      Swal.fire(
+        "Defina uma nova senha",
+        "No primeiro acesso é obrigatório substituir a senha cadastrada pelo administrador.",
+        "warning",
+      );
+      return;
+    }
 
     if (!emailMudou && !querTrocarSenha) {
       Swal.fire("Nada para salvar", "Altere o e-mail ou a senha antes de salvar.", "info");
@@ -86,11 +97,21 @@ export default function AlterarDadosPage() {
     <AppLayout>
       <div className="p-6">
         <div className="mx-auto max-w-lg rounded-lg bg-white p-6 shadow-md sm:p-8">
-          <h1 className="mb-1 text-2xl font-light">Alterar meus dados</h1>
-          <p className="mb-6 text-sm text-gray-600">
-            Atualize seu e-mail e/ou senha. Deixe os campos de senha em branco se
-            quiser alterar apenas o e-mail.
-          </p>
+          <h1 className="mb-1 text-2xl font-light">
+            {trocaObrigatoria ? "Defina sua nova senha" : "Alterar meus dados"}
+          </h1>
+          {trocaObrigatoria ? (
+            <div className="mb-6 rounded border-l-4 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900">
+              Sua senha atual foi cadastrada pelo administrador. Para continuar
+              usando o sistema, defina uma senha nova, que só você conheça. Ela
+              precisa ser diferente da atual e ter no mínimo 8 caracteres.
+            </div>
+          ) : (
+            <p className="mb-6 text-sm text-gray-600">
+              Atualize seu e-mail e/ou senha. Deixe os campos de senha em branco se
+              quiser alterar apenas o e-mail.
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -124,7 +145,7 @@ export default function AlterarDadosPage() {
 
             <div>
               <label htmlFor="novaSenha" className="mb-1 block text-sm font-semibold text-slate-700">
-                Nova senha
+                Nova senha {trocaObrigatoria && <span className="text-red-600">*</span>}
               </label>
               <input
                 id="novaSenha"
@@ -133,13 +154,14 @@ export default function AlterarDadosPage() {
                 onChange={(e) => setNovaSenha(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
                 autoComplete="new-password"
+                required={trocaObrigatoria}
                 className="w-full rounded border border-gray-400 px-3 py-2 focus:border-emerald-600 focus:outline-none"
               />
             </div>
 
             <div>
               <label htmlFor="confirmarSenha" className="mb-1 block text-sm font-semibold text-slate-700">
-                Confirmar nova senha
+                Confirmar nova senha {trocaObrigatoria && <span className="text-red-600">*</span>}
               </label>
               <input
                 id="confirmarSenha"
@@ -147,6 +169,7 @@ export default function AlterarDadosPage() {
                 value={confirmarSenha}
                 onChange={(e) => setConfirmarSenha(e.target.value)}
                 autoComplete="new-password"
+                required={trocaObrigatoria}
                 className="w-full rounded border border-gray-400 px-3 py-2 focus:border-emerald-600 focus:outline-none"
               />
             </div>

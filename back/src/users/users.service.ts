@@ -19,6 +19,7 @@ export class UsersService {
         password: encryptedPassword,
         id_level: id_level ?? LEVELS.ALUNO_ESTUDANTE,
         id_current_phase: PHASES.TRIAGEM,
+        must_change_password: true,
       },
     });
 
@@ -80,7 +81,11 @@ export class UsersService {
         where: { email: currentEmail },
         data: {
           ...(isChangingEmail ? { email: newEmail } : {}),
-          ...(hashedPassword ? { password: hashedPassword } : {}),
+          // Definir a própria senha encerra a obrigação de troca do primeiro
+          // acesso: a senha deixa de ser a que o administrador cadastrou.
+          ...(hashedPassword
+            ? { password: hashedPassword, must_change_password: false }
+            : {}),
         },
       });
 
@@ -150,6 +155,7 @@ export class UsersService {
         password_reset_token: null,
         password_reset_expires: null,
         password_reset_attempts: 0,
+        must_change_password: false,
       },
     });
   }
