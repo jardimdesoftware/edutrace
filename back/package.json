@@ -35,7 +35,7 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^9.0.4",
     "pg": "^8.22.0",
     "prettier-plugin-prisma": "^5.0.0",
     "reflect-metadata": "^0.2.2",
