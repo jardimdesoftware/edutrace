@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@govbr-ds/react-components": "^2.15.1",
-    "@govbr-ds/webcomponents": "^2.0.0",
+    "@govbr-ds/webcomponents": "^2.1.1",
     "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.28.0",
