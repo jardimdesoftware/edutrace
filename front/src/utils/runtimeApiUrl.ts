@@ -2,6 +2,7 @@ declare global {
   interface Window {
     __ENV__?: {
       API_URL?: string;
+      CLARITY_PROJECT_ID?: string;
     };
   }
 }

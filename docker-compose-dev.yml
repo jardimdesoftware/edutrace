@@ -55,6 +55,7 @@ services:
      - PORT=${PORT_MACHINE_FRONTEND}
      - API_URL=${API_URL}
      - NEXT_PUBLIC_API_EDU_TRACE=${NEXT_PUBLIC_API_EDU_TRACE}
+     - CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID}
     networks:
       - app-net
     depends_on:

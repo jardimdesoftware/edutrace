@@ -6,3 +6,4 @@ k6_bin/
 k6-bin/
 *.zip
 k6/.env
+CLAUDE.md
