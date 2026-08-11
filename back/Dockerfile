@@ -1,10 +1,13 @@
 FROM node:24-alpine3.22
 
+RUN apk upgrade --no-cache && npm install -g npm@latest
+
 WORKDIR /usr/src/api
 
-COPY . .
+COPY package*.json ./
+RUN npm ci
 
-RUN npm install --quiet --no-optional --no-fund --loglevel=error
+COPY . .
 
 # Prisma v7 removeu o postinstall automático: precisa gerar o client antes do build
 RUN npx prisma generate
