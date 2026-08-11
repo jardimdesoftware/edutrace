@@ -1,6 +1,6 @@
 FROM node:24-alpine3.22
 
-RUN apk upgrade --no-cache && npm install -g npm@latest
+RUN apk upgrade --no-cache && npm install -g npm@latest && npm config set allow-remote true
 
 WORKDIR /usr/src/api
 
