@@ -251,12 +251,16 @@ jobs:
 # --------------------------------------------------------------------
 # 6) DEPLOY APP --------------------------------------------------
 # --------------------------------------------------------------------
-  deploy-app:
-    name: 6. Deploy
-    runs-on: ubuntu-latest
-    needs: [docker-build-scan-push, create-release]
-    
-    steps:
-      - name: Trigger Portainer webhook to update Backend service
-        run: curl -X POST ${{ secrets.PORTAINER_WEBHOOK_BACKEND }}
+  # Desativado temporariamente: o pipeline ficou sem publicar desde
+  # 11/11/2025 e o primeiro deploy aplicaria todas as mudanças acumuladas
+  # de uma vez. Reativar (descomentando o job) após a equipe validar o
+  # ambiente.
+  # deploy-app:
+  #   name: 6. Deploy
+  #   runs-on: ubuntu-latest
+  #   needs: [docker-build-scan-push, create-release]
+
+  #   steps:
+  #     - name: Trigger Portainer webhook to update Backend service
+  #       run: curl -X POST ${{ secrets.PORTAINER_WEBHOOK_BACKEND }}
 
