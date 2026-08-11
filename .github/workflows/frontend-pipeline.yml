@@ -97,6 +97,9 @@ jobs:
     name: 3. Build, Scan and Push Docker Image
     runs-on: ubuntu-latest
     needs: [prepare-tag]
+    permissions:
+      contents: read
+      packages: write
     env:
       TAG: ${{ needs.prepare-tag.outputs.new_tag }}
       IMAGE_NAME: front-${{ github.event.repository.name }}
@@ -147,7 +150,10 @@ jobs:
 
       # Push Docker image
       - name: Login no GHCR
-        run: echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+        run: |
+          TOKEN="${{ secrets.GHCR_PAT }}"
+          if [ -z "$TOKEN" ]; then TOKEN="${{ secrets.GITHUB_TOKEN }}"; fi
+          echo "$TOKEN" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
       - name: Push Docker image
         run: |
