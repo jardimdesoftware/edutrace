@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 // Importe a função de POST junto com a de GET
-import { getAllCommentsByIdUser, postComment } from '@/api/comments'; 
+import { getAllCommentsByIdUser, postComment } from '@/api/comments';
+import { getUserByEmail } from '@/api/user';
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentData } from '@/interfaces/CommentData';
 import { TokenPayload, decodeToken } from '@/services/auth/decodeToken';
@@ -22,24 +23,62 @@ export default function ComentariosMultiprofissionaisPageWrapper() {
 function ComentariosMultiprofissionais() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const email = searchParams.get("email");
   const router = useRouter(); // Adicione o router para navegação
 
   const [comentarios, setComentarios] = useState<CommentData[]>([]);
   const [novoComentario, setNovoComentario] = useState('');
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [targetId, setTargetId] = useState<number | null>(null);
   const { user, loading } = useAuth();
   const token = useMemo<TokenPayload | null>(() => decodeToken(), []);
   const isStudent = token?.id_level === ESTUDANTE;
-  const targetId = useMemo(() => {
-    if (!token) return null;
-    return isStudent ? token.sub : (id ? +id : null);
-  }, [token, isStudent, id]);
 
   useEffect(() => {
     if (!token) {
       router.push('/login');
     }
   }, [token, router]);
+
+  // Resolve o estudante alvo do comentário. O estudante vê os próprios
+  // comentários (token.sub); o profissional usa o id da URL quando ele é
+  // válido e, caso contrário, resolve o id pelo e-mail — que chega em todos os
+  // fluxos que passam pela página do estudante, ao contrário do id.
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    (async () => {
+      if (isStudent) {
+        setTargetId(token.sub);
+        return;
+      }
+
+      const parsedId = Number(id);
+      if (Number.isInteger(parsedId) && parsedId > 0) {
+        setTargetId(parsedId);
+        return;
+      }
+
+      if (email) {
+        try {
+          const student = await getUserByEmail(email);
+          if (!cancelled) setTargetId(student?.id ?? null);
+        } catch (err) {
+          console.error("Erro ao identificar o estudante:", err);
+          if (!cancelled) setTargetId(null);
+        }
+        return;
+      }
+
+      setTargetId(null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, isStudent, id, email]);
 
   useEffect(() => {
     if (!targetId) return;
@@ -74,7 +113,7 @@ function ComentariosMultiprofissionais() {
       alert('O comentário não pode estar vazio.');
       return;
     }
-    if (!user || !id) {
+    if (!user || targetId === null) {
       alert('Não foi possível identificar o autor ou o destinatário do comentário.');
       return;
     }
@@ -82,7 +121,7 @@ function ComentariosMultiprofissionais() {
     // Monta o payload de acordo com a interface CommentData
     const commentData: Omit<CommentData, 'created_at'> = {
       comment: novoComentario,
-      id_user: +id, // ID do estudante (alvo do comentário)
+      id_user: targetId, // ID do estudante (alvo do comentário)
       id_author: user.sub, // ID do professor/profissional que está escrevendo
       author_name: user.name, // Nome do autor
     };
@@ -110,21 +149,15 @@ function ComentariosMultiprofissionais() {
     <AppLayout
     >
       <div className="p-6 space-y-8 w-full">
-        <button
-          onClick={() => router.push('/home')}
-          className="mb-6 bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition-colors"
-        >
-          ← Voltar para Home
-        </button>
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold">Comentários Multiprofissionais</h1>
-          {!isStudent && (
+          {!isStudent && targetId !== null && (
            <button
               className="bg-green-600 text-white px-4 py-2 rounded"
               onClick={() => setMostrarModal(true)}
             >
               Adicionar Comentário
-            </button>     
+            </button>
           )}
         </div>
 

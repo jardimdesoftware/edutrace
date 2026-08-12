@@ -90,7 +90,7 @@ function VisualizarEstudante() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 max-w-5xl mx-auto">
           <Card label="Triagem" url={`/triagem?email=${email}&nome=${nome}`} />
           <Card label="Anamnese" url={`/anamnese?email=${email}&nome=${nome}`} />
-          <Card label="Comentários Multiprofissionais" url={`/comentarios?id=${id}&nome=${nome}`}/>
+          <Card label="Comentários Multiprofissionais" url={`/comentarios?id=${id}&email=${email}&nome=${nome}`}/>
           <Card label="PEI" url={`/pei?email=${email}&nome=${nome}`} />
         </div>
       </div>
