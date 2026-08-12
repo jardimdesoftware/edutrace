@@ -179,6 +179,9 @@ jobs:
     name: 4. Build, Scan and Push Docker Image
     runs-on: ubuntu-latest
     needs: [prepare-tag]
+    permissions:
+      contents: read
+      packages: write
     env:
       TAG: ${{ needs.prepare-tag.outputs.new_tag }}
       IMAGE_NAME: back-${{ github.event.repository.name }}
@@ -212,16 +215,17 @@ jobs:
         run: |
           docker tag ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
-      # Push Docker image
-      # GITHUB_TOKEN com permissions.packages: write substitui o PAT
-      # (GHCR_PAT), que vinha falhando com permission_denied no push.
-      - name: Login no GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-      - name: Push Docker image
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
-          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+      # Push Docker image (desabilitado temporariamente - sem deploy automático)
+      # - name: Login no GHCR
+      #   run: |
+      #     TOKEN="${{ secrets.GHCR_PAT }}"
+      #     if [ -z "$TOKEN" ]; then TOKEN="${{ secrets.GITHUB_TOKEN }}"; fi
+      #     echo "$TOKEN" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+      #
+      # - name: Push Docker image
+      #   run: |
+      #     docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+      #     docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
 # --------------------------------------------------------------------
 # 5) CREATE RELEASE --------------------------------------------------
@@ -249,7 +253,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 # --------------------------------------------------------------------
-# 6) DEPLOY APP --------------------------------------------------
+# 6) DEPLOY APP (Desabilitado temporariamente) -----------------------
 # --------------------------------------------------------------------
   # Desativado temporariamente: o pipeline ficou sem publicar desde
   # 11/11/2025 e o primeiro deploy aplicaria todas as mudanças acumuladas

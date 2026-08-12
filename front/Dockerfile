@@ -1,6 +1,8 @@
 # Stage 1: Build the Next.js application
 FROM node:24-alpine3.22 AS builder
 
+RUN apk upgrade --no-cache && npm install -g npm@latest && npm config set allow-remote true
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -12,6 +14,8 @@ RUN npm run build
 
 # Stage 2: Production image
 FROM node:24-alpine3.22 AS runner
+
+RUN apk upgrade --no-cache && npm install -g npm@latest && npm config set allow-remote true
 
 WORKDIR /app
 ENV NODE_ENV=production
