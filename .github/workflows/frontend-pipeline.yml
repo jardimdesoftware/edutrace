@@ -7,6 +7,16 @@ on:
     paths:
       - 'front/**'
   workflow_dispatch:
+    inputs:
+      tipo:
+        description: Tipo de mudança que define o incremento da versão
+        type: choice
+        required: true
+        default: bug-fix
+        options:
+          - bug-fix
+          - nova-feature
+          - marco-no-projeto
   
 env:
   IMAGE_NAME: front-${{ github.event.repository.name }}
@@ -33,22 +43,30 @@ jobs:
       - name: Instalar GitHub CLI
         run: sudo apt-get install -y gh
 
+      # Sem tipo definido a versão não é incrementada e a release colide com
+      # a tag já existente — o job falha aqui, antes de construir a imagem.
       - name: Extrair tipo de mudança da PR
         id: tipo
         run: |
-          echo "${{ github.event.pull_request.body }}" > body.txt
-      
-          tipo=""
-          if grep -q "\[x\] marco-no-projeto" body.txt; then
-            tipo="marco-no-projeto"
-          elif grep -q "\[x\] nova-feature" body.txt; then
-            tipo="nova-feature"
-          elif grep -q "\[x\] bug-fix" body.txt; then
-            tipo="bug-fix"
-          else
-            echo "Nenhuma opção marcada corretamente em 'tipo:'"
+          tipo="${{ inputs.tipo }}"
+
+          if [[ -z "$tipo" ]]; then
+            echo "${{ github.event.pull_request.body }}" > body.txt
+
+            if grep -q "\[x\] marco-no-projeto" body.txt; then
+              tipo="marco-no-projeto"
+            elif grep -q "\[x\] nova-feature" body.txt; then
+              tipo="nova-feature"
+            elif grep -q "\[x\] bug-fix" body.txt; then
+              tipo="bug-fix"
+            fi
           fi
-          
+
+          if [[ -z "$tipo" ]]; then
+            echo "Nenhuma opção marcada em 'tipo:' no corpo da PR: marque marco-no-projeto, nova-feature ou bug-fix."
+            exit 1
+          fi
+
           echo "tipo=$tipo" >> "$GITHUB_OUTPUT"
 
       - name: Obter a última tag da release
