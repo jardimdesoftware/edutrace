@@ -571,9 +571,6 @@ function PEIPage() {
         >
           <div className="p-6 text-center">
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui um PEI cadastrado</h2>
-                <button className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-full" onClick={() => router.push(`/estudantes/visualizar?email=${email}&nome=${nome}`)}>
-                  Voltar
-                </button>
         </div>
         </AppLayout>
       )
