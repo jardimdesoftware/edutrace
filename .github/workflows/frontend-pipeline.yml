@@ -47,11 +47,16 @@ jobs:
       # a tag já existente — o job falha aqui, antes de construir a imagem.
       - name: Extrair tipo de mudança da PR
         id: tipo
+        # O corpo da PR entra via env para não ser interpolado no shell
+        # (corpos com aspas/crases — ex.: dependabot — quebravam o passo).
+        env:
+          TIPO_INPUT: ${{ inputs.tipo }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          tipo="${{ inputs.tipo }}"
+          tipo="$TIPO_INPUT"
 
           if [[ -z "$tipo" ]]; then
-            echo "${{ github.event.pull_request.body }}" > body.txt
+            printf '%s\n' "$PR_BODY" > body.txt
 
             if grep -q "\[x\] marco-no-projeto" body.txt; then
               tipo="marco-no-projeto"
