@@ -167,6 +167,8 @@ jobs:
     name: 4. Criar release
     runs-on: ubuntu-latest
     needs: [docker-build-scan-push, prepare-tag]
+    permissions:
+      contents: write
     env:
       NEW_TAG: ${{ needs.prepare-tag.outputs.new_tag }}
       TIPO:    ${{ needs.prepare-tag.outputs.tipo }}
