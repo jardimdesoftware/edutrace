@@ -7,6 +7,16 @@ on:
     paths:
       - 'front/**'
   workflow_dispatch:
+    inputs:
+      tipo:
+        description: Tipo de mudança que define o incremento da versão
+        type: choice
+        required: true
+        default: bug-fix
+        options:
+          - bug-fix
+          - nova-feature
+          - marco-no-projeto
   
 env:
   IMAGE_NAME: front-${{ github.event.repository.name }}
@@ -19,6 +29,10 @@ jobs:
   prepare-tag:
     name: 1. Preparar nova tag
     runs-on: ubuntu-latest
+    # PR fechada sem merge também dispara o evento 'closed' — sem esta
+    # condição o pipeline publicaria/deployaria código não mesclado.
+    # Os demais jobs dependem deste (needs) e são pulados junto.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     outputs:
       new_tag: ${{ steps.nova_tag.outputs.nova_tag }}
       tipo:    ${{ steps.tipo.outputs.tipo }}
@@ -29,22 +43,42 @@ jobs:
       - name: Instalar GitHub CLI
         run: sudo apt-get install -y gh
 
+      # Sem tipo definido a versão não é incrementada e a release colide com
+      # a tag já existente — o job falha aqui, antes de construir a imagem.
       - name: Extrair tipo de mudança da PR
         id: tipo
+        # O corpo da PR entra via env para não ser interpolado no shell
+        # (corpos com aspas/crases — ex.: dependabot — quebravam o passo).
+        env:
+          TIPO_INPUT: ${{ inputs.tipo }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          echo "${{ github.event.pull_request.body }}" > body.txt
-      
-          tipo=""
-          if grep -q "\[x\] marco-no-projeto" body.txt; then
-            tipo="marco-no-projeto"
-          elif grep -q "\[x\] nova-feature" body.txt; then
-            tipo="nova-feature"
-          elif grep -q "\[x\] bug-fix" body.txt; then
-            tipo="bug-fix"
-          else
-            echo "Nenhuma opção marcada corretamente em 'tipo:'"
+          tipo="$TIPO_INPUT"
+
+          if [[ -z "$tipo" ]]; then
+            printf '%s\n' "$PR_BODY" > body.txt
+
+            if grep -q "\[x\] marco-no-projeto" body.txt; then
+              tipo="marco-no-projeto"
+            elif grep -q "\[x\] nova-feature" body.txt; then
+              tipo="nova-feature"
+            elif grep -q "\[x\] bug-fix" body.txt; then
+              tipo="bug-fix"
+            fi
           fi
-          
+
+          # PRs do dependabot não usam o template do repositório e nunca trazem
+          # os checkboxes; bump de dependência é incremento de patch.
+          if [[ -z "$tipo" && "$PR_AUTHOR" == "dependabot[bot]" ]]; then
+            tipo="bug-fix"
+          fi
+
+          if [[ -z "$tipo" ]]; then
+            echo "Nenhuma opção marcada em 'tipo:' no corpo da PR: marque marco-no-projeto, nova-feature ou bug-fix."
+            exit 1
+          fi
+
           echo "tipo=$tipo" >> "$GITHUB_OUTPUT"
 
       - name: Obter a última tag da release
@@ -167,6 +201,8 @@ jobs:
     name: 4. Criar release
     runs-on: ubuntu-latest
     needs: [docker-build-scan-push, prepare-tag]
+    permissions:
+      contents: write
     env:
       NEW_TAG: ${{ needs.prepare-tag.outputs.new_tag }}
       TIPO:    ${{ needs.prepare-tag.outputs.tipo }}
