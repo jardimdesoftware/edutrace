@@ -1107,7 +1107,7 @@ function AnamnesePage() {
 
         {/* Botões */}
         <div className="flex justify-center gap-4 mt-8">
-          <button className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-full" onClick={() => router.push(`/estudantes/visualizar?email=${email}&nome=${nome}`)}>
+          <button className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-full" onClick={() => router.push(email ? `/estudantes/visualizar?email=${email}&nome=${nome}` : '/home')}>
             Voltar
           </button>
         </div>
