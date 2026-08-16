@@ -52,6 +52,7 @@ jobs:
         env:
           TIPO_INPUT: ${{ inputs.tipo }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           tipo="$TIPO_INPUT"
 
@@ -65,6 +66,12 @@ jobs:
             elif grep -q "\[x\] bug-fix" body.txt; then
               tipo="bug-fix"
             fi
+          fi
+
+          # PRs do dependabot não usam o template do repositório e nunca trazem
+          # os checkboxes; bump de dependência é incremento de patch.
+          if [[ -z "$tipo" && "$PR_AUTHOR" == "dependabot[bot]" ]]; then
+            tipo="bug-fix"
           fi
 
           if [[ -z "$tipo" ]]; then
