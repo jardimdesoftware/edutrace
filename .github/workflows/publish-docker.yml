@@ -25,7 +25,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
       - name: Build and push backend
@@ -35,8 +35,8 @@ jobs:
           file: ./back/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/back-edutrace:${{ inputs.version }}
-            ghcr.io/${{ github.repository_owner }}/back-edutrace:latest
+            ghcr.io/${{ github.actor }}/back-edutrace:${{ inputs.version }}
+            ghcr.io/${{ github.actor }}/back-edutrace:latest
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6
@@ -45,5 +45,5 @@ jobs:
           file: ./front/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/front-edutrace:${{ inputs.version }}
-            ghcr.io/${{ github.repository_owner }}/front-edutrace:latest
+            ghcr.io/${{ github.actor }}/front-edutrace:${{ inputs.version }}
+            ghcr.io/${{ github.actor }}/front-edutrace:latest
