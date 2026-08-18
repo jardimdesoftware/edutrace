@@ -35,8 +35,8 @@ jobs:
           file: ./back/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.actor }}/back-edutrace:${{ inputs.version }}
-            ghcr.io/${{ github.actor }}/back-edutrace:latest
+            ghcr.io/valeriacristinagl/back-edutrace:${{ inputs.version }}
+            ghcr.io/valeriacristinagl/back-edutrace:latest
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6
@@ -45,5 +45,5 @@ jobs:
           file: ./front/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.actor }}/front-edutrace:${{ inputs.version }}
-            ghcr.io/${{ github.actor }}/front-edutrace:latest
+            ghcr.io/valeriacristinagl/front-edutrace:${{ inputs.version }}
+            ghcr.io/valeriacristinagl/front-edutrace:latest
