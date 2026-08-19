@@ -183,16 +183,16 @@ jobs:
           docker tag ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
       # Push Docker image (desabilitado temporariamente - sem deploy automático)
-      # - name: Login no GHCR
-      #   run: |
-      #     TOKEN="${{ secrets.GHCR_PAT }}"
-      #     if [ -z "$TOKEN" ]; then TOKEN="${{ secrets.GITHUB_TOKEN }}"; fi
-      #     echo "$TOKEN" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-      #
-      # - name: Push Docker image
-      #   run: |
-      #     docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
-      #     docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+      - name: Login no GHCR
+        run: |
+          TOKEN="${{ secrets.GHCR_PAT }}"
+          if [ -z "$TOKEN" ]; then TOKEN="${{ secrets.GITHUB_TOKEN }}"; fi
+          echo "$TOKEN" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
 # --------------------------------------------------------------------
 # 4) CREATE RELEASE --------------------------------------------------
