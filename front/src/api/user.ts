@@ -1,4 +1,5 @@
 import { getApiUrl } from "@/utils/runtimeApiUrl";
+import { setTokenCookie } from "@/services/auth/tokenCookie";
 
 export async function getUserByEmail(email: string) {
   const API_URL = getApiUrl();
@@ -73,7 +74,7 @@ export async function updateProfile(payload: {
 
   if (data?.access_token) {
     localStorage.setItem('token', data.access_token);
-    document.cookie = `token=${data.access_token}; path=/;`;
+    setTokenCookie(data.access_token);
   }
 
   return data;
