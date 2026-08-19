@@ -1,5 +1,6 @@
 import { RegisterData } from "@/interfaces/RegisterData";
 import { getApiUrl } from "@/utils/runtimeApiUrl";
+import { setTokenCookie } from "./tokenCookie";
 
 export async function login(email: string, password: string) {
   const API_URL = getApiUrl();
@@ -20,7 +21,7 @@ export async function login(email: string, password: string) {
 
   localStorage.setItem('token', data.access_token);
 
-  document.cookie = `token=${data.access_token}; path=/;`;
+  setTokenCookie(data.access_token);
 
   return data;
 }

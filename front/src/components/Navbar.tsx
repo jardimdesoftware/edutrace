@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LogOut, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { clearCookie } from '@/services/auth/tokenCookie';
 
 export default function Navbar() {
   const levelNames: Record<number, string> = {
@@ -30,7 +31,7 @@ export default function Navbar() {
         // 3. Sobrescreve o cookie com uma data de expiração no passado,
         //    fazendo com que o navegador o delete.
         //    É importante especificar o path=/ para garantir que funcione em todo o site.
-        document.cookie = name.trim() + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        clearCookie(name.trim());
     }
   }
 
