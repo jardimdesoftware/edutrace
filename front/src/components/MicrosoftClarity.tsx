@@ -1,6 +1,6 @@
 import Script from "next/script";
 
-const DEFAULT_CLARITY_PROJECT_ID = "x7y5hk661u";
+const DEFAULT_CLARITY_PROJECT_ID = "y4ln1tkqfy";
 
 export function MicrosoftClarity() {
   return (
