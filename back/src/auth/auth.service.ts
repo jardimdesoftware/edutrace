@@ -9,7 +9,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { randomInt } from 'node:crypto';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;

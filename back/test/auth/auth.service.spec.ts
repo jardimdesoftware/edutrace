@@ -4,9 +4,9 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 
 describe('AuthService', () => {
   let service: AuthService;
