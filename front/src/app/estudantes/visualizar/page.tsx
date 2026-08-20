@@ -4,6 +4,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
+import Loading from "@/components/Loading";
 import { Suspense } from "react";
 
 function Card({ label, url }: { label: string, url: string }) {
@@ -21,7 +22,7 @@ function Card({ label, url }: { label: string, url: string }) {
 
 export default function VisualizarPageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <VisualizarEstudante />
     </Suspense>
   );

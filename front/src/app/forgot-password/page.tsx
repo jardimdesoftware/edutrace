@@ -7,6 +7,7 @@ import "@govbr-ds/core/dist/core.min.css";
 import { forgotPassword, verifyResetCode, resetPassword } from "@/services/auth/passwordReset";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import Loading from "@/components/Loading";
 
 // Importação dinâmica para evitar erro de hydration
 const BrInput = dynamic(() =>
@@ -21,7 +22,7 @@ type Step = "email" | "code" | "password";
 
 export default function ForgotPasswordPageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <ForgotPasswordPage />
     </Suspense>
   );

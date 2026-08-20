@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ADMIN } from "@/consts";
 import TermoConsentimento from "@/components/TermoConsentimento";
+import Loading from "@/components/Loading";
 
 const BrInput = dynamic(
   () =>
@@ -26,7 +27,7 @@ const BrButton = dynamic(
 
 export default function AdminUserCreatePageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <AdminUserCreatePage />
     </Suspense>
   );
@@ -99,7 +100,7 @@ function AdminUserCreatePage() {
   };
 
   if (loading || !user || user.id_level !== ADMIN) {
-    return <div>Carregando...</div>;
+    return <Loading />;
   }
 
   return (

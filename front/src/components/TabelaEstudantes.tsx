@@ -12,6 +12,7 @@ import { Eye, FileDown, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import Loading from "./Loading";
 
 export default function TabelaEstudantes() {
   const [busca, setBusca] = useState("");
@@ -127,7 +128,7 @@ export default function TabelaEstudantes() {
     }
   }
 
-  if (loading) return null; //ADICIONAR COMPONENTE DE LOADING
+  if (loading) return <Loading fullScreen={false} />;
 
   return (
     <div className="bg-white rounded shadow-md">

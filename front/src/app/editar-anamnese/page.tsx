@@ -4,6 +4,7 @@
 import dynamic from "next/dynamic";
 import "@govbr-ds/core/dist/core.min.css";
 import AppLayout from "@/components/AppLayout";
+import Loading from "@/components/Loading";
 import { Suspense, useEffect, useState } from "react";
 import { getAnamneseByEmail, patchAnamnesis } from "@/api/anamnesis"; 
 import { AnamnesisData } from "@/interfaces/AnamnesisData";
@@ -35,7 +36,7 @@ const initialAnamnesisState: AnamnesisData = {
 
 export default function AnamnesePageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <AnamnesePage />
     </Suspense>
   );
@@ -148,7 +149,7 @@ function AnamnesePage() {
 
 
   if (isLoading || loading) {
-      return <h1>Carregando...</h1>; //ADICIONAR COMPONENTE DE LOADING
+      return <Loading />;
   }
 
    if (anamnesis === null) {
