@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { decodeToken } from "@/services/auth/decodeToken";
 import Swal from "sweetalert2"; // 🟢 importação adicionada
+import Loading from "@/components/Loading";
 
 // Importação dinâmica para evitar erro de hydration
 const BrInput = dynamic(() =>
@@ -21,7 +22,7 @@ const BrButton = dynamic(() =>
 
 export default function LoginPageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <LoginPage />
     </Suspense>
   );

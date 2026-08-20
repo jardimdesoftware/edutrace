@@ -10,13 +10,14 @@ import {
 } from 'lucide-react';
 import HomeCard from "@/components/HomeCard";
 import TabelaEstudantes from "@/components/TabelaEstudantes";
+import Loading from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
 import { ESTUDANTE } from "@/consts";
 import { Suspense } from "react";
 
 export default function HomePageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <HomePage />
     </Suspense>
   );
@@ -26,7 +27,7 @@ function HomePage() {
   const { user, loading } = useAuth();
 
   if (loading || !user) {
-    return <div>Carregando...</div>;
+    return <Loading />;
   }
 
   const isStudent = user.id_level === ESTUDANTE;

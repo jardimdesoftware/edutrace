@@ -4,6 +4,7 @@
 import dynamic from "next/dynamic";
 import "@govbr-ds/core/dist/core.min.css";
 import AppLayout from "@/components/AppLayout";
+import Loading from "@/components/Loading";
 import { Suspense, useEffect, useState } from "react";
 import { PlansEducationData } from "@/interfaces/PlansEducationData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,7 +45,7 @@ const initialPEIState: PlansEducationData = {
 
 export default function PEIPageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <PEIPage />
     </Suspense>
   );
@@ -165,7 +166,7 @@ function PEIPage() {
   };
 
   if (loading || isLoading) {
-    return <h1>Carregando...</h1>;
+    return <Loading />;
   }
 
   if (pei === null && !userIsReadOnly) {

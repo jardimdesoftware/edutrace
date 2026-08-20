@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/components/AppLayout';
+import Loading from '@/components/Loading';
 // Importe a função de POST junto com a de GET
 import { getAllCommentsByIdUser, postComment } from '@/api/comments';
 import { getUserByEmail } from '@/api/user';
@@ -14,7 +15,7 @@ import { useSearchParams, useRouter } from 'next/navigation'; // Importe useRout
 
 export default function ComentariosMultiprofissionaisPageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <ComentariosMultiprofissionais />
     </Suspense>
   );
@@ -143,7 +144,7 @@ function ComentariosMultiprofissionais() {
     }
   };
 
-  if (loading) return <h1>Carregando...</h1>;
+  if (loading) return <Loading />;
 
   return (
     <AppLayout

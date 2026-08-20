@@ -4,6 +4,7 @@
 import dynamic from "next/dynamic";
 import "@govbr-ds/core/dist/core.min.css";
 import AppLayout from "@/components/AppLayout";
+import Loading from "@/components/Loading";
 import { Suspense, useEffect, useState } from "react";
 import { decodeToken } from "@/services/auth/decodeToken";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,7 +63,7 @@ const initialScreeningState: ScreeningData = {
 
 export default function TriagemPageWrapper() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<Loading />}>
       <TriagemPage />
     </Suspense>
   );
@@ -188,7 +189,7 @@ function TriagemPage() {
 
 
   if (loading || isLoading) {
-    return <h1>Carregando...</h1>; // Adicionar componente de loading
+    return <Loading />;
   }
 
   // Se a triagem NÃO EXISTE, renderiza o formulário de CRIAÇÃO
