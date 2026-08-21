@@ -35,6 +35,8 @@ describe('AuthService', () => {
 
   const mockUserFirstAccess = { ...mockUser, must_change_password: true };
 
+  const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
+
   const mockUserWithResetToken = {
     ...mockUser,
     password_reset_token: 'hashedCode',
@@ -117,7 +119,7 @@ describe('AuthService', () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
 
       await expect(service.signIn('notfound@test.com', 'anyPassword')).rejects.toThrow(
-        new UnauthorizedException('usuário não encontrado'),
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
       );
     });
 
@@ -126,7 +128,39 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(service.signIn('user@test.com', 'wrongPassword')).rejects.toThrow(
-        new UnauthorizedException('credenciais inválidas'),
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
+      );
+    });
+
+    it('should answer unknown e-mail and wrong password with the same status and message', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
+      const unknownEmailError: UnauthorizedException = await service
+        .signIn('notfound@test.com', 'anyPassword')
+        .catch((error: UnauthorizedException) => error);
+
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      const wrongPasswordError: UnauthorizedException = await service
+        .signIn('user@test.com', 'wrongPassword')
+        .catch((error: UnauthorizedException) => error);
+
+      expect(unknownEmailError.getStatus()).toBe(wrongPasswordError.getStatus());
+      expect(unknownEmailError.getResponse()).toEqual(
+        wrongPasswordError.getResponse(),
+      );
+    });
+
+    it('should run a bcrypt comparison when the user does not exist', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.signIn('notfound@test.com', 'anyPassword'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'anyPassword',
+        expect.stringMatching(/^\$2[aby]\$10\$/),
       );
     });
   });

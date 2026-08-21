@@ -15,6 +15,17 @@ import { randomInt } from 'node:crypto';
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
 
+// Resposta única para qualquer falha de autenticação. Mensagens distintas para
+// e-mail inexistente e senha incorreta revelam quais contas existem.
+const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
+
+// Hash bcrypt (custo 10, o mesmo usado nas senhas reais) de uma senha aleatória
+// descartável. Serve para que o caminho de e-mail inexistente pague o mesmo custo
+// de CPU do caminho de senha incorreta: sem essa comparação, a diferença de tempo
+// de resposta distingue os dois casos mesmo com a mensagem unificada.
+const NON_EXISTENT_USER_PASSWORD_HASH =
+  '$2b$10$iMrrGyWs8x9.Ue/VXnHYlORQpzM/P9Hm0ETaQYvUpIc5i0.3SvKt2';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -27,14 +38,14 @@ export class AuthService {
 
   async signIn(email: string, password: string): Promise<any> {
     const user = await this.userService.findOne(email);
-    if (!user) {
-      throw new UnauthorizedException('usuário não encontrado');
-    }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user?.password ?? NON_EXISTENT_USER_PASSWORD_HASH,
+    );
 
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('credenciais inválidas');
+    if (!user || !isPasswordValid) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
     const payload = {
