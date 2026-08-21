@@ -1,4 +1,5 @@
 import { jwtDecode } from "jwt-decode";
+import { clearSession, getToken } from "./session";
 
 export type TokenPayload = {
   sub: number;
@@ -13,20 +14,23 @@ export type TokenPayload = {
 export function decodeToken(): TokenPayload | null {
   if (typeof window === "undefined") return null;
 
-  const localToken = localStorage.getItem("token");
-  const cookieToken = document.cookie
-    .split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith("token="))
-    ?.split("=")[1];
-
-  const token = localToken || cookieToken;
+  const token = getToken();
   if (!token) return null;
 
   try {
-    return jwtDecode<TokenPayload>(token);
+    const payload = jwtDecode<TokenPayload>(token);
+
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    if (payload.exp && payload.exp < currentTime) {
+      clearSession();
+      return null;
+    }
+
+    return payload;
   } catch (err) {
     console.error("Token inválido:", err);
+    clearSession();
     return null;
   }
 }

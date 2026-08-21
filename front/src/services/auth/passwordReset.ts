@@ -1,26 +1,11 @@
-import { getApiUrl } from "@/utils/runtimeApiUrl";
+import { apiRequest } from "@/services/http";
 
 async function postPasswordReset(path: string, body: Record<string, string>) {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}${path}`, {
+  return apiRequest(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    body,
+    auth: false,
   });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    const message = Array.isArray(data.message)
-      ? data.message.join(' ')
-      : data.message;
-    throw new Error(message || 'Erro ao processar requisição');
-  }
-
-  return data;
 }
 
 export async function forgotPassword(email: string) {

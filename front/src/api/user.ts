@@ -1,47 +1,16 @@
-import { getApiUrl } from "@/utils/runtimeApiUrl";
+import { apiRequest } from "@/services/http";
 import { setTokenCookie } from "@/services/auth/tokenCookie";
 
 export async function getUserByEmail(email: string) {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/users/${email}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  });
-
-  const isJson = res.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await res.json() : null;
-
-  if (!res.ok) {
-    throw new Error(data?.detail || 'Erro ao processar requisição');
-  }
-  return data;
+  return apiRequest(`/users/${email}`);
 }
 
 // vai dar certo 2
 export async function updateUser(email: string, id_level: string) {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/users/${email}`, {
+  return apiRequest(`/users/${email}`, {
     method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-      'Content-Type': 'application/json', 
-    },
-    body: JSON.stringify({
-      id_level: Number(id_level)
-    }),
+    body: { id_level: Number(id_level) },
   });
-
-  const isJson = res.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await res.json() : null;
-
-  if (!res.ok) {
-    throw new Error(data?.detail || 'Erro ao processar requisição');
-  }
-  return data;
 }
 
 // Alteração self-service dos próprios dados (e-mail e/ou senha).
@@ -52,25 +21,13 @@ export async function updateProfile(payload: {
   password?: string;
   currentPassword: string;
 }) {
-  const API_URL = getApiUrl();
-  const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
-  const res = await fetch(`${API_URL}/auth/me`, {
+  // O 401 desta rota significa senha atual incorreta, não sessão expirada.
+  const data = await apiRequest('/auth/me', {
     method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+    body: payload,
+    endSessionOnUnauthorized: false,
+    errorMessage: 'Erro ao atualizar os dados',
   });
-
-  const isJson = res.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await res.json() : null;
-
-  if (!res.ok) {
-    throw new Error(data?.message || 'Erro ao atualizar os dados');
-  }
 
   if (data?.access_token) {
     localStorage.setItem('token', data.access_token);
