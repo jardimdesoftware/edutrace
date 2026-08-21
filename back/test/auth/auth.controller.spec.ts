@@ -53,7 +53,7 @@ describe('AuthController', () => {
 
       jest
         .spyOn(service, 'signIn')
-        .mockRejectedValue(new UnauthorizedException('usuário não encontrado'));
+        .mockRejectedValue(new UnauthorizedException('E-mail ou senha inválidos.'));
 
       await expect(controller.signIn(authDto)).rejects.toThrow(UnauthorizedException);
       expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password);
@@ -64,7 +64,7 @@ describe('AuthController', () => {
 
       jest
         .spyOn(service, 'signIn')
-        .mockRejectedValue(new UnauthorizedException('credenciais inválidas'));
+        .mockRejectedValue(new UnauthorizedException('E-mail ou senha inválidos.'));
 
       await expect(controller.signIn(authDto)).rejects.toThrow(UnauthorizedException);
       expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password);
