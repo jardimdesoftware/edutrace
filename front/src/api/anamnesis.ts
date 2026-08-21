@@ -1,104 +1,28 @@
 import { AnamnesisData } from "../interfaces/AnamnesisData";
-import { getApiUrl } from "@/utils/runtimeApiUrl";
+import { apiRequest } from "@/services/http";
 
 export async function getAnamneseByEmail(email: string) {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/anamnesis/${email}`, {
-    method: 'GET',
-    headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-    }
-  });
-
-  const isJson = res.headers.get('content-type')?.includes('application/json');
-
-  const data = isJson ? await res.json() : null;
-
-  if (!res.ok) {
-    throw new Error(data.detail || 'Erro ao processar requisição');
-  }
-  return data;
+  return apiRequest(`/anamnesis/${email}`);
 }
 
 export async function getAllAnamneses() {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/anamnesis`, {
-    method: 'GET',
-    headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-    }
-  });
-
-  const isJson = res.headers.get('content-type')?.includes('application/json');
-
-  const data = isJson ? await res.json() : null;
-  
-  if (!res.ok) {
-    throw new Error(data.detail || 'Erro ao processar requisição');
-  }
-  return data;
+  return apiRequest('/anamnesis');
 }
 
 export async function postAnamneses(anamneseData: AnamnesisData): Promise<AnamnesisData> {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/anamnesis`, {
+  return apiRequest('/anamnesis', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-    body: JSON.stringify(anamneseData),
+    body: anamneseData,
   });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.detail || 'Erro ao processar requisição');
-  }
-
-  return data;
 }
 
 export async function deleteAnamnesis(email: string) {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/anamnesis/${email}`, {
-    method: 'DELETE',
-    headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-    }
-  });  
-
-  const isJson = res.headers.get('content-type')?.includes('application/json');
-
-  const data = isJson ? await res.json() : null;
-
-  if (!res.ok) {
-    throw new Error(data.detail || 'Erro ao processar requisição');
-  }
-  return data;
+  return apiRequest(`/anamnesis/${email}`, { method: 'DELETE' });
 }
 
 export async function patchAnamnesis(anamneseData: AnamnesisData, email: string) {
-  const API_URL = getApiUrl();
-
-  const res = await fetch(`${API_URL}/anamnesis/${email}`, {
+  return apiRequest(`/anamnesis/${email}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-    body: JSON.stringify(anamneseData),
+    body: anamneseData,
   });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.detail || 'Erro ao processar requisição');
-  }
-
-  return data;
 }
