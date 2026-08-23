@@ -28,6 +28,7 @@ model User {
   locked_until            DateTime?
   login_lock_count        Int        @default(0)
   comments                Comments[]
+  sessions                Session[]
   created_at              DateTime   @default(now())
   updated_at              DateTime?  @updatedAt
   deleted_at              DateTime?
@@ -37,6 +38,21 @@ model User {
 
   id_current_phase Int
   current_phase    CurrentPhases @relation(fields: [id_current_phase], references: [id])
+}
+
+model Session {
+  id           Int       @id @default(autoincrement())
+  jti          String    @unique
+  ip           String?
+  user_agent   String?
+  created_at   DateTime  @default(now())
+  last_used_at DateTime  @default(now())
+  revoked_at   DateTime?
+
+  id_user Int
+  user    User @relation(fields: [id_user], references: [id], onDelete: Cascade)
+
+  @@index([id_user])
 }
 
 model Level {
