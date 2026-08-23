@@ -17,6 +17,15 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+export async function logout() {
+  // O 401 aqui significa que a sessão já não vale no servidor, e o encerramento
+  // local acontece de qualquer forma em quem chama.
+  return apiRequest('/auth/logout', {
+    method: 'POST',
+    endSessionOnUnauthorized: false,
+  });
+}
+
 export async function createUserByAdmin(registerData: RegisterData) {
   return apiRequest('/users', {
     method: 'POST',
