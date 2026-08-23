@@ -22,6 +22,33 @@ export class MailService {
     return this.transporter;
   }
 
+  async sendAccountLockedNotice(to: string, lockedUntil: Date): Promise<void> {
+    const horario = lockedUntil.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+    });
+
+    await this.getTransporter().sendMail({
+      from: process.env.MAIL_FROM,
+      to,
+      subject: 'EduTrace - Acesso temporariamente bloqueado',
+      text: [
+        'Olá!',
+        '',
+        'Registramos tentativas de acesso com senha incorreta na sua conta do EduTrace.',
+        '',
+        `Por segurança, o acesso ficará bloqueado até ${horario} (horário de Brasília). Depois disso, o login volta a funcionar sozinho.`,
+        '',
+        'Se não foi você, redefina sua senha assim que possível pela opção "Esqueci minha senha", que continua disponível durante o bloqueio.',
+      ].join('\n'),
+      html: [
+        '<p>Olá!</p>',
+        '<p>Registramos tentativas de acesso com senha incorreta na sua conta do EduTrace.</p>',
+        `<p>Por segurança, o acesso ficará bloqueado até <strong>${horario}</strong> (horário de Brasília). Depois disso, o login volta a funcionar sozinho.</p>`,
+        '<p>Se não foi você, redefina sua senha assim que possível pela opção "Esqueci minha senha", que continua disponível durante o bloqueio.</p>',
+      ].join(''),
+    });
+  }
+
   async sendPasswordResetCode(to: string, code: string): Promise<void> {
     await this.getTransporter().sendMail({
       from: process.env.MAIL_FROM,

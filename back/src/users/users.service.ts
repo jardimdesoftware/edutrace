@@ -160,6 +160,37 @@ export class UsersService {
     });
   }
 
+  async registerFailedLoginAttempt(email: string) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        failed_login_attempts: { increment: 1 },
+      },
+    });
+  }
+
+  async lockAccount(email: string, lockedUntil: Date) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        locked_until: lockedUntil,
+        login_lock_count: { increment: 1 },
+        failed_login_attempts: 0,
+      },
+    });
+  }
+
+  async clearLoginLock(email: string) {
+    return this.prisma.user.update({
+      where: { email: email },
+      data: {
+        failed_login_attempts: 0,
+        locked_until: null,
+        login_lock_count: 0,
+      },
+    });
+  }
+
   async remove(id: number) {
     return this.prisma.user.delete({
       where: {

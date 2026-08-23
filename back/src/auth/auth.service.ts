@@ -26,6 +26,10 @@ const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 const NON_EXISTENT_USER_PASSWORD_HASH =
   '$2b$10$iMrrGyWs8x9.Ue/VXnHYlORQpzM/P9Hm0ETaQYvUpIc5i0.3SvKt2';
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const BASE_LOCK_MS = 15 * 60 * 1000;
+const MAX_LOCK_MS = 60 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -39,13 +43,31 @@ export class AuthService {
   async signIn(email: string, password: string): Promise<any> {
     const user = await this.userService.findOne(email);
 
+    // A comparação roda antes de qualquer decisão para que conta inexistente,
+    // senha incorreta e conta bloqueada custem o mesmo tempo de resposta.
     const isPasswordValid = await bcrypt.compare(
       password,
       user?.password ?? NON_EXISTENT_USER_PASSWORD_HASH,
     );
 
-    if (!user || !isPasswordValid) {
+    if (!user) {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+
+    if (this.isLocked(user)) {
+      this.logger.warn(
+        `Tentativa de login recusada, conta bloqueada: ${user.email}`,
+      );
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+
+    if (!isPasswordValid) {
+      await this.registerFailedLogin(user);
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+
+    if (user.failed_login_attempts > 0 || user.login_lock_count > 0) {
+      await this.userService.clearLoginLock(user.email);
     }
 
     const payload = {
@@ -60,6 +82,54 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload),
     };
     return token;
+  }
+
+  private isLocked(user: { locked_until: Date | null }): boolean {
+    return !!user.locked_until && user.locked_until > new Date();
+  }
+
+  // O bloqueio dobra a cada reincidência para encarecer o ataque sem prender o
+  // usuário legítimo por tempo indeterminado: 15 minutos, 30, 60, e daí em
+  // diante o teto de 1 hora. Um login bem-sucedido devolve a duração ao início.
+  private lockDuration(previousLocks: number): number {
+    return Math.min(BASE_LOCK_MS * 2 ** previousLocks, MAX_LOCK_MS);
+  }
+
+  private async registerFailedLogin(user: {
+    email: string;
+    failed_login_attempts: number;
+    login_lock_count: number;
+  }): Promise<void> {
+    const attempts = user.failed_login_attempts + 1;
+
+    if (attempts < MAX_FAILED_LOGIN_ATTEMPTS) {
+      await this.userService.registerFailedLoginAttempt(user.email);
+      this.logger.warn(
+        `Falha de login ${attempts}/${MAX_FAILED_LOGIN_ATTEMPTS}: ${user.email}`,
+      );
+      return;
+    }
+
+    const lockedUntil = new Date(
+      Date.now() + this.lockDuration(user.login_lock_count),
+    );
+
+    await this.userService.lockAccount(user.email, lockedUntil);
+    this.logger.warn(
+      `Conta bloqueada até ${lockedUntil.toISOString()}: ${user.email}`,
+    );
+
+    // O aviso vai por e-mail porque a resposta HTTP é genérica: informar o
+    // bloqueio ali revelaria que aquele e-mail existe. Falha de envio não pode
+    // derrubar o login, mesmo tratamento de forgotPassword.
+    try {
+      await this.mailService.sendAccountLockedNotice(user.email, lockedUntil);
+    } catch (error) {
+      this.logger.error(
+        `Falha ao enviar aviso de bloqueio para ${user.email}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   // Permite que qualquer usuário autenticado altere o próprio e-mail e/ou senha.
