@@ -24,6 +24,9 @@ model User {
   password_reset_expires  DateTime?
   password_reset_attempts Int        @default(0)
   must_change_password    Boolean    @default(false)
+  failed_login_attempts   Int        @default(0)
+  locked_until            DateTime?
+  login_lock_count        Int        @default(0)
   comments                Comments[]
   created_at              DateTime   @default(now())
   updated_at              DateTime?  @updatedAt
