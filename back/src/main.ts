@@ -2,14 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { validateSecretKey } from './common/validate-secret-key';
 
 async function bootstrap() {
+  validateSecretKey();
+
   const app = await NestFactory.create(AppModule);
   const port = process.env.PORT ?? 3000;
 
   const isProduction = process.env.NODE_ENV === 'production';
-  const origins = process.env.FRONTEND_URL
-    ?.split(',')
+  const origins = process.env.FRONTEND_URL?.split(',')
     .map((url) => url.trim())
     .filter(Boolean);
 
