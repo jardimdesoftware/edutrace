@@ -10,7 +10,8 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcryptjs';
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
+import { SessionsService } from 'src/sessions/sessions.service';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
@@ -26,6 +27,11 @@ const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 const NON_EXISTENT_USER_PASSWORD_HASH =
   '$2b$10$iMrrGyWs8x9.Ue/VXnHYlORQpzM/P9Hm0ETaQYvUpIc5i0.3SvKt2';
 
+export type SessionContext = {
+  ip?: string | null;
+  userAgent?: string | null;
+};
+
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const BASE_LOCK_MS = 15 * 60 * 1000;
 const MAX_LOCK_MS = 60 * 60 * 1000;
@@ -38,9 +44,14 @@ export class AuthService {
     private userService: UsersService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private sessionsService: SessionsService,
   ) {}
 
-  async signIn(email: string, password: string): Promise<any> {
+  async signIn(
+    email: string,
+    password: string,
+    context?: SessionContext,
+  ): Promise<any> {
     const user = await this.userService.findOne(email);
 
     // A comparação roda antes de qualquer decisão para que conta inexistente,
@@ -70,18 +81,48 @@ export class AuthService {
       await this.userService.clearLoginLock(user.email);
     }
 
+    return this.issueSessionToken(user, context);
+  }
+
+  async logout(jti: string): Promise<{ message: string }> {
+    await this.sessionsService.revokeByJti(jti);
+    return { message: 'Sessão encerrada.' };
+  }
+
+  // Um login novo derruba as sessões anteriores da conta. Sem isso a mesma
+  // credencial fica em uso simultâneo em vários lugares sem que ninguém perceba,
+  // e o token antigo continua válido até vencer.
+  private async issueSessionToken(
+    user: {
+      id: number;
+      email: string;
+      full_name: string;
+      id_level: number;
+      must_change_password: boolean;
+    },
+    context?: SessionContext,
+  ): Promise<{ access_token: string }> {
+    await this.sessionsService.revokeAllFromUser(user.id);
+
+    const jti = randomUUID();
+
+    await this.sessionsService.create({
+      jti: jti,
+      id_user: user.id,
+      ip: context?.ip,
+      user_agent: context?.userAgent,
+    });
+
     const payload = {
       sub: user.id,
       email: user.email,
       name: user.full_name,
       id_level: user.id_level,
       must_change_password: user.must_change_password,
+      jti: jti,
     };
 
-    const token = {
-      access_token: await this.jwtService.signAsync(payload),
-    };
-    return token;
+    return { access_token: await this.jwtService.signAsync(payload) };
   }
 
   private isLocked(user: { locked_until: Date | null }): boolean {
@@ -137,6 +178,7 @@ export class AuthService {
   async updateProfile(
     currentEmail: string,
     dto: UpdateProfileDto,
+    context?: SessionContext,
   ): Promise<{ access_token: string }> {
     const user = await this.userService.findOne(currentEmail);
     if (!user) {
@@ -186,15 +228,10 @@ export class AuthService {
       hashedPassword,
     });
 
-    const payload = {
-      sub: updated.id,
-      email: updated.email,
-      name: updated.full_name,
-      id_level: updated.id_level,
-      must_change_password: updated.must_change_password,
-    };
-
-    return { access_token: await this.jwtService.signAsync(payload) };
+    // Trocar e-mail ou senha encerra as sessões abertas antes da mudança: quem
+    // usava a credencial antiga perde o acesso, e quem alterou continua com o
+    // token novo devolvido aqui.
+    return this.issueSessionToken(updated, context);
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
@@ -239,15 +276,19 @@ export class AuthService {
     code: string,
     password: string,
   ): Promise<{ message: string }> {
-    await this.validateResetCode(email, code);
+    const user = await this.validateResetCode(email, code);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await this.userService.updatePassword(email, hashedPassword);
 
+    // Quem redefine a senha normalmente perdeu o controle da conta, então todas
+    // as sessões abertas caem, inclusive as de quem estava usando a senha antiga.
+    await this.sessionsService.revokeAllFromUser(user.id);
+
     return { message: 'Senha redefinida com sucesso.' };
   }
 
-  private async validateResetCode(email: string, code: string): Promise<void> {
+  private async validateResetCode(email: string, code: string) {
     const invalidCodeException = new UnauthorizedException(
       'Código inválido ou expirado.',
     );
@@ -274,5 +315,7 @@ export class AuthService {
       await this.userService.incrementPasswordResetAttempts(email);
       throw invalidCodeException;
     }
+
+    return user;
   }
 }
