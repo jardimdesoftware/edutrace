@@ -27,6 +27,9 @@ describe('AuthService', () => {
     password_reset_expires: null,
     password_reset_attempts: 0,
     must_change_password: false,
+    failed_login_attempts: 0,
+    locked_until: null,
+    login_lock_count: 0,
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
@@ -59,6 +62,9 @@ describe('AuthService', () => {
             clearPasswordResetToken: jest.fn(),
             updatePassword: jest.fn(),
             updateProfile: jest.fn(),
+            registerFailedLoginAttempt: jest.fn(),
+            lockAccount: jest.fn(),
+            clearLoginLock: jest.fn(),
           },
         },
         {
@@ -71,6 +77,7 @@ describe('AuthService', () => {
           provide: MailService,
           useValue: {
             sendPasswordResetCode: jest.fn(),
+            sendAccountLockedNotice: jest.fn(),
           },
         },
       ],
@@ -148,6 +155,181 @@ describe('AuthService', () => {
       expect(unknownEmailError.getResponse()).toEqual(
         wrongPasswordError.getResponse(),
       );
+    });
+
+    it('should count a failed attempt without locking before the fifth one', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 3 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.signIn('user@test.com', 'wrongPassword'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(usersService.registerFailedLoginAttempt).toHaveBeenCalledWith(
+        mockUser.email,
+      );
+      expect(usersService.lockAccount).not.toHaveBeenCalled();
+    });
+
+    it('should lock the account for fifteen minutes on the fifth failed attempt', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-08-23T12:00:00.000Z'));
+
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 4 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.signIn('user@test.com', 'wrongPassword'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(usersService.lockAccount).toHaveBeenCalledWith(
+        mockUser.email,
+        new Date('2026-08-23T12:15:00.000Z'),
+      );
+      expect(usersService.registerFailedLoginAttempt).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it('should double the lock duration on consecutive locks, up to one hour', async () => {
+      const casos = [
+        { login_lock_count: 1, esperado: '2026-08-23T12:30:00.000Z' },
+        { login_lock_count: 2, esperado: '2026-08-23T13:00:00.000Z' },
+        { login_lock_count: 5, esperado: '2026-08-23T13:00:00.000Z' },
+      ];
+
+      for (const caso of casos) {
+        jest.clearAllMocks();
+        jest.useFakeTimers().setSystemTime(new Date('2026-08-23T12:00:00.000Z'));
+
+        jest.spyOn(usersService, 'findOne').mockResolvedValue({
+          ...mockUser,
+          failed_login_attempts: 4,
+          login_lock_count: caso.login_lock_count,
+        });
+        (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+        await expect(
+          service.signIn('user@test.com', 'wrongPassword'),
+        ).rejects.toThrow(UnauthorizedException);
+
+        expect(usersService.lockAccount).toHaveBeenCalledWith(
+          mockUser.email,
+          new Date(caso.esperado),
+        );
+
+        jest.useRealTimers();
+      }
+    });
+
+    it('should refuse the correct password while the account is locked', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUser,
+        locked_until: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.signIn('user@test.com', 'plainPassword'),
+      ).rejects.toThrow(new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE));
+
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+      expect(usersService.registerFailedLoginAttempt).not.toHaveBeenCalled();
+    });
+
+    it('should answer a locked account exactly like an invalid credential', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUser,
+        locked_until: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      const lockedError: UnauthorizedException = await service
+        .signIn('user@test.com', 'plainPassword')
+        .catch((error: UnauthorizedException) => error);
+
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      const wrongPasswordError: UnauthorizedException = await service
+        .signIn('user@test.com', 'wrongPassword')
+        .catch((error: UnauthorizedException) => error);
+
+      expect(lockedError.getStatus()).toBe(wrongPasswordError.getStatus());
+      expect(lockedError.getResponse()).toEqual(
+        wrongPasswordError.getResponse(),
+      );
+    });
+
+    it('should accept the login again once the lock has expired', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUser,
+        locked_until: new Date(Date.now() - 1000),
+        login_lock_count: 1,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.signIn('user@test.com', 'plainPassword');
+
+      expect(result).toEqual({ access_token: 'mock.jwt.token' });
+      expect(usersService.clearLoginLock).toHaveBeenCalledWith(mockUser.email);
+    });
+
+    it('should clear the failure counter after a successful login', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 3 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.signIn('user@test.com', 'plainPassword');
+
+      expect(usersService.clearLoginLock).toHaveBeenCalledWith(mockUser.email);
+    });
+
+    it('should not touch the counters when nothing was pending', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.signIn('user@test.com', 'plainPassword');
+
+      expect(usersService.clearLoginLock).not.toHaveBeenCalled();
+    });
+
+    it('should warn the account owner by e-mail when the account gets locked', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-08-23T12:00:00.000Z'));
+
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 4 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.signIn('user@test.com', 'wrongPassword'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(mailService.sendAccountLockedNotice).toHaveBeenCalledWith(
+        mockUser.email,
+        new Date('2026-08-23T12:15:00.000Z'),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it('should keep the lock when the warning e-mail fails', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 4 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      jest
+        .spyOn(mailService, 'sendAccountLockedNotice')
+        .mockRejectedValue(new Error('SMTP indisponível'));
+
+      await expect(
+        service.signIn('user@test.com', 'wrongPassword'),
+      ).rejects.toThrow(new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE));
+
+      expect(usersService.lockAccount).toHaveBeenCalled();
     });
 
     it('should run a bcrypt comparison when the user does not exist', async () => {
