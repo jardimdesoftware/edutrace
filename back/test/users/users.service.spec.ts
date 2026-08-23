@@ -22,6 +22,9 @@ describe('UsersService', () => {
     password_reset_expires: null,
     password_reset_attempts: 0,
     must_change_password: false,
+    failed_login_attempts: 0,
+    locked_until: null,
+    login_lock_count: 0,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
@@ -218,6 +221,59 @@ describe('UsersService', () => {
         data: { password_reset_attempts: { increment: 1 } },
       });
       expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('registerFailedLoginAttempt', () => {
+    it('should increment the failed login counter', async () => {
+      const updatedUser = { ...mockUser, failed_login_attempts: 1 };
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
+
+      const result = await service.registerFailedLoginAttempt('test@test.com');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { failed_login_attempts: { increment: 1 } },
+      });
+      expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('lockAccount', () => {
+    it('should store the deadline, count the lock and reset the failures', async () => {
+      const lockedUntil = new Date('2026-08-23T12:15:00.000Z');
+      const updatedUser = { ...mockUser, locked_until: lockedUntil, login_lock_count: 1 };
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
+
+      const result = await service.lockAccount('test@test.com', lockedUntil);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: {
+          locked_until: lockedUntil,
+          login_lock_count: { increment: 1 },
+          failed_login_attempts: 0,
+        },
+      });
+      expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('clearLoginLock', () => {
+    it('should reset the failures, the deadline and the lock count', async () => {
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
+
+      const result = await service.clearLoginLock('test@test.com');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: {
+          failed_login_attempts: 0,
+          locked_until: null,
+          login_lock_count: 0,
+        },
+      });
+      expect(result).toEqual(mockUser);
     });
   });
 
