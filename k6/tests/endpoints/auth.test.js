@@ -22,6 +22,11 @@ const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+// O login falho usa um e-mail que não existe no banco. Repetir a falha na conta
+// admin bloquearia o acesso dela na quinta iteração e derrubaria tanto este
+// check quanto os passos seguintes, que dependem do token.
+const UNKNOWN_EMAIL = __ENV.UNKNOWN_EMAIL || 'conta-inexistente-k6@edutrace.com';
+
 export const options = endpointOptions;
 
 export default function () {
@@ -37,7 +42,7 @@ export default function () {
   // ─── 2. Login com credenciais inválidas (deve retornar 401) ───────────────
   const invalidLoginRes = http.post(
     `${BASE_URL}/auth/login`,
-    JSON.stringify({ email: ADMIN_EMAIL, password: 'senhaErrada' }),
+    JSON.stringify({ email: UNKNOWN_EMAIL, password: 'senhaErrada' }),
     { headers: JSON_HEADERS },
   );
   check(invalidLoginRes, {
