@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -7,7 +8,12 @@ import { validateSecretKey } from './common/validate-secret-key';
 async function bootstrap() {
   validateSecretKey();
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Sem isto, o limite por IP das rotas de autenticação enxergaria apenas o
+  // endereço do proxy reverso e trataria todos os usuários como um cliente só.
+  app.set('trust proxy', 1);
+
   const port = process.env.PORT ?? 3000;
 
   const isProduction = process.env.NODE_ENV === 'production';
