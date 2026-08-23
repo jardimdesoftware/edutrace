@@ -6,11 +6,13 @@ import { MailModule } from 'src/mail/mail.module';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from './constants/constants';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SessionsModule } from 'src/sessions/sessions.module';
 
 @Module({
   imports: [
     UsersModule,
     MailModule,
+    SessionsModule,
     // Camada complementar ao bloqueio por conta, aplicada apenas nas rotas
     // públicas de autenticação (ver AuthController). O teto é folgado porque
     // uma escola inteira atrás de NAT sai com um único IP público, e é
