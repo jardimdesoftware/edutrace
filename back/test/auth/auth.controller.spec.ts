@@ -18,6 +18,7 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: {
             signIn: jest.fn(),
+            logout: jest.fn(),
             forgotPassword: jest.fn(),
             verifyResetCode: jest.fn(),
             resetPassword: jest.fn(),
@@ -37,6 +38,12 @@ describe('AuthController', () => {
     expect(controller).toBeDefined();
   });
 
+  const requestFalso = {
+    ip: '10.0.0.1',
+    headers: { 'user-agent': 'jest' },
+    user: { email: 'user@test.com', jti: 'sessao-1' },
+  };
+
   describe('signIn', () => {
     it('should return an access token on valid credentials', async () => {
       const authDto = { email: 'user@test.com', password: 'password123' };
@@ -44,9 +51,12 @@ describe('AuthController', () => {
 
       jest.spyOn(service, 'signIn').mockResolvedValue(token);
 
-      const result = await controller.signIn(authDto);
+      const result = await controller.signIn(authDto, requestFalso);
 
-      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password);
+      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password, {
+        ip: requestFalso.ip,
+        userAgent: requestFalso.headers['user-agent'],
+      });
       expect(result).toEqual(token);
     });
 
@@ -57,8 +67,11 @@ describe('AuthController', () => {
         .spyOn(service, 'signIn')
         .mockRejectedValue(new UnauthorizedException('E-mail ou senha inválidos.'));
 
-      await expect(controller.signIn(authDto)).rejects.toThrow(UnauthorizedException);
-      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password);
+      await expect(controller.signIn(authDto, requestFalso)).rejects.toThrow(UnauthorizedException);
+      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password, {
+        ip: requestFalso.ip,
+        userAgent: requestFalso.headers['user-agent'],
+      });
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
@@ -68,8 +81,11 @@ describe('AuthController', () => {
         .spyOn(service, 'signIn')
         .mockRejectedValue(new UnauthorizedException('E-mail ou senha inválidos.'));
 
-      await expect(controller.signIn(authDto)).rejects.toThrow(UnauthorizedException);
-      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password);
+      await expect(controller.signIn(authDto, requestFalso)).rejects.toThrow(UnauthorizedException);
+      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password, {
+        ip: requestFalso.ip,
+        userAgent: requestFalso.headers['user-agent'],
+      });
     });
   });
 
