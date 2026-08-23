@@ -4,10 +4,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { hash } from 'bcryptjs';
 import { LEVELS, PHASES } from 'src/constants';
+import { SessionsService } from 'src/sessions/sessions.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private sessionsService: SessionsService,
+  ) {}
 
   async create(createUserDto: CreateUserDto) {
     const encryptedPassword = await hash(createUserDto.password, 10);
@@ -56,13 +60,21 @@ export class UsersService {
   }
 
   async update(email: string, updateUserDto: UpdateUserDto) {
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { email: email },
       data: {
         full_name: updateUserDto.full_name,
         id_level: updateUserDto.id_level,
       },
     });
+
+    // O nível de acesso viaja dentro do token. Sem encerrar as sessões, quem foi
+    // rebaixado continua com o nível antigo até o token vencer.
+    if (updateUserDto.id_level !== undefined) {
+      await this.sessionsService.revokeAllFromUser(updated.id);
+    }
+
+    return updated;
   }
 
   // Atualização self-service dos próprios dados (e-mail e/ou senha).
