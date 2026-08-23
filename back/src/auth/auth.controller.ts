@@ -33,8 +33,11 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async signIn(@Body() auth: AuthDto): Promise<any> {
-    return await this.authService.signIn(auth.email, auth.password);
+  async signIn(@Body() auth: AuthDto, @Request() request): Promise<any> {
+    return await this.authService.signIn(auth.email, auth.password, {
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
   }
 
   @Public()
@@ -88,6 +91,14 @@ export class AuthController {
     return req.user;
   }
 
+  @AllowPasswordChange()
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  async logout(@Request() request): Promise<{ message: string }> {
+    return await this.authService.logout(request.user.jti);
+  }
+
   // Sem @Levels: qualquer usuário autenticado pode alterar os próprios dados.
   // A identidade é lida do token (req.user.email), não do corpo.
   @AllowPasswordChange()
@@ -98,6 +109,9 @@ export class AuthController {
   })
   @Patch('me')
   async updateMe(@Request() req, @Body() dto: UpdateProfileDto) {
-    return await this.authService.updateProfile(req.user.email, dto);
+    return await this.authService.updateProfile(req.user.email, dto, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 }
