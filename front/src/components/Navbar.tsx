@@ -5,6 +5,7 @@ import { LogOut, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { clearCookie } from '@/services/auth/tokenCookie';
+import { logout } from '@/services/auth/login';
 
 export default function Navbar() {
   const levelNames: Record<number, string> = {
@@ -36,7 +37,16 @@ export default function Navbar() {
   }
 
   // Função de logout aprimorada
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 0. Encerra a sessão no servidor, para que o token deixe de valer também
+    //    para quem tenha uma cópia dele. A limpeza local segue mesmo se a
+    //    chamada falhar, senão uma API fora do ar prenderia o usuário na conta.
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Falha ao encerrar a sessão no servidor:', error);
+    }
+
     // 1. Limpa o localStorage
     localStorage.removeItem('token');
     localStorage.clear();
