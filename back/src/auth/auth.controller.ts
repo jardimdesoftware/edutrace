@@ -19,12 +19,14 @@ import { AuthGuard } from './auth.guard';
 import { Public } from './constants/constants';
 import { AllowPasswordChange } from './decorators/allow-password-change.decorator';
 import { ApiBody } from '@nestjs/swagger';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @UseGuards(ThrottlerGuard)
   @ApiBody({
     type: AuthDto,
     description: 'Objeto para obter o token.',
@@ -36,6 +38,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(ThrottlerGuard)
   @ApiBody({
     type: ForgotPasswordDto,
     description: 'Objeto para solicitar o código de recuperação de senha.',
@@ -47,6 +50,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(ThrottlerGuard)
   @ApiBody({
     type: VerifyResetCodeDto,
     description: 'Objeto para verificar o código de recuperação de senha.',
@@ -58,6 +62,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(ThrottlerGuard)
   @ApiBody({
     type: ResetPasswordDto,
     description: 'Objeto para redefinir a senha com o código de recuperação.',
