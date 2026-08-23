@@ -10,12 +10,14 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY, jwtConstants } from './constants/constants';
 import { ALLOW_PASSWORD_CHANGE_KEY } from './decorators/allow-password-change.decorator';
+import { SessionsService } from 'src/sessions/sessions.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
+    private sessionsService: SessionsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -36,6 +38,17 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: jwtConstants.secret,
       });
+
+      // A assinatura sozinha não diz se a sessão ainda vale: token de sessão
+      // revogada, por logout ou por login em outro lugar, continua com
+      // assinatura válida até vencer.
+      const session = await this.sessionsService.findActive(payload.jti);
+
+      if (!session) {
+        throw new UnauthorizedException('Sessão encerrada');
+      }
+
+      await this.sessionsService.registerUse(session);
 
       request['user'] = payload;
 
