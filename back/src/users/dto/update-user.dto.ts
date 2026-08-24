@@ -13,8 +13,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   full_name: string;
 
   @ApiProperty({
-    description:
-      'Apenas quem pode fazer essa atualização é o ADMIN.',
+    description: 'Apenas quem pode fazer essa atualização é o ADMIN.',
   })
   @IsOptional()
   @IsNumber()
