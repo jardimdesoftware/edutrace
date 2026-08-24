@@ -29,15 +29,16 @@ export class UsersController {
   )
   @ApiBody({
     type: CreateUserDto,
-    description:
-      'Objeto para criação de um novo usuário por um administrador.',
+    description: 'Objeto para criação de um novo usuário por um administrador.',
   })
   @Post()
   async create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
     const user = (req as Request & { user?: { id_level?: number } }).user;
 
     if (user?.id_level !== LEVELS.ADMIN) {
-      throw new ForbiddenException('Apenas administradores podem cadastrar usuários');
+      throw new ForbiddenException(
+        'Apenas administradores podem cadastrar usuários',
+      );
     }
 
     return maskUserCpf(await this.usersService.create(createUserDto));
@@ -74,7 +75,7 @@ export class UsersController {
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
-  ) 
+  )
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
