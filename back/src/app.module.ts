@@ -15,6 +15,7 @@ import { AnamnesisModule } from './anamnesis/anamnesis.module';
 import { CommentsModule } from './comments/comments.module';
 import { PlansEducationModule } from './plans-education/plans-education.module';
 import { ReportsModule } from './reports/reports.module';
+import { SessionsModule } from './sessions/sessions.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ReportsModule } from './reports/reports.module';
     CommentsModule,
     PlansEducationModule,
     ReportsModule,
+    SessionsModule,
   ],
   controllers: [AppController],
   providers: [

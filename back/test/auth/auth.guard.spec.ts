@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ALLOW_PASSWORD_CHANGE_KEY } from 'src/auth/decorators/allow-password-change.decorator';
+import { SessionsService } from 'src/sessions/sessions.service';
 
 function createMockExecutionContext(
   headers: Record<string, string> = {},
@@ -22,10 +23,22 @@ function createMockExecutionContext(
   } as any;
 }
 
+const sessaoAtiva = {
+  id: 1,
+  jti: 'sessao-valida',
+  id_user: 1,
+  ip: null,
+  user_agent: null,
+  created_at: new Date(),
+  last_used_at: new Date(),
+  revoked_at: null,
+};
+
 describe('AuthGuard', () => {
   let guard: AuthGuard;
   let jwtService: JwtService;
   let reflector: Reflector;
+  let sessionsService: SessionsService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -44,12 +57,26 @@ describe('AuthGuard', () => {
             get: jest.fn(),
           },
         },
+        {
+          provide: SessionsService,
+          useValue: {
+            findActive: jest.fn(),
+            registerUse: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     guard = module.get<AuthGuard>(AuthGuard);
     jwtService = module.get<JwtService>(JwtService);
     reflector = module.get<Reflector>(Reflector);
+    sessionsService = module.get<SessionsService>(SessionsService);
+
+    // Cada teste que chega a validar o token precisa de uma sessão ativa; os
+    // casos de sessão encerrada sobrescrevem este retorno.
+    jest
+      .spyOn(sessionsService, 'findActive')
+      .mockResolvedValue(sessaoAtiva as never);
   });
 
   it('should be defined', () => {
@@ -57,6 +84,37 @@ describe('AuthGuard', () => {
   });
 
   describe('canActivate', () => {
+    it('should reject a token whose session was revoked', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, id_level: 1, jti: 'sessao-revogada' });
+      jest.spyOn(sessionsService, 'findActive').mockResolvedValue(null);
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer token-valido',
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new UnauthorizedException('Sessão encerrada'),
+      );
+    });
+
+    it('should register the use of an active session', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, id_level: 1, jti: 'sessao-valida' });
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer token-valido',
+      });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(sessionsService.findActive).toHaveBeenCalledWith('sessao-valida');
+      expect(sessionsService.registerUse).toHaveBeenCalledWith(sessaoAtiva);
+    });
+
     it('should allow access to public routes without token', async () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(true);
       const context = createMockExecutionContext();

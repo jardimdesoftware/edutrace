@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
+import { SessionsService } from 'src/sessions/sessions.service';
+import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { LEVELS, PHASES } from 'src/constants';
 import * as bcryptjs from 'bcryptjs';
@@ -9,6 +11,7 @@ jest.mock('bcryptjs');
 describe('UsersService', () => {
   let service: UsersService;
   let prisma: PrismaService;
+  let sessionsService: SessionsService;
 
   const mockUser = {
     id: 1,
@@ -51,6 +54,12 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         {
+          provide: SessionsService,
+          useValue: {
+            revokeAllFromUser: jest.fn(),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: {
             user: {
@@ -70,6 +79,7 @@ describe('UsersService', () => {
 
     service = module.get<UsersService>(UsersService);
     prisma = module.get<PrismaService>(PrismaService);
+    sessionsService = module.get<SessionsService>(SessionsService);
   });
 
   it('should be defined', () => {
@@ -221,6 +231,31 @@ describe('UsersService', () => {
         data: { password_reset_attempts: { increment: 1 } },
       });
       expect(result).toEqual(updatedUser);
+    });
+  });
+
+  describe('update', () => {
+    it('should revoke the sessions of the account when the level changes', async () => {
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
+
+      await service.update('test@test.com', {
+        full_name: 'Nome',
+        id_level: 3,
+      });
+
+      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(mockUser.id);
+    });
+
+    it('should keep the sessions when the level is not part of the change', async () => {
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
+
+      // O DTO declara os campos como obrigatórios no tipo, mas ambos são
+      // @IsOptional, então o corpo pode chegar sem id_level.
+      await service.update('test@test.com', {
+        full_name: 'Novo Nome',
+      } as UpdateUserDto);
+
+      expect(sessionsService.revokeAllFromUser).not.toHaveBeenCalled();
     });
   });
 

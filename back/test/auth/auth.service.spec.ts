@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
+import { SessionsService } from 'src/sessions/sessions.service';
 import * as bcrypt from 'bcryptjs';
 
 jest.mock('bcryptjs');
@@ -13,6 +14,7 @@ describe('AuthService', () => {
   let usersService: UsersService;
   let jwtService: JwtService;
   let mailService: MailService;
+  let sessionsService: SessionsService;
 
   const mockUser = {
     id: 1,
@@ -80,6 +82,16 @@ describe('AuthService', () => {
             sendAccountLockedNotice: jest.fn(),
           },
         },
+        {
+          provide: SessionsService,
+          useValue: {
+            create: jest.fn(),
+            findActive: jest.fn(),
+            revokeByJti: jest.fn(),
+            revokeAllFromUser: jest.fn(),
+            registerUse: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -87,6 +99,7 @@ describe('AuthService', () => {
     usersService = module.get<UsersService>(UsersService);
     jwtService = module.get<JwtService>(JwtService);
     mailService = module.get<MailService>(MailService);
+    sessionsService = module.get<SessionsService>(SessionsService);
   });
 
   it('should be defined', () => {
@@ -101,13 +114,16 @@ describe('AuthService', () => {
       const result = await service.signIn('user@test.com', 'plainPassword');
 
       expect(usersService.findOne).toHaveBeenCalledWith('user@test.com');
-      expect(jwtService.signAsync).toHaveBeenCalledWith({
-        sub: mockUser.id,
-        email: mockUser.email,
-        name: mockUser.full_name,
-        id_level: mockUser.id_level,
-        must_change_password: false,
-      });
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: mockUser.id,
+          email: mockUser.email,
+          name: mockUser.full_name,
+          id_level: mockUser.id_level,
+          must_change_password: false,
+          jti: expect.any(String),
+        }),
+      );
       expect(result).toEqual({ access_token: 'mock.jwt.token' });
     });
 
@@ -347,11 +363,83 @@ describe('AuthService', () => {
     });
   });
 
+  describe('sessões', () => {
+    it('should revoke the previous sessions and open a new one on login', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.signIn('user@test.com', 'plainPassword', {
+        ip: '10.0.0.1',
+        userAgent: 'jest',
+      });
+
+      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(mockUser.id);
+      expect(sessionsService.create).toHaveBeenCalledWith({
+        jti: expect.any(String),
+        id_user: mockUser.id,
+        ip: '10.0.0.1',
+        user_agent: 'jest',
+      });
+    });
+
+    it('should sign the token with the jti of the session it just created', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.signIn('user@test.com', 'plainPassword');
+
+      const criada = (sessionsService.create as jest.Mock).mock.calls[0][0];
+      const assinado = (jwtService.signAsync as jest.Mock).mock.calls[0][0];
+
+      expect(assinado.jti).toBe(criada.jti);
+    });
+
+    it('should revoke only the current session on logout', async () => {
+      const result = await service.logout('sessao-1');
+
+      expect(sessionsService.revokeByJti).toHaveBeenCalledWith('sessao-1');
+      expect(sessionsService.revokeAllFromUser).not.toHaveBeenCalled();
+      expect(result).toEqual({ message: 'Sessão encerrada.' });
+    });
+
+    it('should revoke every session of the account when the password is reset', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue(mockUserWithResetToken);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('novoHash');
+
+      await service.resetPassword('user@test.com', '123456', 'novaSenha123');
+
+      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(
+        mockUserWithResetToken.id,
+      );
+    });
+  });
+
   describe('updateProfile', () => {
     const dtoComSenha = {
       password: 'novaSenha123',
       currentPassword: 'senhaAtual123',
     };
+
+    it('should revoke the sessions opened before the change and open a new one', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('novoHash');
+      jest
+        .spyOn(usersService, 'updateProfile')
+        .mockResolvedValue({ ...mockUser, password: 'novoHash' });
+
+      await service.updateProfile('user@test.com', dtoComSenha);
+
+      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(mockUser.id);
+      expect(sessionsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id_user: mockUser.id }),
+      );
+    });
 
     it('should reject when the new password is equal to the current one', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
