@@ -46,10 +46,7 @@ export class PlansEducationController {
     return this.plansEducationService.update(email, data);
   }
 
-  @Levels(
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_SAUDE)
   @Delete(':email')
   remove(@Param('email') email: string) {
     return this.plansEducationService.remove(email);
