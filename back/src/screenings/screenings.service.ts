@@ -23,7 +23,9 @@ export class ScreeningsService {
   }
 
   async update(email: string, updateScreeningDto: Partial<CreateScreeningDto>) {
-    const existing = await this.prisma.screening.findUnique({ where: { email } });
+    const existing = await this.prisma.screening.findUnique({
+      where: { email },
+    });
     if (!existing) {
       throw new NotFoundException(`Triagem com email ${email} não encontrada`);
     }
@@ -35,7 +37,9 @@ export class ScreeningsService {
   }
 
   async remove(email: string) {
-    const existing = await this.prisma.screening.findUnique({ where: { email } });
+    const existing = await this.prisma.screening.findUnique({
+      where: { email },
+    });
     if (!existing) {
       throw new NotFoundException(`Triagem com email ${email} não encontrada`);
     }

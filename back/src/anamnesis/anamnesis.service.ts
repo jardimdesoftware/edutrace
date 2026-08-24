@@ -32,7 +32,9 @@ export class AnamnesisService {
   }
 
   async update(email: string, updateAnamnesisDto: Partial<CreateAnamnesisDto>) {
-    const existing = await this.prisma.anamnesis.findUnique({ where: { email } });
+    const existing = await this.prisma.anamnesis.findUnique({
+      where: { email },
+    });
     if (!existing) {
       throw new NotFoundException(`Anamnese com email ${email} não encontrada`);
     }
@@ -44,7 +46,9 @@ export class AnamnesisService {
   }
 
   async remove(email: string) {
-    const existing = await this.prisma.anamnesis.findUnique({ where: { email } });
+    const existing = await this.prisma.anamnesis.findUnique({
+      where: { email },
+    });
     if (!existing) {
       throw new NotFoundException(`Anamnese com email ${email} não encontrada`);
     }

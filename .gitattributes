@@ -1,0 +1,4 @@
+# Fim de linha normalizado em LF no índice e no working tree, em qualquer
+# sistema operacional. Sem isto, o checkout no Windows entrega CRLF e o
+# prettier acusa erro em todas as linhas de todos os arquivos do backend.
+* text=auto eol=lf

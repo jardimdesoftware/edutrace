@@ -81,6 +81,13 @@ jobs:
         working-directory: ./back
         run: npx prisma generate
 
+      # Verifica a formatação sem corrigir: o script lint do backend roda com
+      # --fix e sairia com sucesso depois de reescrever os arquivos, o que
+      # esconderia a divergência em vez de barrar o PR.
+      - name: Lint do backend
+        working-directory: ./back
+        run: npm run lint:check
+
       # Compila o projeto (nest build / tsc). Garante que erros de tipo
       # e de geração do Prisma Client quebrem o PR (ex.: upgrade do Prisma v7).
       - name: Build do backend
