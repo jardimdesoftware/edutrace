@@ -67,8 +67,7 @@ export class CreateUserDto {
   pedagogical_manager?: string;
 
   @ApiProperty({
-    description:
-      'Nível de acesso do usuário criado pelo administrador.',
+    description: 'Nível de acesso do usuário criado pelo administrador.',
     default: 2,
     required: false,
   })
