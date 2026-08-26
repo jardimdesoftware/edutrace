@@ -1,6 +1,9 @@
 name: Publish Docker Images
 
 on:
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       version:
@@ -10,23 +13,39 @@ on:
 
 permissions:
   contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: back-edutrace
+  FRONTEND_IMAGE_NAME: front-edutrace
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.event.release.tag_name || inputs.version }}
 
     steps:
-      - name: Checkout version
+      - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.version }}
+          ref: ${{ env.VERSION }}
+
+      - name: Normalize repository owner
+        run: echo "OWNER_LC=${OWNER,,}" >> "$GITHUB_ENV"
+        env:
+          OWNER: ${{ github.repository_owner }}
 
       - name: Login GHCR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push backend
         uses: docker/build-push-action@v6
@@ -35,8 +54,15 @@ jobs:
           file: ./back/Dockerfile
           push: true
           tags: |
-            ghcr.io/valeriacristinagl/back-edutrace:${{ inputs.version }}
-            ghcr.io/valeriacristinagl/back-edutrace:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.BACKEND_IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.title=EduTrace Backend
+            org.opencontainers.image.description=Backend do EduTrace
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6
@@ -45,5 +71,14 @@ jobs:
           file: ./front/Dockerfile
           push: true
           tags: |
-            ghcr.io/valeriacristinagl/front-edutrace:${{ inputs.version }}
-            ghcr.io/valeriacristinagl/front-edutrace:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_EDU_TRACE=${{ secrets.NEXT_PUBLIC_API_EDU_TRACE }}
+          labels: |
+            org.opencontainers.image.title=EduTrace Frontend
+            org.opencontainers.image.description=Frontend do EduTrace
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
