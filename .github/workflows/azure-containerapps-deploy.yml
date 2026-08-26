@@ -1,0 +1,110 @@
+name: Azure Container Apps Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - backend-pipeline
+      - frontend-pipeline
+    types:
+      - completed
+
+  schedule:
+    # GitHub Actions cron usa UTC.
+    # 03:00 e 15:00 UTC = 00:00 e 12:00 em America/Sao_Paulo na data atual.
+    - cron: "0 3,15 * * *"
+
+  workflow_dispatch:
+
+concurrency:
+  group: edutrace-azure-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  GHCR_OWNER: jardimdesoftware
+  BACKEND_IMAGE_NAME: back-edutrace
+  FRONTEND_IMAGE_NAME: front-edutrace
+  IMAGE_TAG: latest
+  AZURE_RESOURCE_GROUP: rg-qualeider-206522191
+  BACKEND_CONTAINER_APP: edutrace-backend
+  FRONTEND_CONTAINER_APP: edutrace-frontend
+  PUBLIC_HEALTH_URL: https://edutrace.valerialima.me/api/health
+
+jobs:
+  deploy:
+    name: Deploy latest images to Azure Container Apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update Container Apps
+        uses: azure/cli@v3
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          DEPLOY_RUN_ID: ${{ github.run_id }}
+        with:
+          inlineScript: |
+            set -euo pipefail
+
+            az extension add --name containerapp --upgrade
+
+            BACKEND_IMAGE="${REGISTRY}/${GHCR_OWNER}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+            FRONTEND_IMAGE="${REGISTRY}/${GHCR_OWNER}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+
+            echo "Deploying backend image: ${BACKEND_IMAGE}"
+            az containerapp update \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${BACKEND_CONTAINER_APP}" \
+              --image "${BACKEND_IMAGE}" \
+              --set-env-vars \
+                DEPLOY_SHA="${DEPLOY_SHA}" \
+                DEPLOY_RUN_ID="${DEPLOY_RUN_ID}"
+
+            BACKEND_FQDN=$(az containerapp show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${BACKEND_CONTAINER_APP}" \
+              --query properties.configuration.ingress.fqdn \
+              -o tsv)
+
+            echo "Deploying frontend image: ${FRONTEND_IMAGE}"
+            az containerapp update \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${FRONTEND_CONTAINER_APP}" \
+              --image "${FRONTEND_IMAGE}" \
+              --set-env-vars \
+                API_URL="https://${BACKEND_FQDN}" \
+                NEXT_PUBLIC_API_EDU_TRACE="https://${BACKEND_FQDN}" \
+                DEPLOY_SHA="${DEPLOY_SHA}" \
+                DEPLOY_RUN_ID="${DEPLOY_RUN_ID}"
+
+      - name: Verify public healthcheck
+        uses: azure/cli@v3
+        with:
+          inlineScript: |
+            set -euo pipefail
+
+            for attempt in $(seq 1 30); do
+              echo "Healthcheck attempt ${attempt}/30: ${PUBLIC_HEALTH_URL}"
+              if curl -fsS "${PUBLIC_HEALTH_URL}"; then
+                echo ""
+                echo "Deploy verified."
+                exit 0
+              fi
+              sleep 10
+            done
+
+            echo "Healthcheck failed after waiting for the new revision."
+            exit 1
