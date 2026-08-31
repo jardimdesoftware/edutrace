@@ -13,6 +13,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { getToken, authHeaders } from '../../helpers/auth.js';
 import { endpointOptions } from '../../config/options.js';
+import { randomCpf } from '../../helpers/cpf.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
@@ -48,7 +49,7 @@ export default function (data) {
   // ─── 2. POST /users — criar novo usuário (requer admin) ──────────────────
   const createPayload = JSON.stringify({
     full_name: 'Usuário k6 Teste',
-    cpf: `${Math.floor(10000000000 + Math.random() * 89999999999)}`,
+    cpf: randomCpf(),
     email: testEmail,
     password: 'senhaSegura123',
     id_level: 2,
