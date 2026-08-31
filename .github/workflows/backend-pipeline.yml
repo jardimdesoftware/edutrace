@@ -6,16 +6,26 @@ on:
     branches: [ "main" ]
     paths:
       - 'back/**'
+      - '.github/workflows/backend-pipeline.yml'
   workflow_dispatch:
+    inputs:
+      tipo:
+        description: Tipo de mudanca que define o incremento da versao
+        type: choice
+        required: true
+        default: bug-fix
+        options:
+          - bug-fix
+          - nova-feature
+          - marco-no-projeto
 
-# O GITHUB_TOKEN precisa de escrita para publicar a imagem no GHCR,
-# criar a release e atualizar o badge de cobertura no README.
+# Permissao global minima. Jobs especificos elevam para escrever README,
+# publicar imagens no GHCR ou criar release.
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 env:
-  IMAGE_NAME: back-${{ github.event.repository.name }}
+  IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}-backend
   REGISTRY: ghcr.io
 
 jobs:
@@ -44,21 +54,33 @@ jobs:
       - name: Extrair tipo de mudança da PR
         id: tipo
         env:
+          TIPO_INPUT: ${{ inputs.tipo }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          printf '%s\n' "$PR_BODY" > body.txt
-      
-          tipo=""
-          if grep -q "\[x\] marco-no-projeto" body.txt; then
-            tipo="marco-no-projeto"
-          elif grep -q "\[x\] nova-feature" body.txt; then
-            tipo="nova-feature"
-          elif grep -q "\[x\] bug-fix" body.txt; then
-            tipo="bug-fix"
-          else
-            echo "Nenhuma opção marcada corretamente em 'tipo:'"
+          tipo="$TIPO_INPUT"
+
+          if [[ -z "$tipo" ]]; then
+            printf '%s\n' "$PR_BODY" > body.txt
+
+            if grep -q "\[x\] marco-no-projeto" body.txt; then
+              tipo="marco-no-projeto"
+            elif grep -q "\[x\] nova-feature" body.txt; then
+              tipo="nova-feature"
+            elif grep -q "\[x\] bug-fix" body.txt; then
+              tipo="bug-fix"
+            fi
           fi
-          
+
+          if [[ -z "$tipo" && "$PR_AUTHOR" == "dependabot[bot]" ]]; then
+            tipo="bug-fix"
+          fi
+
+          if [[ -z "$tipo" ]]; then
+            echo "Nenhuma opcao marcada em 'tipo:' no corpo da PR: marque marco-no-projeto, nova-feature ou bug-fix."
+            exit 1
+          fi
+
           echo "tipo=$tipo" >> "$GITHUB_OUTPUT"
 
       - name: Obter a última tag da release
@@ -91,6 +113,8 @@ jobs:
     name: 2. Rodar testes do backend
     runs-on: ubuntu-latest
     needs: prepare-tag
+    permissions:
+      contents: write
 
     # Os testes unitários mockam o Prisma, mas o PrismaService valida a
     # presença de DATABASE_URL na construção — o valor não precisa apontar
@@ -184,48 +208,51 @@ jobs:
       packages: write
     env:
       TAG: ${{ needs.prepare-tag.outputs.new_tag }}
-      IMAGE_NAME: back-${{ github.event.repository.name }}
+      IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}-backend
       REGISTRY: ghcr.io
 
     steps:
       - uses: actions/checkout@v4
 
-      # Build Docker image
-      - name: Injetar label de source no Dockerfile
-        run: |
-          echo "LABEL org.opencontainers.image.source=https://github.com/${{ github.repository }}" >> back/Dockerfile
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        run: |
-          docker build ./back \
-            -f back/Dockerfile \
-            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
-            --build-arg REPO_URL="https://github.com/${{ github.repository }}"
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./back
+          file: ./back/Dockerfile
+          push: true
+          build-args: |
+            REPO_URL=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.title=EduTrace Backend
+            org.opencontainers.image.description=Backend do EduTrace
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.TAG }}
 
       # Scan Docker image
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
           format: table
           exit-code: 0
           severity: CRITICAL,HIGH
-
-      - name: Tag image as latest
-        run: |
-          docker tag ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
-
-      # Push Docker image (desabilitado temporariamente - sem deploy automático)
-      - name: Login no GHCR
-        run: |
-          TOKEN="${{ secrets.GHCR_PAT }}"
-          if [ -z "$TOKEN" ]; then TOKEN="${{ secrets.GITHUB_TOKEN }}"; fi
-          echo "$TOKEN" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-      - name: Push Docker image
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
-          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
 # --------------------------------------------------------------------
 # 5) CREATE RELEASE --------------------------------------------------
@@ -234,6 +261,8 @@ jobs:
     name: 5. Criar release
     runs-on: ubuntu-latest
     needs: [docker-build-scan-push, prepare-tag]
+    permissions:
+      contents: write
     env:
       NEW_TAG: ${{ needs.prepare-tag.outputs.new_tag }}
       TIPO:    ${{ needs.prepare-tag.outputs.tipo }}
@@ -267,4 +296,3 @@ jobs:
   #   steps:
   #     - name: Trigger Portainer webhook to update Backend service
   #       run: curl -X POST ${{ secrets.PORTAINER_WEBHOOK_BACKEND }}
-

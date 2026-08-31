@@ -26,8 +26,8 @@ permissions:
 env:
   REGISTRY: ghcr.io
   GHCR_OWNER: jardimdesoftware
-  BACKEND_IMAGE_NAME: back-edutrace
-  FRONTEND_IMAGE_NAME: front-edutrace
+  BACKEND_IMAGE_NAME: edutrace-backend
+  FRONTEND_IMAGE_NAME: edutrace-frontend
   IMAGE_TAG: latest
   AZURE_RESOURCE_GROUP: rg-qualeider-206522191
   BACKEND_CONTAINER_APP: edutrace-backend
