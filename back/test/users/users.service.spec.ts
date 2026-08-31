@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
+import { ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { UsersService } from 'src/users/users.service';
@@ -119,7 +121,7 @@ describe('UsersService', () => {
     it('should use provided id_level when given', async () => {
       const createDto = {
         full_name: 'Admin',
-        cpf: '00000000000',
+        cpf: '01234567890',
         email: 'admin@test.com',
         password: 'adminPass',
         affliation: 'Test',
@@ -172,6 +174,55 @@ describe('UsersService', () => {
       const result = await service.findOne('notfound@test.com');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('create, violação de campo único', () => {
+    const createDto = {
+      full_name: 'Usuário de Teste',
+      cpf: '01234567890',
+      email: 'usuario@edutrace.com',
+      password: 'senhaSegura123',
+    };
+
+    function uniqueViolation(target: string[]) {
+      return new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '6.0.0', meta: { target } },
+      );
+    }
+
+    beforeEach(() => {
+      jest.mocked(bcryptjs.hash).mockResolvedValue('hashedPassword' as never);
+    });
+
+    it('should answer 409 when the cpf is already taken', async () => {
+      jest
+        .spyOn(prisma.user, 'create')
+        .mockRejectedValue(uniqueViolation(['cpf']));
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        new ConflictException('Este CPF já está cadastrado.'),
+      );
+    });
+
+    it('should answer 409 when the email is already taken', async () => {
+      jest
+        .spyOn(prisma.user, 'create')
+        .mockRejectedValue(uniqueViolation(['email']));
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        new ConflictException('Este e-mail já está cadastrado.'),
+      );
+    });
+
+    it('should propagate errors that are not a unique violation', async () => {
+      const erroQualquer = new Error('conexão perdida');
+      jest.spyOn(prisma.user, 'create').mockRejectedValue(erroQualquer);
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        erroQualquer,
+      );
     });
   });
 
