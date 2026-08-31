@@ -25,7 +25,10 @@ async function bootstrap() {
     origin: isProduction ? origins : true,
     credentials: true,
   });
-  app.useGlobalPipes(new ValidationPipe());
+  // transform: true faz o controller receber a instância do DTO, e não o corpo
+  // cru. Sem isso o @Transform do CPF normalizaria apenas o objeto usado na
+  // validação, e o valor com máscara chegaria ao banco assim mesmo.
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   const config = new DocumentBuilder()
     .setTitle('Documentação API pe-estudantes')
