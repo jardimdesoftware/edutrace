@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { hash } from 'bcryptjs';
 import { LEVELS, PHASES } from 'src/constants';
 import { SessionsService } from 'src/sessions/sessions.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -17,17 +18,44 @@ export class UsersService {
     const encryptedPassword = await hash(createUserDto.password, 10);
     const { id_level, ...userData } = createUserDto;
 
-    const userCreated = this.prisma.user.create({
-      data: {
-        ...userData,
-        password: encryptedPassword,
-        id_level: id_level ?? LEVELS.ALUNO_ESTUDANTE,
-        id_current_phase: PHASES.TRIAGEM,
-        must_change_password: true,
-      },
-    });
+    try {
+      return await this.prisma.user.create({
+        data: {
+          ...userData,
+          password: encryptedPassword,
+          id_level: id_level ?? LEVELS.ALUNO_ESTUDANTE,
+          id_current_phase: PHASES.TRIAGEM,
+          must_change_password: true,
+        },
+      });
+    } catch (error) {
+      // cpf e email são únicos no schema. Sem este tratamento a violação da
+      // constraint sobe como 500 e quem cadastra não sabe o que aconteceu.
+      throw this.duplicateFieldError(error) ?? error;
+    }
+  }
 
-    return userCreated;
+  private duplicateFieldError(error: unknown): ConflictException | null {
+    const isUniqueViolation =
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002';
+
+    if (!isUniqueViolation) {
+      return null;
+    }
+
+    const target = error.meta?.target;
+    const fields = Array.isArray(target) ? target : [target];
+
+    if (fields.includes('cpf')) {
+      return new ConflictException('Este CPF já está cadastrado.');
+    }
+
+    if (fields.includes('email')) {
+      return new ConflictException('Este e-mail já está cadastrado.');
+    }
+
+    return new ConflictException('Registro já cadastrado.');
   }
 
   async findAll() {
