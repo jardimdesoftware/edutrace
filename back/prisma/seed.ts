@@ -58,7 +58,7 @@ async function main() {
         await prisma.user.create({
           data: {
             full_name: 'Administrador Padrão',
-            cpf: '00000000000',
+            cpf: '01234567890',
             email: 'admin@edutrace.com',
             password: encryptedPassword,
             id_level: adminLevel.id,
