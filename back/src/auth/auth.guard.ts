@@ -73,7 +73,7 @@ export class AuthGuard implements CanActivate {
         requiredLevels.length > 0 &&
         requiredLevels.includes(payload.id_level)
       ) {
-        throw new UnauthorizedException('Nível de acesso insuficiente');
+        throw new ForbiddenException('Nível de acesso insuficiente');
       }
     } catch (error) {
       if (

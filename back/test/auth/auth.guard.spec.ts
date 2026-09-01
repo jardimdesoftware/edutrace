@@ -179,7 +179,7 @@ describe('AuthGuard', () => {
       );
     });
 
-    it('should throw UnauthorizedException when level is restricted', async () => {
+    it('should throw ForbiddenException when level is restricted', async () => {
       const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
@@ -193,8 +193,29 @@ describe('AuthGuard', () => {
       } as any;
 
       await expect(guard.canActivate(context)).rejects.toThrow(
-        new UnauthorizedException('Nível de acesso insuficiente'),
+        new ForbiddenException('Nível de acesso insuficiente'),
       );
+    });
+
+    it('should answer level restriction with 403, not 401', async () => {
+      const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
+      jest.spyOn(reflector, 'get').mockReturnValue([2]);
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer valid.token',
+      });
+
+      // O cliente encerra a sessão em qualquer 401 de chamada autenticada, então
+      // o status aqui decide entre mostrar o erro e derrubar o usuário do sistema.
+      const erro: ForbiddenException = await guard
+        .canActivate(context)
+        .then(() => null as never)
+        .catch((e: ForbiddenException) => e);
+
+      expect(erro.getStatus()).toBe(403);
+      expect(erro).not.toBeInstanceOf(UnauthorizedException);
     });
 
     it('should allow access when user level is not in the restricted list', async () => {
