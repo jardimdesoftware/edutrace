@@ -6,6 +6,7 @@ import { hash } from 'bcryptjs';
 import { LEVELS, PHASES } from 'src/constants';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { Prisma } from '@prisma/client';
+import { PUBLIC_USER_SELECT } from './users.select';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +21,7 @@ export class UsersService {
 
     try {
       return await this.prisma.user.create({
+        select: PUBLIC_USER_SELECT,
         data: {
           ...userData,
           password: encryptedPassword,
@@ -60,30 +62,27 @@ export class UsersService {
 
   async findAll() {
     return this.prisma.user.findMany({
-      select: {
-        id: true,
-        full_name: true,
-        affliation: true,
-        cpf: true,
-        pedagogical_manager: true,
-        comments: true,
-        current_phase: true,
-        created_at: true,
-        deleted_at: true,
-        email: true,
-        id_current_phase: true,
-        id_level: true,
-        level: true,
-        updated_at: true,
-      },
+      select: PUBLIC_USER_SELECT,
     });
   }
 
+  // Uso interno da autenticação: devolve o registro completo, incluindo a senha e
+  // os campos de recuperação, que signIn, updateProfile e validateResetCode
+  // precisam ler. Não pode ser devolvido direto em resposta HTTP.
   async findOne(email: string) {
     return this.prisma.user.findUnique({
       where: {
         email: email,
       },
+    });
+  }
+
+  async findOnePublic(email: string) {
+    return this.prisma.user.findUnique({
+      where: {
+        email: email,
+      },
+      select: PUBLIC_USER_SELECT,
     });
   }
 
