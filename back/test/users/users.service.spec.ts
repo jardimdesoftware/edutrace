@@ -3,6 +3,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SessionsService } from 'src/sessions/sessions.service';
+import { PUBLIC_USER_SELECT } from 'src/users/users.select';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { LEVELS, PHASES } from 'src/constants';
@@ -107,6 +108,7 @@ describe('UsersService', () => {
       expect(bcryptjs.hash).toHaveBeenCalledWith('plainPassword', 10);
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          select: PUBLIC_USER_SELECT,
           data: expect.objectContaining({
             password: 'hashedPassword',
             id_level: LEVELS.ALUNO_ESTUDANTE,
@@ -130,7 +132,9 @@ describe('UsersService', () => {
       };
 
       jest.mocked(bcryptjs.hash).mockResolvedValue('hashedPassword' as never);
-      jest.spyOn(prisma.user, 'create').mockResolvedValue({ ...mockUser, id_level: LEVELS.ADMIN });
+      jest
+        .spyOn(prisma.user, 'create')
+        .mockResolvedValue({ ...mockUser, id_level: LEVELS.ADMIN });
 
       await service.create(createDto as any);
 
@@ -156,7 +160,32 @@ describe('UsersService', () => {
     });
   });
 
+  describe('findOnePublic', () => {
+    it('should read only the public fields', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
+
+      await service.findOnePublic('test@test.com');
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        select: PUBLIC_USER_SELECT,
+      });
+    });
+  });
+
   describe('findOne', () => {
+    it('should keep reading the whole record, which authentication depends on', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
+
+      await service.findOne('test@test.com');
+
+      const argumentos = (prisma.user.findUnique as jest.Mock).mock.calls[0][0];
+
+      // signIn, updateProfile e validateResetCode leem a senha e os campos de
+      // recuperação por aqui: um select neste método quebra login e reset.
+      expect(argumentos).not.toHaveProperty('select');
+    });
+
     it('should return a user by email', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
 
@@ -228,7 +257,10 @@ describe('UsersService', () => {
 
   describe('update', () => {
     it('should update user full_name and id_level', async () => {
-      const updateDto = { full_name: 'Updated Name', id_level: LEVELS.PROFISSIONAL_EDUCACAO };
+      const updateDto = {
+        full_name: 'Updated Name',
+        id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+      };
       const updatedUser = { ...mockUser, ...updateDto };
       jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
 
@@ -275,7 +307,8 @@ describe('UsersService', () => {
       const updatedUser = { ...mockUser, password_reset_attempts: 1 };
       jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
 
-      const result = await service.incrementPasswordResetAttempts('test@test.com');
+      const result =
+        await service.incrementPasswordResetAttempts('test@test.com');
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { email: 'test@test.com' },
@@ -294,7 +327,9 @@ describe('UsersService', () => {
         id_level: 3,
       });
 
-      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(mockUser.id);
+      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(
+        mockUser.id,
+      );
     });
 
     it('should keep the sessions when the level is not part of the change', async () => {
@@ -328,7 +363,11 @@ describe('UsersService', () => {
   describe('lockAccount', () => {
     it('should store the deadline, count the lock and reset the failures', async () => {
       const lockedUntil = new Date('2026-08-23T12:15:00.000Z');
-      const updatedUser = { ...mockUser, locked_until: lockedUntil, login_lock_count: 1 };
+      const updatedUser = {
+        ...mockUser,
+        locked_until: lockedUntil,
+        login_lock_count: 1,
+      };
       jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
 
       const result = await service.lockAccount('test@test.com', lockedUntil);
