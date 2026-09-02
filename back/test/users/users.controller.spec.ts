@@ -30,7 +30,28 @@ describe('UsersController', () => {
     deleted_at: null,
   };
 
-  const maskedUser = { ...mockUser, cpf: '***.456.789-**' };
+  // Recorte que create, findAll e findOnePublic devolvem: sem a senha, sem os
+  // campos de recuperação e sem os contadores de bloqueio.
+  const {
+    password: _senha,
+    password_reset_token: _token,
+    password_reset_expires: _expira,
+    password_reset_attempts: _tentativas,
+    must_change_password: _troca,
+    failed_login_attempts: _falhas,
+    locked_until: _bloqueio,
+    login_lock_count: _bloqueios,
+    ...camposPublicos
+  } = mockUser;
+
+  const mockPublicUser = {
+    ...camposPublicos,
+    comments: [],
+    level: { id: LEVELS.ALUNO_ESTUDANTE, name: 'Aluno/Estudante' },
+    current_phase: { id: 1, name: 'Triagem' },
+  };
+
+  const maskedUser = { ...mockPublicUser, cpf: '***.456.789-**' };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,6 +63,7 @@ describe('UsersController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            findOnePublic: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
           },
@@ -59,9 +81,13 @@ describe('UsersController', () => {
 
   describe('create', () => {
     it('should create a user when requester is admin', async () => {
-      const createDto = { full_name: 'New User', email: 'new@test.com', password: '123' };
+      const createDto = {
+        full_name: 'New User',
+        email: 'new@test.com',
+        password: '123',
+      };
       const adminRequest = { user: { id_level: LEVELS.ADMIN } } as any;
-      jest.spyOn(service, 'create').mockResolvedValue(mockUser);
+      jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
 
       const result = await controller.create(createDto as any, adminRequest);
 
@@ -70,8 +96,14 @@ describe('UsersController', () => {
     });
 
     it('should throw ForbiddenException when requester is not admin', async () => {
-      const createDto = { full_name: 'New User', email: 'new@test.com', password: '123' };
-      const nonAdminRequest = { user: { id_level: LEVELS.PROFISSIONAL_EDUCACAO } } as any;
+      const createDto = {
+        full_name: 'New User',
+        email: 'new@test.com',
+        password: '123',
+      };
+      const nonAdminRequest = {
+        user: { id_level: LEVELS.PROFISSIONAL_EDUCACAO },
+      } as any;
 
       await expect(
         controller.create(createDto as any, nonAdminRequest),
@@ -82,7 +114,9 @@ describe('UsersController', () => {
 
   describe('findAll', () => {
     it('should return an array of users with masked cpf', async () => {
-      jest.spyOn(service, 'findAll').mockResolvedValue([mockUser as any]);
+      jest
+        .spyOn(service, 'findAll')
+        .mockResolvedValue([mockPublicUser as never]);
 
       const result = await controller.findAll();
 
@@ -93,16 +127,18 @@ describe('UsersController', () => {
 
   describe('findOne', () => {
     it('should return a user by email with masked cpf', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue(mockUser);
+      jest
+        .spyOn(service, 'findOnePublic')
+        .mockResolvedValue(mockPublicUser as never);
 
       const result = await controller.findOne('test@test.com');
 
-      expect(service.findOne).toHaveBeenCalledWith('test@test.com');
+      expect(service.findOnePublic).toHaveBeenCalledWith('test@test.com');
       expect(result).toEqual(maskedUser);
     });
 
     it('should return null when the user does not exist', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue(null);
+      jest.spyOn(service, 'findOnePublic').mockResolvedValue(null);
 
       const result = await controller.findOne('missing@test.com');
 
