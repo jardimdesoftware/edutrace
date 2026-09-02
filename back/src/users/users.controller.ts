@@ -53,7 +53,7 @@ export class UsersController {
   @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get(':email')
   async findOne(@Param('email') email: string) {
-    const user = await this.usersService.findOne(email);
+    const user = await this.usersService.findOnePublic(email);
     return user ? maskUserCpf(user) : user;
   }
 
