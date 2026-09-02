@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS } from 'src/constants';
+import { PUBLIC_USER_SELECT } from 'src/users/users.select';
 import { StudentsService } from 'src/students/students.service';
 
 describe('StudentsService', () => {
@@ -31,6 +32,22 @@ describe('StudentsService', () => {
   });
 
   describe('findAll', () => {
+    it('should not select the password nor the recovery fields', () => {
+      const camposSensiveis = [
+        'password',
+        'password_reset_token',
+        'password_reset_expires',
+        'password_reset_attempts',
+        'failed_login_attempts',
+        'locked_until',
+        'login_lock_count',
+      ];
+
+      camposSensiveis.forEach((campo) =>
+        expect(PUBLIC_USER_SELECT).not.toHaveProperty(campo),
+      );
+    });
+
     it('should return an array of students', async () => {
       const studentsList = [
         {
@@ -38,45 +55,37 @@ describe('StudentsService', () => {
           full_name: 'Luizin',
           cpf: '12345678910',
           email: 'luizin@hotmail.com',
-          password: 'senhaSegura123',
           affliation: 'Filiação',
           pedagogical_manager: 'Luizin',
-          password_reset_token: null,
-          password_reset_expires: null,
-          password_reset_attempts: 0,
-          must_change_password: false,
-          failed_login_attempts: 0,
-          locked_until: null,
-          login_lock_count: 0,
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
           id_level: 2,
           id_current_phase: 1,
+          comments: [],
+          level: { id: 2, name: 'Aluno/Estudante' },
+          current_phase: { id: 1, name: 'Triagem' },
         },
         {
           id: 2,
           full_name: 'Luizin',
           cpf: '12345678910',
           email: 'luizin@hotmail.com',
-          password: 'senhaSegura123',
           affliation: 'Filiação',
           pedagogical_manager: 'Luizin',
-          password_reset_token: null,
-          password_reset_expires: null,
-          password_reset_attempts: 0,
-          must_change_password: false,
-          failed_login_attempts: 0,
-          locked_until: null,
-          login_lock_count: 0,
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
           id_level: 2,
           id_current_phase: 1,
+          comments: [],
+          level: { id: 2, name: 'Aluno/Estudante' },
+          current_phase: { id: 1, name: 'Triagem' },
         },
       ];
-      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(studentsList);
+      jest
+        .spyOn(prisma.user, 'findMany')
+        .mockResolvedValue(studentsList as never);
 
       const result = await service.findAll();
 
@@ -84,6 +93,7 @@ describe('StudentsService', () => {
         where: {
           id_level: LEVELS.ALUNO_ESTUDANTE,
         },
+        select: PUBLIC_USER_SELECT,
       });
       expect(result).toEqual(studentsList);
     });
