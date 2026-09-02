@@ -26,8 +26,5 @@ Acesse agora pelo [Link](https://front.edutrace.site/)
 ## 📖 Documentação e Wiki
 Acesse a Wiki do Projeto para mais detalhes sobre requisitos, arquitetura e fluxo do sistema.
 
-## 🎨 Protótipo
-Acesse o protótipo no [Figma](https://www.figma.com/design/94COnZtjY5Led94oQUzh6y/PEP?node-id=0-1&t=Xo5pCV3UAPm9EPUW-1).
-
 ## Weekly
 Acesse nossa weekly no [Canva](https://canva.link/ig3m8fzockzm8yh).
