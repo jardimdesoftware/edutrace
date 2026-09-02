@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS } from 'src/constants';
+import { PUBLIC_USER_SELECT } from 'src/users/users.select';
 
 @Injectable()
 export class StudentsService {
@@ -11,6 +12,7 @@ export class StudentsService {
       where: {
         id_level: LEVELS.ALUNO_ESTUDANTE,
       },
+      select: PUBLIC_USER_SELECT,
     });
   }
 }
