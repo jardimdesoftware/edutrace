@@ -11,6 +11,9 @@ import { decodeToken } from "@/services/auth/decodeToken";
 import Swal from "sweetalert2"; // 🟢 importação adicionada
 import Loading from "@/components/Loading";
 
+const GITHUB_LATEST_RELEASE_API =
+  "https://api.github.com/repos/jardimdesoftware/edutrace/releases/latest";
+
 // Importação dinâmica para evitar erro de hydration
 const BrInput = dynamic(() =>
   import("@govbr-ds-testing/webcomponents-react").then((mod) => mod.BrInput), { ssr: false }
@@ -39,7 +42,7 @@ function LoginPage() {
   const [version, setVersion] = useState("");
 
   useEffect(() => {
-    fetch("https://api.github.com/repos/ifpebj-ti/pe-estudantes/releases/latest")
+    fetch(GITHUB_LATEST_RELEASE_API)
       .then((res) => res.json())
       .then((data) => {
         const tag = data.tag_name;
