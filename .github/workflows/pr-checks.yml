@@ -243,3 +243,79 @@ jobs:
           fi
 
           echo "✅ INTERNAL_API_URL configurada para a rede interna."
+
+# --------------------------------------------------------------------
+# CONFIG – SERVIÇO DO FRONT NO COMPOSE DE PRODUÇÃO --------------------
+# --------------------------------------------------------------------
+  frontend-service-check:
+    name: Config – Serviço do front no compose de produção
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.deploy_config == 'true' }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Renderiza o compose com uma porta de host diferente de 3000. É esse
+      # cenário que separa uma configuração correta de uma que só funciona por
+      # coincidência: o Next precisa escutar na porta de destino do mapeamento,
+      # e não na porta publicada no host.
+      - name: Verificar imagem e porta do serviço do front
+        run: |
+          status=0
+
+          cat > ci.env <<'VARS'
+          PORT_MACHINE_FRONTEND=8080
+          PORT_MACHINE_BACKEND=3001
+          PORT_MACHINE_DB=5432
+          POSTGRES_USER=ci
+          POSTGRES_PASSWORD=ci
+          POSTGRES_DB=ci
+          DATABASE_URL=postgresql://ci:ci@postgres-db:5432/ci
+          NODE_ENV=production
+          SECRET_KEY=ci
+          FRONTEND_URL=http://localhost:8080
+          ADMIN_PASSWORD=ci
+          SMTP_HOST=ci
+          SMTP_PORT=587
+          SMTP_USER=ci
+          SMTP_PASS=ci
+          MAIL_FROM=ci
+          API_URL=https://api.exemplo
+          NEXT_PUBLIC_API_EDU_TRACE=https://api.exemplo
+          INTERNAL_API_URL=http://nest-app:3000
+          CLARITY_PROJECT_ID=off
+          VARS
+
+          docker compose --env-file ci.env -f docker-compose-prod.yml config --format json > compose.json
+
+          leia() {
+            python3 -c "import json,sys; s=json.load(open('compose.json'))['services']['next-app']; print($1)"
+          }
+
+          imagem=$(leia "s['image']")
+          porta=$(leia "s['environment']['PORT']")
+          destino=$(leia "s['ports'][0]['target']")
+
+          # A imagem precisa ser a que o frontend-pipeline publica e que o
+          # deploy consome. Apontar para outro repositório entrega uma versão
+          # que este projeto não constrói.
+          esperada="ghcr.io/jardimdesoftware/edutrace-frontend:latest"
+          if [ "$imagem" != "$esperada" ]; then
+            echo "❌ docker-compose-prod.yml usa a imagem $imagem."
+            echo "   O frontend-pipeline publica $esperada."
+            status=1
+          fi
+
+          if [ "$porta" != "$destino" ]; then
+            echo "❌ O serviço do front escuta na porta $porta, e o mapeamento entrega em $destino."
+            echo "   O contêiner sobe, mas a porta publicada não alcança o servidor."
+            status=1
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "✅ Serviço do front aponta para $imagem e escuta em $destino."
