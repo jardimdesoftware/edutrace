@@ -1,11 +1,11 @@
 services:
   next-app:
-    image: ghcr.io/ifpebj-ti/front-pe-estudantes:latest
+    image: ghcr.io/jardimdesoftware/edutrace-frontend:latest
     container_name: next-frontend
     ports:
      - "${PORT_MACHINE_FRONTEND}:3000"
     environment:
-     - PORT=${PORT_MACHINE_FRONTEND}
+     - PORT=3000
      - API_URL=${API_URL}
      - INTERNAL_API_URL=${INTERNAL_API_URL}
      - NEXT_PUBLIC_API_EDU_TRACE=${NEXT_PUBLIC_API_EDU_TRACE}
