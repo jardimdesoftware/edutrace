@@ -11,15 +11,27 @@ type SessionCheck =
   | { status: 'invalid' }
   | { status: 'unavailable' }
 
+// Esta função roda no servidor, dentro do container do front, e não no navegador.
+// API_URL e NEXT_PUBLIC_API_EDU_TRACE carregam o endereço publicado no host, que
+// aqui aponta para o próprio container. INTERNAL_API_URL carrega o endereço do
+// backend na rede interna, e os dois seguintes ficam como alternativa para quem
+// roda fora do Docker, onde os dois endereços são o mesmo.
 function getApiUrl() {
-  return process.env.API_URL || process.env.NEXT_PUBLIC_API_EDU_TRACE || ''
+  return (
+    process.env.INTERNAL_API_URL ||
+    process.env.API_URL ||
+    process.env.NEXT_PUBLIC_API_EDU_TRACE ||
+    ''
+  )
 }
 
 async function checkSession(token: string): Promise<SessionCheck> {
   const apiUrl = getApiUrl()
 
   if (!apiUrl) {
-    console.error('API_URL não configurada, não é possível verificar a sessão')
+    console.error(
+      'INTERNAL_API_URL não configurada, não é possível verificar a sessão',
+    )
     return { status: 'unavailable' }
   }
 
