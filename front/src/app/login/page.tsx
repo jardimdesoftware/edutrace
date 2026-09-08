@@ -11,6 +11,11 @@ import { decodeToken } from "@/services/auth/decodeToken";
 import Swal from "sweetalert2"; // 🟢 importação adicionada
 import Loading from "@/components/Loading";
 
+const GITHUB_LATEST_RELEASE_API =
+  "https://api.github.com/repos/jardimdesoftware/edutrace/releases/latest";
+const GITHUB_RELEASE_TAG_PREFIX =
+  "https://github.com/jardimdesoftware/edutrace/releases/tag/";
+
 // Importação dinâmica para evitar erro de hydration
 const BrInput = dynamic(() =>
   import("@govbr-ds-testing/webcomponents-react").then((mod) => mod.BrInput), { ssr: false }
@@ -36,10 +41,13 @@ function LoginPage() {
   const [showFirstAccessInfo, setShowFirstAccessInfo] = useState(false);
   const router = useRouter();
   const { setUser } = useAuth();
-  const [version, setVersion] = useState("");
+  const [release, setRelease] = useState<{ label: string; url: string | null }>({
+    label: "",
+    url: null,
+  });
 
   useEffect(() => {
-    fetch("https://api.github.com/repos/ifpebj-ti/pe-estudantes/releases/latest")
+    fetch(GITHUB_LATEST_RELEASE_API)
       .then((res) => res.json())
       .then((data) => {
         const tag = data.tag_name;
@@ -48,7 +56,12 @@ function LoginPage() {
           day: "2-digit",
           year: "numeric",
         });
-        setVersion(`${tag} (${date})`);
+        const url =
+          typeof data.html_url === "string" &&
+          data.html_url.startsWith(GITHUB_RELEASE_TAG_PREFIX)
+            ? data.html_url
+            : null;
+        setRelease({ label: `${tag} (${date})`, url });
       });
   }, []);
 
@@ -186,7 +199,21 @@ function LoginPage() {
           </div>
         </form>
         <div>
-          <p className="text-sm ">Versão {version}</p>
+          <p className="text-sm">
+            Versão{" "}
+            {release.url ? (
+              <a
+                className="font-semibold text-emerald-800 underline"
+                href={release.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {release.label}
+              </a>
+            ) : (
+              release.label
+            )}
+          </p>
         </div>
       </section>
     </div>
