@@ -7,6 +7,10 @@ on:
     paths:
       - 'back/**'
       - 'front/**'
+      - 'docker-compose-dev.yml'
+      - 'docker-compose-prod.yml'
+      - '.env.development.example'
+      - '.env.production.example'
       - '.github/workflows/pr-checks.yml'
   workflow_dispatch:
 
@@ -20,6 +24,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      deploy_config: ${{ steps.filter.outputs.deploy_config }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +38,13 @@ jobs:
               - '.github/workflows/pr-checks.yml'
             frontend:
               - 'front/**'
+              - '.github/workflows/pr-checks.yml'
+            deploy_config:
+              - 'docker-compose-dev.yml'
+              - 'docker-compose-prod.yml'
+              - '.env.development.example'
+              - '.env.production.example'
+              - 'front/src/middleware.ts'
               - '.github/workflows/pr-checks.yml'
 
 # --------------------------------------------------------------------
@@ -172,3 +184,62 @@ jobs:
           NEXT_PUBLIC_API_EDU_TRACE: http://localhost:3001
           NODE_OPTIONS: --max-old-space-size=4096
         run: npm run build
+
+# --------------------------------------------------------------------
+# CONFIG – URL INTERNA DA API ----------------------------------------
+# --------------------------------------------------------------------
+  internal-api-url-check:
+    name: Config – URL interna da API no front
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.deploy_config == 'true' }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # O middleware do front verifica a sessão chamando o backend a partir do
+      # servidor Next, que roda dentro do container. Com o endereço publicado no
+      # host, esse fetch falha e toda rota protegida devolve 307 para a tela de
+      # login, sem erro visível no navegador. O endereço server-side precisa ser
+      # o do serviço na rede do compose.
+      - name: Verificar INTERNAL_API_URL nos composes e nos exemplos de ambiente
+        run: |
+          status=0
+
+          for arquivo in docker-compose-dev.yml docker-compose-prod.yml; do
+            if ! grep -qF 'INTERNAL_API_URL=${INTERNAL_API_URL}' "$arquivo"; then
+              echo "❌ $arquivo não repassa INTERNAL_API_URL ao serviço do front."
+              status=1
+            fi
+          done
+
+          for arquivo in .env.development.example .env.production.example; do
+            valor=$(grep -E '^INTERNAL_API_URL=' "$arquivo" | head -1 | cut -d= -f2-)
+
+            if [ -z "$valor" ]; then
+              echo "❌ $arquivo não define INTERNAL_API_URL."
+              status=1
+              continue
+            fi
+
+            case "$valor" in
+              *localhost*|*127.0.0.1*)
+                echo "❌ $arquivo define INTERNAL_API_URL como $valor."
+                echo "   Dentro do container do front, localhost é o próprio front."
+                echo "   Use o host do serviço na rede do compose, ex.: http://nest-app:3000."
+                status=1
+                ;;
+            esac
+          done
+
+          if ! grep -q 'process.env.INTERNAL_API_URL' front/src/middleware.ts; then
+            echo "❌ front/src/middleware.ts não lê INTERNAL_API_URL."
+            status=1
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "✅ INTERNAL_API_URL configurada para a rede interna."
