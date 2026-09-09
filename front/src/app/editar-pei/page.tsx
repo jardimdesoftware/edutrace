@@ -159,7 +159,7 @@ function PEIPage() {
                 </button>
         </div>
         </AppLayout>
-      )
+      );
     }
     
     return (

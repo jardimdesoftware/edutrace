@@ -163,7 +163,7 @@ function AnamnesePage() {
                 </button>
         </div>
         </AppLayout>
-    )
+    );
   }
 
     
