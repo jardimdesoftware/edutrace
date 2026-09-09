@@ -16,6 +16,10 @@ updates:
       prefix: "chore: "
     labels:
       - "type: chore"
+    ignore:
+      - dependency-name: "@nestjs/*"
+        update-types:
+          - "version-update:semver-major"
     groups:
       nestjs:
         patterns:
