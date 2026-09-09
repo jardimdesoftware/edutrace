@@ -184,7 +184,7 @@ function TriagemPage() {
                 </button>
         </div>
       </AppLayout>
-    )
+    );
   }
 
 

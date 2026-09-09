@@ -799,7 +799,7 @@ function AnamnesePage() {
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui uma Anamnese cadastrada</h2>
         </div>
         </AppLayout>
-    )
+    );
   }
 
   return (

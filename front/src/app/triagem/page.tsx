@@ -366,7 +366,7 @@ function TriagemPage() {
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui uma Triagem cadastrada</h2>
         </div>
       </AppLayout>
-    )
+    );
   }
 
   // Se a triagem EXISTE, renderiza o formulário de VISUALIZAÇÃO

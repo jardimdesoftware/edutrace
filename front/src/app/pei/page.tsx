@@ -574,7 +574,7 @@ function PEIPage() {
                 <h2 className="text-xl font-bold text-green-700">O estudante ainda não possui um PEI cadastrado</h2>
         </div>
         </AppLayout>
-      )
+      );
     }
 
   // Se o PEI EXISTE, renderiza o formulário de VISUALIZAÇÃO (sem alterações)
