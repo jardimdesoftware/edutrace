@@ -17,6 +17,21 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+export async function loginWithGoogle(credential: string) {
+  const data = await apiRequest('/auth/google', {
+    method: 'POST',
+    body: { credential },
+    auth: false,
+    errorMessage: 'Erro ao fazer login com Google',
+  });
+
+  localStorage.setItem('token', data.access_token);
+
+  setTokenCookie(data.access_token);
+
+  return data;
+}
+
 export async function logout() {
   // O 401 aqui significa que a sessão já não vale no servidor, e o encerramento
   // local acontece de qualquer forma em quem chama.

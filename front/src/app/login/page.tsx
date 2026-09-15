@@ -2,12 +2,13 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { login } from "@/services/auth/login";
+import { login, loginWithGoogle } from "@/services/auth/login";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { decodeToken } from "@/services/auth/decodeToken";
 import Swal from "sweetalert2";
 import Loading from "@/components/Loading";
+import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 
 const GITHUB_LATEST_RELEASE_API =
   "https://api.github.com/repos/jardimdesoftware/edutrace/releases/latest";
@@ -82,6 +83,15 @@ function LoginPage() {
       showLoginError(error);
     }
   };
+
+  const handleGoogleCredential = useCallback(async (credential: string) => {
+    try {
+      await loginWithGoogle(credential);
+      finishLogin();
+    } catch (error) {
+      showLoginError(error);
+    }
+  }, [finishLogin, showLoginError]);
 
   return (
     <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542] lg:overflow-hidden">
@@ -215,7 +225,7 @@ function LoginPage() {
                 </div>
 
                 <div
-                  className="mt-5 hidden w-full items-center gap-4 px-10 sm:mt-7 sm:flex sm:px-14"
+                  className="mt-4 flex w-full items-center gap-4 px-10 sm:mt-7 sm:px-14"
                   aria-hidden="true"
                 >
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
@@ -223,6 +233,13 @@ function LoginPage() {
                     ou
                   </span>
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
+                </div>
+
+                <div className="mt-3 sm:mt-4">
+                  <GoogleLoginButton
+                    onCredential={handleGoogleCredential}
+                    onError={showLoginError}
+                  />
                 </div>
 
                 <div className="mt-2.5 flex w-full items-center justify-center text-center sm:mt-5">

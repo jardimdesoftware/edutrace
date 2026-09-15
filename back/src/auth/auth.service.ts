@@ -12,6 +12,7 @@ import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import { randomInt, randomUUID } from 'node:crypto';
 import { SessionsService } from 'src/sessions/sessions.service';
+import { LEVELS } from 'src/constants';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
@@ -19,6 +20,7 @@ const MAX_RESET_ATTEMPTS = 5;
 // Resposta única para qualquer falha de autenticação. Mensagens distintas para
 // e-mail inexistente e senha incorreta revelam quais contas existem.
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
+const GOOGLE_DISCENTE_DOMAIN = '@discente.ifpe.edu.br';
 
 // Hash bcrypt (custo 10, o mesmo usado nas senhas reais) de uma senha aleatória
 // descartável. Serve para que o caminho de e-mail inexistente pague o mesmo custo
@@ -30,6 +32,14 @@ const NON_EXISTENT_USER_PASSWORD_HASH =
 export type SessionContext = {
   ip?: string | null;
   userAgent?: string | null;
+};
+
+type GoogleTokenInfo = {
+  aud?: string;
+  email?: string;
+  email_verified?: string | boolean;
+  name?: string;
+  sub?: string;
 };
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
@@ -82,6 +92,92 @@ export class AuthService {
     }
 
     return this.issueSessionToken(user, context);
+  }
+
+  getGoogleConfig(): { enabled: boolean; clientId: string | null } {
+    const clientId = process.env.GOOGLE_CLIENT_ID || null;
+    return { enabled: !!clientId, clientId };
+  }
+
+  async signInWithGoogle(
+    credential: string,
+    context?: SessionContext,
+  ): Promise<{ access_token: string }> {
+    const tokenInfo = await this.verifyGoogleCredential(credential);
+    const email = tokenInfo.email?.trim().toLowerCase();
+
+    if (!email || !tokenInfo.sub) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    if (email.endsWith(GOOGLE_DISCENTE_DOMAIN)) {
+      const fullName = tokenInfo.name?.trim() || email.split('@')[0];
+      const passwordHash = await bcrypt.hash(randomUUID(), 10);
+      const user = await this.userService.ensureGoogleStudentUser({
+        email,
+        fullName,
+        passwordHash,
+        googleSubject: tokenInfo.sub,
+      });
+
+      return this.issueSessionToken(user, context);
+    }
+
+    const user = await this.userService.findOne(email);
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Use um e-mail institucional discente ou uma conta cadastrada.',
+      );
+    }
+
+    if (this.isLocked(user)) {
+      this.logger.warn(
+        `Tentativa de login com Google recusada, conta bloqueada: ${user.email}`,
+      );
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+
+    return this.issueSessionToken(
+      {
+        ...user,
+        must_change_password: false,
+        id_level: email.endsWith(GOOGLE_DISCENTE_DOMAIN)
+          ? LEVELS.ALUNO_ESTUDANTE
+          : user.id_level,
+      },
+      context,
+    );
+  }
+
+  private async verifyGoogleCredential(
+    credential: string,
+  ): Promise<GoogleTokenInfo> {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+
+    if (!clientId) {
+      throw new BadRequestException('Login com Google não configurado.');
+    }
+
+    const response = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(
+        credential,
+      )}`,
+    );
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    const tokenInfo = (await response.json()) as GoogleTokenInfo;
+    const emailVerified =
+      tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
+
+    if (tokenInfo.aud !== clientId || !emailVerified) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    return tokenInfo;
   }
 
   async logout(jti: string): Promise<{ message: string }> {

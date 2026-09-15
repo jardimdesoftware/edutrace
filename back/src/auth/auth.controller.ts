@@ -15,6 +15,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { AuthGuard } from './auth.guard';
 import { Public } from './constants/constants';
 import { AllowPasswordChange } from './decorators/allow-password-change.decorator';
@@ -35,6 +36,27 @@ export class AuthController {
   @Post('login')
   async signIn(@Body() auth: AuthDto, @Request() request): Promise<any> {
     return await this.authService.signIn(auth.email, auth.password, {
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Get('google/config')
+  getGoogleConfig() {
+    return this.authService.getGoogleConfig();
+  }
+
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('google')
+  async signInWithGoogle(
+    @Body() dto: GoogleAuthDto,
+    @Request() request,
+  ): Promise<any> {
+    return await this.authService.signInWithGoogle(dto.credential, {
       ip: request.ip,
       userAgent: request.headers['user-agent'],
     });
