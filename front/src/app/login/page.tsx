@@ -120,18 +120,18 @@ function LoginPage() {
                     width={364}
                     height={281}
                     priority
-                    className="h-auto w-28 min-[390px]:w-32 sm:w-60"
+                    className="h-auto w-24 min-[390px]:w-28 sm:w-60"
                   />
                 </div>
 
-                <h1 className="text-[28px] font-extrabold leading-none tracking-normal text-[#061542] sm:text-[44px]">
+                <h1 className="text-[27px] font-extrabold leading-none tracking-normal text-[#061542] sm:text-[44px]">
                   Login
                 </h1>
-                <p className="mt-3 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-6 sm:text-[17px] sm:leading-6">
+                <p className="mt-2.5 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-6 sm:text-[17px] sm:leading-6">
                   Acesse sua conta para continuar.
                 </p>
 
-                <div className="mt-4 space-y-2.5 sm:mt-8 sm:space-y-5">
+                <div className="mt-3.5 space-y-2 sm:mt-8 sm:space-y-5">
                   <label className="block">
                     <span className="mb-1 block text-[14px] font-bold leading-5 text-[#0b2455] sm:mb-2 sm:text-[16px] sm:leading-6">
                       Email
@@ -197,7 +197,7 @@ function LoginPage() {
 
                 <button
                   type="submit"
-                  className="mt-4 flex h-[46px] w-full items-center justify-center gap-3 rounded-[12px] bg-[#006ee8] text-[16px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] sm:mt-6 sm:h-[56px] sm:gap-4 sm:text-[18px]"
+                  className="mt-3.5 flex h-[46px] w-full items-center justify-center gap-3 rounded-[12px] bg-[#006ee8] text-[16px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] sm:mt-6 sm:h-[56px] sm:gap-4 sm:text-[18px]"
                 >
                   Entrar
                   <span aria-hidden="true" className="text-[26px] leading-none sm:text-[28px]">
@@ -205,7 +205,7 @@ function LoginPage() {
                   </span>
                 </button>
 
-                <div className="mt-3 flex w-full items-center justify-center sm:mt-5">
+                <div className="mt-2.5 flex w-full items-center justify-center sm:mt-5">
                   <a
                     className="text-[15px] font-bold leading-6 text-[#006dff] underline"
                     href="/forgot-password"
@@ -225,7 +225,7 @@ function LoginPage() {
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
                 </div>
 
-                <div className="mt-3 flex w-full items-center justify-center text-center sm:mt-5">
+                <div className="mt-2.5 flex w-full items-center justify-center text-center sm:mt-5">
                   <div className="text-[15px]">
                     <button
                       type="button"
@@ -253,7 +253,7 @@ function LoginPage() {
                 </div>
               </form>
 
-              <div className="hidden bg-[#f1f4f8]/92 px-5 py-4 text-center text-[13px] font-medium text-[#5571a6] sm:block sm:py-5 sm:text-[14px]">
+              <div className="bg-[#f1f4f8]/92 px-4 py-2 text-center text-[11px] font-medium leading-4 text-[#5571a6] sm:px-5 sm:py-5 sm:text-[14px]">
                 {release.label && (
                   <p>
                     Versão{" "}
