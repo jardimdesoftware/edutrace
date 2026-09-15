@@ -51,10 +51,10 @@ function TextField({
 }: TextFieldProps) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[15px] font-bold leading-6 text-[#0b2455] sm:mb-2 sm:text-[16px]">
+      <span className="mb-1 block text-[14px] font-bold leading-5 text-[#0b2455] sm:mb-2 sm:text-[16px] sm:leading-6">
         {label}
       </span>
-      <span className="flex h-[46px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px]">
+      <span className="flex h-[42px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-3 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px] sm:px-4">
         <Image width={23} height={23} src={icon} alt="" className="mr-3 h-[20px] w-[20px] opacity-80" />
         <input
           type={type}
@@ -85,10 +85,10 @@ function PasswordField({
 }: PasswordFieldProps) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[15px] font-bold leading-6 text-[#0b2455] sm:mb-2 sm:text-[16px]">
+      <span className="mb-1 block text-[14px] font-bold leading-5 text-[#0b2455] sm:mb-2 sm:text-[16px] sm:leading-6">
         {label}
       </span>
-      <span className="flex h-[46px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px]">
+      <span className="flex h-[42px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-3 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px] sm:px-4">
         <Image width={23} height={23} src="/locker.svg" alt="" className="mr-3 h-[20px] w-[20px] opacity-80" />
         <input
           type={visible ? "text" : "password"}
@@ -280,7 +280,7 @@ function ForgotPasswordPage() {
     <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542] lg:overflow-hidden">
       <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1220px] flex-col px-3 py-3 sm:px-8 sm:py-5 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
         <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(460px,1fr)_430px] xl:gap-24">
           <section className="hidden items-center justify-center pb-8 lg:flex">
             <Image
@@ -293,8 +293,8 @@ function ForgotPasswordPage() {
             />
           </section>
 
-          <section className="flex min-h-0 items-start justify-center py-2 sm:items-center sm:py-6 lg:min-h-0 lg:justify-end lg:py-0">
-            <div className="w-full max-w-[430px] overflow-hidden rounded-[20px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm">
+          <section className="flex min-h-0 items-start justify-center py-1 sm:items-center sm:py-6 lg:min-h-0 lg:justify-end lg:py-0">
+            <div className="max-h-[calc(100svh-1rem)] w-full max-w-[390px] overflow-y-auto rounded-[18px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm sm:max-h-none sm:max-w-[430px] sm:overflow-hidden sm:rounded-[20px]">
               <form
                 onSubmit={
                   step === "email"
@@ -303,27 +303,27 @@ function ForgotPasswordPage() {
                       ? handleVerifyCode
                       : handleResetPassword
                 }
-                className="flex w-full flex-col px-4 pb-5 pt-5 sm:px-9 sm:pb-8 sm:pt-9"
+                className="flex w-full flex-col px-4 pb-4 pt-4 sm:px-9 sm:pb-8 sm:pt-9"
               >
-                <div className="mb-4 flex justify-center sm:mb-6 lg:hidden">
+                <div className="mb-3 flex justify-center sm:mb-6 lg:hidden">
                   <Image
                     src="/login.svg"
                     alt="Edutrace"
                     width={364}
                     height={281}
                     priority
-                    className="h-auto w-36 min-[390px]:w-44 sm:w-60"
+                    className="h-auto w-28 min-[390px]:w-32 sm:w-60"
                   />
                 </div>
 
-                <h1 className="text-[28px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
+                <h1 className="text-[25px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
                   {title}
                 </h1>
-                <p className="mt-4 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
+                <p className="mt-3 text-[13px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
                   {description}
                 </p>
 
-                <div className="mt-5 space-y-3 sm:mt-8 sm:space-y-5">
+                <div className="mt-4 space-y-2.5 sm:mt-8 sm:space-y-5">
                   {step === "email" && (
                     <TextField
                       label="Email"
@@ -380,7 +380,7 @@ function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-5 flex h-[50px] w-full items-center justify-center gap-4 rounded-[12px] bg-[#006ee8] text-[16px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60 sm:mt-6 sm:h-[56px] sm:text-[17px]"
+                  className="mt-4 flex h-[46px] w-full items-center justify-center gap-3 rounded-[12px] bg-[#006ee8] text-[15px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60 sm:mt-6 sm:h-[56px] sm:gap-4 sm:text-[17px]"
                 >
                   {step === "email"
                     ? "Enviar código"
@@ -401,14 +401,14 @@ function ForgotPasswordPage() {
                   </button>
                 )}
 
-                <div className="mt-5 flex w-full items-center gap-4 px-10 sm:mt-7 sm:px-14" aria-hidden="true">
+                <div className="mt-5 hidden w-full items-center gap-4 px-10 sm:mt-7 sm:flex sm:px-14" aria-hidden="true">
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
                   <span className="text-[15px] font-bold text-[#7182aa]">ou</span>
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
                 </div>
 
                 <a
-                  className="mt-4 text-center text-[15px] font-bold leading-6 text-[#00866b] underline sm:mt-5"
+                  className="mt-3 text-center text-[15px] font-bold leading-6 text-[#00866b] underline sm:mt-5"
                   href="/login"
                 >
                   Voltar para o login
