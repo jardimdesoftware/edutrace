@@ -38,6 +38,7 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
+  const [buttonWidth, setButtonWidth] = useState(320);
 
   useEffect(() => {
     apiRequest("/auth/google/config", {
@@ -57,7 +58,6 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
 
     const container = containerRef.current;
     container.replaceChildren();
-    const availableWidth = Math.floor(container.getBoundingClientRect().width);
 
     window.google.accounts.id.initialize({
       client_id: clientId,
@@ -75,14 +75,33 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
 
     window.google.accounts.id.renderButton(container, {
       type: "standard",
-      theme: "outline",
+      theme: "filled_blue",
       size: "large",
-      text: "signin_with",
-      shape: "rectangular",
+      text: "continue_with",
+      shape: "pill",
       logo_alignment: "left",
-      width: Math.min(availableWidth, 360),
+      width: buttonWidth,
     });
-  }, [clientId, onCredential, onError, scriptReady]);
+  }, [buttonWidth, clientId, onCredential, onError, scriptReady]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const updateWidth = () => {
+      const availableWidth = Math.floor(container.getBoundingClientRect().width);
+      if (availableWidth > 0) {
+        setButtonWidth(Math.min(availableWidth, 400));
+      }
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, [clientId]);
 
   if (!clientId) return null;
 
@@ -93,7 +112,10 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
         strategy="afterInteractive"
         onReady={() => setScriptReady(true)}
       />
-      <div ref={containerRef} className="flex min-h-10 w-full justify-center" />
+      <div
+        ref={containerRef}
+        className="flex min-h-[44px] w-full justify-center overflow-hidden rounded-full [&_iframe]:!m-0"
+      />
     </>
   );
 }

@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -159,11 +160,23 @@ export class AuthService {
       throw new BadRequestException('Login com Google não configurado.');
     }
 
-    const response = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(
-        credential,
-      )}`,
-    );
+    let response: Response;
+
+    try {
+      response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(
+          credential,
+        )}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        'Falha ao validar credencial do Google.',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new ServiceUnavailableException(
+        'Nao foi possivel validar o login com Google. Tente novamente em instantes.',
+      );
+    }
 
     if (!response.ok) {
       throw new UnauthorizedException('Credencial do Google inválida.');
