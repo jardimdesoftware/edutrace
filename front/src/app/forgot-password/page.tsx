@@ -1,30 +1,121 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { Suspense, useState } from "react";
 import Image from "next/image";
-import "@govbr-ds/core/dist/core.min.css";
-import { forgotPassword, verifyResetCode, resetPassword } from "@/services/auth/passwordReset";
+import { forgotPassword, resetPassword, verifyResetCode } from "@/services/auth/passwordReset";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import Loading from "@/components/Loading";
 
-// Importação dinâmica para evitar erro de hydration
-const BrInput = dynamic(() =>
-  import("@govbr-ds-testing/webcomponents-react").then((mod) => mod.BrInput), { ssr: false }
-);
-
-const BrButton = dynamic(() =>
-  import("@govbr-ds-testing/webcomponents-react").then((mod) => mod.BrButton), { ssr: false }
-);
-
 type Step = "email" | "code" | "password";
+
+type TextFieldProps = {
+  label: string;
+  icon: string;
+  type?: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  pattern?: string;
+  inputMode?: "numeric" | "text" | "email";
+  maxLength?: number;
+  minLength?: number;
+  autoComplete?: string;
+};
+
+type PasswordFieldProps = Omit<TextFieldProps, "icon" | "type"> & {
+  visible: boolean;
+  onToggle: () => void;
+};
 
 export default function ForgotPasswordPageWrapper() {
   return (
     <Suspense fallback={<Loading />}>
       <ForgotPasswordPage />
     </Suspense>
+  );
+}
+
+function TextField({
+  label,
+  icon,
+  type = "text",
+  value,
+  onChange,
+  required,
+  pattern,
+  inputMode,
+  maxLength,
+  minLength,
+  autoComplete,
+}: TextFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[16px] font-bold leading-6 text-[#0b2455]">
+        {label}
+      </span>
+      <span className="flex h-[52px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff]">
+        <Image width={23} height={23} src={icon} alt="" className="mr-3 h-[20px] w-[20px] opacity-80" />
+        <input
+          type={type}
+          required={required}
+          pattern={pattern}
+          inputMode={inputMode}
+          maxLength={maxLength}
+          minLength={minLength}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-full min-w-0 flex-1 bg-transparent text-base text-[#071640] outline-none"
+        />
+      </span>
+    </label>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  visible,
+  onToggle,
+  required,
+  minLength,
+  autoComplete,
+}: PasswordFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[16px] font-bold leading-6 text-[#0b2455]">
+        {label}
+      </span>
+      <span className="flex h-[52px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff]">
+        <Image width={23} height={23} src="/locker.svg" alt="" className="mr-3 h-[20px] w-[20px] opacity-80" />
+        <input
+          type={visible ? "text" : "password"}
+          required={required}
+          minLength={minLength}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-full min-w-0 flex-1 bg-transparent text-base text-[#071640] outline-none"
+        />
+        <button
+          type="button"
+          aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+          aria-pressed={visible}
+          onClick={onToggle}
+          className="ml-2 inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-[#edf5ff]"
+        >
+          <Image
+            width={22}
+            height={22}
+            src={visible ? "/eye-off.svg" : "/eye.svg"}
+            alt=""
+            className="h-[20px] w-[20px]"
+          />
+        </button>
+      </span>
+    </label>
   );
 }
 
@@ -55,14 +146,13 @@ function ForgotPasswordPage() {
       });
       setStep("code");
     } catch (error) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Erro ao enviar o código",
         text: String(error),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -74,7 +164,7 @@ function ForgotPasswordPage() {
     try {
       const data = await forgotPassword(email);
 
-      Swal.fire({
+      void Swal.fire({
         icon: "success",
         title: "Código reenviado",
         text: data.message,
@@ -82,14 +172,13 @@ function ForgotPasswordPage() {
         confirmButtonText: "Entendi",
       });
     } catch (error) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Erro ao reenviar o código",
         text: String(error),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -99,7 +188,7 @@ function ForgotPasswordPage() {
     e.preventDefault();
 
     if (!/^\d{6}$/.test(code)) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Código inválido",
         text: "O código deve conter exatamente 6 dígitos numéricos.",
@@ -115,14 +204,13 @@ function ForgotPasswordPage() {
       await verifyResetCode(email, code);
       setStep("password");
     } catch (error) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Código inválido",
         text: String(error),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -132,7 +220,7 @@ function ForgotPasswordPage() {
     e.preventDefault();
 
     if (password.length < 8) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Senha inválida",
         text: "A senha deve ter no mínimo 8 caracteres.",
@@ -143,7 +231,7 @@ function ForgotPasswordPage() {
     }
 
     if (password !== confirmPassword) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Senhas diferentes",
         text: "As senhas não coincidem.",
@@ -167,227 +255,176 @@ function ForgotPasswordPage() {
       });
       router.push("/login");
     } catch (error) {
-      Swal.fire({
+      void Swal.fire({
         icon: "error",
         title: "Erro ao redefinir a senha",
         text: String(error),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const title =
+    step === "email" ? "Esqueci minha senha" : step === "code" ? "Verificação" : "Nova senha";
+  const description =
+    step === "email"
+      ? "Informe o e-mail cadastrado para receber um código de recuperação."
+      : step === "code"
+        ? `Digite o código de 6 dígitos enviado para ${email}.`
+        : "Defina a nova senha da sua conta.";
+
   return (
-    <div className="min-h-screen flex flex-row bg-gradient-to-r from-emerald-100 to-white">
-      <section className="items-center justify-center min-w-1/2 md:flex hidden">
-        <Image
-          src="/login.svg"
-          alt="Imagem recuperação de senha"
-          width={728}
-          height={562}
-          priority
-        />
-      </section>
+    <main className="relative min-h-screen overflow-hidden bg-sky-50 text-[#061542]">
+      <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
-      <section className="h-screen flex flex-col items-center justify-between md:min-w-1/2 min-w-full py-4">
-        <div></div>
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1220px] flex-col px-4 py-5 sm:px-8 lg:px-10">
+        <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(460px,1fr)_430px] xl:gap-24">
+          <section className="hidden items-center justify-center pb-8 lg:flex">
+            <Image
+              src="/login.svg"
+              alt="Edutrace"
+              width={728}
+              height={562}
+              priority
+              className="h-auto w-full max-w-[540px] drop-shadow-[0_8px_16px_rgba(15,71,140,0.14)] xl:max-w-[590px]"
+            />
+          </section>
 
-        {step === "email" && (
-          <form
-            onSubmit={handleSendEmail}
-            className="p-8 w-full max-w-md space-y-6 flex flex-col items-center justify-center"
-          >
-            <h1 className="text-2xl font-bold text-center">Esqueci minha senha</h1>
-            <p className="text-sm text-center">
-              Informe o e-mail cadastrado para receber um código de recuperação.
-            </p>
-
-            <BrInput
-              label="Email"
-              type="email"
-              required
-              pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
-              icon
-              class="w-full"
-              onInput={(e: React.FormEvent<HTMLBrInputElement>) => {
-                const target = e.target as HTMLInputElement;
-                setEmail(target.value);
-              }}
-            >
-              <Image width={15} height={10} slot="icon" src="/email.svg" alt="Ícone email" />
-            </BrInput>
-
-            <BrButton
-              type="submit"
-              active
-              block
-              disabled={loading}
-              class="w-full"
-            >
-              Enviar código
-            </BrButton>
-          </form>
-        )}
-
-        {step === "code" && (
-          <form
-            onSubmit={handleVerifyCode}
-            className="p-8 w-full max-w-md space-y-6 flex flex-col items-center justify-center"
-          >
-            <h1 className="text-2xl font-bold text-center">Verificação</h1>
-            <p className="text-sm text-center">
-              Digite o código de 6 dígitos enviado para {email}. Ele expira em 15 minutos.
-            </p>
-
-            <BrInput
-              label="Código"
-              type="text"
-              required
-              inputMode="numeric"
-              maxlength={6}
-              pattern="[0-9]{6}"
-              icon
-              class="w-full"
-              onInput={(e: React.FormEvent<HTMLBrInputElement>) => {
-                const target = e.target as HTMLInputElement;
-                setCode(target.value);
-              }}
-            >
-              <Image width={15} height={10} slot="icon" src="/locker.svg" alt="Ícone código" />
-            </BrInput>
-
-            <BrButton
-              type="submit"
-              active
-              block
-              disabled={loading}
-              class="w-full"
-            >
-              Verificar código
-            </BrButton>
-
-            <div className="flex items-center justify-center w-full text-center">
-              <button
-                type="button"
-                onClick={handleResendCode}
-                disabled={loading}
-                className="text-sm font-semibold text-emerald-800 underline"
+          <section className="flex min-h-[calc(100vh-2.5rem)] items-center justify-center lg:min-h-0 lg:justify-end">
+            <div className="w-full max-w-[430px] overflow-hidden rounded-[20px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm">
+              <form
+                onSubmit={
+                  step === "email"
+                    ? handleSendEmail
+                    : step === "code"
+                      ? handleVerifyCode
+                      : handleResetPassword
+                }
+                className="flex w-full flex-col px-5 pb-7 pt-7 sm:px-9 sm:pb-8 sm:pt-9"
               >
-                Reenviar código
-              </button>
-            </div>
-          </form>
-        )}
-
-        {step === "password" && (
-          <form
-            onSubmit={handleResetPassword}
-            className="p-8 w-full max-w-md space-y-6 flex flex-col items-center justify-center"
-          >
-            <h1 className="text-2xl font-bold text-center">Nova senha</h1>
-            <p className="text-sm text-center">
-              Defina a nova senha da sua conta.
-            </p>
-
-            <div className="w-full">
-              <BrInput
-                label="Nova senha"
-                type={showPassword ? "text" : "password"}
-                required
-                minlength={8}
-                icon
-                button
-                class="w-full"
-                onInput={(e: React.FormEvent<HTMLBrInputElement>) => {
-                  const target = e.target as HTMLInputElement;
-                  setPassword(target.value);
-                }}
-              >
-                <Image
-                  width={15}
-                  height={10}
-                  slot="icon"
-                  src="/locker.svg"
-                  alt="Ícone senha"
-                />
-                <button
-                  slot="action"
-                  type="button"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  aria-pressed={showPassword}
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="br-button circle"
-                >
+                <div className="mb-6 flex justify-center lg:hidden">
                   <Image
-                    width={16}
-                    height={16}
-                    src={showPassword ? "/eye-off.svg" : "/eye.svg"}
-                    alt=""
+                    src="/login.svg"
+                    alt="Edutrace"
+                    width={364}
+                    height={281}
+                    priority
+                    className="h-auto w-52 sm:w-60"
                   />
-                </button>
-              </BrInput>
-            </div>
+                </div>
 
-            <div className="w-full">
-              <BrInput
-                label="Confirmar senha"
-                type={showConfirmPassword ? "text" : "password"}
-                required
-                minlength={8}
-                icon
-                button
-                class="w-full"
-                onInput={(e: React.FormEvent<HTMLBrInputElement>) => {
-                  const target = e.target as HTMLInputElement;
-                  setConfirmPassword(target.value);
-                }}
-              >
-                <Image
-                  width={15}
-                  height={10}
-                  slot="icon"
-                  src="/locker.svg"
-                  alt="Ícone senha"
-                />
+                <h1 className="text-[31px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
+                  {title}
+                </h1>
+                <p className="mt-5 text-[15px] font-medium leading-6 text-[#5872a8] sm:text-[16px]">
+                  {description}
+                </p>
+
+                <div className="mt-8 space-y-5">
+                  {step === "email" && (
+                    <TextField
+                      label="Email"
+                      icon="/email.svg"
+                      type="email"
+                      required
+                      pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={setEmail}
+                    />
+                  )}
+
+                  {step === "code" && (
+                    <TextField
+                      label="Código"
+                      icon="/locker.svg"
+                      required
+                      pattern="[0-9]{6}"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={code}
+                      onChange={setCode}
+                    />
+                  )}
+
+                  {step === "password" && (
+                    <>
+                      <PasswordField
+                        label="Nova senha"
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={setPassword}
+                        visible={showPassword}
+                        onToggle={() => setShowPassword((value) => !value)}
+                      />
+                      <PasswordField
+                        label="Confirmar senha"
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={setConfirmPassword}
+                        visible={showConfirmPassword}
+                        onToggle={() => setShowConfirmPassword((value) => !value)}
+                      />
+                    </>
+                  )}
+                </div>
+
                 <button
-                  slot="action"
-                  type="button"
-                  aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
-                  aria-pressed={showConfirmPassword}
-                  onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="br-button circle"
+                  type="submit"
+                  disabled={loading}
+                  className="mt-6 flex h-[56px] w-full items-center justify-center gap-4 rounded-[12px] bg-[#006ee8] text-[17px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Image
-                    width={16}
-                    height={16}
-                    src={showConfirmPassword ? "/eye-off.svg" : "/eye.svg"}
-                    alt=""
-                  />
+                  {step === "email"
+                    ? "Enviar código"
+                    : step === "code"
+                      ? "Verificar código"
+                      : "Redefinir senha"}
+                  <span aria-hidden="true" className="text-[26px] leading-none">&rarr;</span>
                 </button>
-              </BrInput>
+
+                {step === "code" && (
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={loading}
+                    className="mt-5 text-[15px] font-bold leading-6 text-[#006dff] underline disabled:opacity-60"
+                  >
+                    Reenviar código
+                  </button>
+                )}
+
+                <div className="mt-7 flex w-full items-center gap-4 px-10 sm:px-14" aria-hidden="true">
+                  <span className="h-px flex-1 bg-[#d9e1ee]" />
+                  <span className="text-[15px] font-bold text-[#7182aa]">ou</span>
+                  <span className="h-px flex-1 bg-[#d9e1ee]" />
+                </div>
+
+                <a
+                  className="mt-5 text-center text-[15px] font-bold leading-6 text-[#00866b] underline"
+                  href="/login"
+                >
+                  Voltar para o login
+                </a>
+              </form>
             </div>
-
-            <BrButton
-              type="submit"
-              active
-              block
-              disabled={loading}
-              class="w-full"
-            >
-              Redefinir senha
-            </BrButton>
-          </form>
-        )}
-
-        <div className="flex items-center justify-center w-full">
-          <a className="text-sm font-semibold text-emerald-800 underline" href="/login">
-            Voltar para o login
-          </a>
+          </section>
         </div>
-      </section>
-    </div>
+
+        <p className="pointer-events-none hidden self-end pr-2 text-right text-[15px] font-medium leading-6 text-[#5571a6] lg:block">
+          Juntos por uma
+          <br />
+          educação sem barreiras.
+          <span className="mt-3 ml-auto block h-1 w-16 rounded-full bg-[#7edbd0]" />
+        </p>
+      </div>
+    </main>
   );
 }
