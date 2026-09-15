@@ -114,17 +114,30 @@ export class AuthService {
     if (email.endsWith(GOOGLE_DISCENTE_DOMAIN)) {
       const fullName = tokenInfo.name?.trim() || email.split('@')[0];
       const passwordHash = await bcrypt.hash(randomUUID(), 10);
-      const user = await this.userService.ensureGoogleStudentUser({
-        email,
-        fullName,
-        passwordHash,
-        googleSubject: tokenInfo.sub,
-      });
 
-      return this.issueSessionToken(user, context);
+      try {
+        const user = await this.userService.ensureGoogleStudentUser({
+          email,
+          fullName,
+          passwordHash,
+          googleSubject: tokenInfo.sub,
+        });
+
+        return await this.issueSessionToken(user, context);
+      } catch (error) {
+        this.throwIfDatabaseUnavailable(error);
+        throw error;
+      }
     }
 
-    const user = await this.userService.findOne(email);
+    let user: Awaited<ReturnType<UsersService['findOne']>>;
+
+    try {
+      user = await this.userService.findOne(email);
+    } catch (error) {
+      this.throwIfDatabaseUnavailable(error);
+      throw error;
+    }
 
     if (!user) {
       throw new UnauthorizedException(
@@ -139,16 +152,21 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
-    return this.issueSessionToken(
-      {
-        ...user,
-        must_change_password: false,
-        id_level: email.endsWith(GOOGLE_DISCENTE_DOMAIN)
-          ? LEVELS.ALUNO_ESTUDANTE
-          : user.id_level,
-      },
-      context,
-    );
+    try {
+      return await this.issueSessionToken(
+        {
+          ...user,
+          must_change_password: false,
+          id_level: email.endsWith(GOOGLE_DISCENTE_DOMAIN)
+            ? LEVELS.ALUNO_ESTUDANTE
+            : user.id_level,
+        },
+        context,
+      );
+    } catch (error) {
+      this.throwIfDatabaseUnavailable(error);
+      throw error;
+    }
   }
 
   private async verifyGoogleCredential(
@@ -191,6 +209,25 @@ export class AuthService {
     }
 
     return tokenInfo;
+  }
+
+  private throwIfDatabaseUnavailable(error: unknown): void {
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? (error as { code?: unknown }).code
+        : null;
+
+    if (code !== 'ECONNREFUSED') {
+      return;
+    }
+
+    this.logger.error(
+      'Banco de dados indisponivel durante o login com Google.',
+      error instanceof Error ? error.stack : String(error),
+    );
+    throw new ServiceUnavailableException(
+      'Banco de dados indisponivel. Verifique se o Postgres esta rodando.',
+    );
   }
 
   async logout(jti: string): Promise<{ message: string }> {

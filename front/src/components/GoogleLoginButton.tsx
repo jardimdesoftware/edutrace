@@ -36,6 +36,7 @@ type Props = {
 
 export function GoogleLoginButton({ onCredential, onError }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const initializedClientIdRef = useRef<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
   const [buttonWidth, setButtonWidth] = useState(320);
@@ -43,46 +44,13 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
   useEffect(() => {
     apiRequest("/auth/google/config", {
       auth: false,
-      errorMessage: "Não foi possível carregar o login com Google",
+      errorMessage: "Nao foi possivel carregar o login com Google",
     })
       .then((config: { enabled: boolean; clientId: string | null }) => {
         if (config.enabled && config.clientId) setClientId(config.clientId);
       })
       .catch(() => setClientId(null));
   }, []);
-
-  useEffect(() => {
-    if (!scriptReady || !clientId || !containerRef.current || !window.google) {
-      return;
-    }
-
-    const container = containerRef.current;
-    container.replaceChildren();
-
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-      callback: (response) => {
-        if (!response.credential) {
-          onError("O Google não retornou uma credencial válida.");
-          return;
-        }
-
-        void onCredential(response.credential);
-      },
-    });
-
-    window.google.accounts.id.renderButton(container, {
-      type: "standard",
-      theme: "filled_blue",
-      size: "large",
-      text: "continue_with",
-      shape: "pill",
-      logo_alignment: "left",
-      width: buttonWidth,
-    });
-  }, [buttonWidth, clientId, onCredential, onError, scriptReady]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -102,6 +70,41 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
 
     return () => resizeObserver.disconnect();
   }, [clientId]);
+
+  useEffect(() => {
+    if (!scriptReady || !clientId || !containerRef.current || !window.google) {
+      return;
+    }
+
+    if (initializedClientIdRef.current !== clientId) {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        callback: (response) => {
+          if (!response.credential) {
+            onError("O Google nao retornou uma credencial valida.");
+            return;
+          }
+
+          void onCredential(response.credential);
+        },
+      });
+      initializedClientIdRef.current = clientId;
+    }
+
+    const container = containerRef.current;
+    container.replaceChildren();
+    window.google.accounts.id.renderButton(container, {
+      type: "standard",
+      theme: "filled_blue",
+      size: "large",
+      text: "continue_with",
+      shape: "pill",
+      logo_alignment: "left",
+      width: buttonWidth,
+    });
+  }, [buttonWidth, clientId, onCredential, onError, scriptReady]);
 
   if (!clientId) return null;
 
