@@ -17,6 +17,7 @@ services:
      - SMTP_USER=${SMTP_USER}
      - SMTP_PASS=${SMTP_PASS}
      - MAIL_FROM=${MAIL_FROM}
+     - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     networks:
       - app-net
     depends_on:
