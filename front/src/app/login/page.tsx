@@ -84,7 +84,7 @@ function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-sky-50 text-[#061542]">
+    <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542] lg:overflow-hidden">
       <Image
         src="/fundo.png"
         alt=""
@@ -94,7 +94,7 @@ function LoginPage() {
         className="object-cover"
       />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1220px] flex-col px-4 py-5 sm:px-8 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1220px] flex-col px-3 py-3 sm:px-8 sm:py-5 lg:px-10">
         <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(460px,1fr)_430px] xl:gap-24">
           <section className="hidden items-center justify-center pb-8 lg:flex">
             <Image
@@ -107,36 +107,36 @@ function LoginPage() {
             />
           </section>
 
-          <section className="flex min-h-[calc(100vh-2.5rem)] items-center justify-center lg:min-h-0 lg:justify-end">
+          <section className="flex min-h-0 items-start justify-center py-2 sm:items-center sm:py-6 lg:min-h-0 lg:justify-end lg:py-0">
             <div className="w-full max-w-[430px] overflow-hidden rounded-[20px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm">
               <form
                 onSubmit={handleSubmit}
-                className="flex w-full flex-col px-5 pb-7 pt-7 sm:px-9 sm:pb-8 sm:pt-9"
+                className="flex w-full flex-col px-4 pb-5 pt-5 sm:px-9 sm:pb-8 sm:pt-9"
               >
-                <div className="mb-6 flex justify-center lg:hidden">
+                <div className="mb-4 flex justify-center sm:mb-6 lg:hidden">
                   <Image
                     src="/login.svg"
                     alt="Edutrace"
                     width={364}
                     height={281}
                     priority
-                    className="h-auto w-52 sm:w-60"
+                    className="h-auto w-36 min-[390px]:w-44 sm:w-60"
                   />
                 </div>
 
-                <h1 className="text-[36px] font-extrabold leading-none tracking-normal text-[#061542] sm:text-[44px]">
+                <h1 className="text-[32px] font-extrabold leading-none tracking-normal text-[#061542] sm:text-[44px]">
                   Login
                 </h1>
-                <p className="mt-6 text-[16px] font-medium leading-6 text-[#5872a8] sm:text-[17px]">
+                <p className="mt-4 text-[15px] font-medium leading-5 text-[#5872a8] sm:mt-6 sm:text-[17px] sm:leading-6">
                   Acesse sua conta para continuar.
                 </p>
 
-                <div className="mt-8 space-y-5">
+                <div className="mt-5 space-y-3 sm:mt-8 sm:space-y-5">
                   <label className="block">
-                    <span className="mb-2 block text-[16px] font-bold leading-6 text-[#0b2455]">
+                    <span className="mb-1.5 block text-[15px] font-bold leading-6 text-[#0b2455] sm:mb-2 sm:text-[16px]">
                       Email
                     </span>
-                    <span className="flex h-[52px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff]">
+                    <span className="flex h-[46px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px]">
                       <Image
                         width={25}
                         height={20}
@@ -156,10 +156,10 @@ function LoginPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-[16px] font-bold leading-6 text-[#0b2455]">
+                    <span className="mb-1.5 block text-[15px] font-bold leading-6 text-[#0b2455] sm:mb-2 sm:text-[16px]">
                       Senha
                     </span>
-                    <span className="flex h-[52px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff]">
+                    <span className="flex h-[46px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px]">
                       <Image
                         width={23}
                         height={23}
@@ -197,15 +197,15 @@ function LoginPage() {
 
                 <button
                   type="submit"
-                  className="mt-6 flex h-[56px] w-full items-center justify-center gap-4 rounded-[12px] bg-[#006ee8] text-[18px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
+                  className="mt-5 flex h-[50px] w-full items-center justify-center gap-4 rounded-[12px] bg-[#006ee8] text-[17px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] sm:mt-6 sm:h-[56px] sm:text-[18px]"
                 >
                   Entrar
-                  <span aria-hidden="true" className="text-[28px] leading-none">
+                  <span aria-hidden="true" className="text-[26px] leading-none sm:text-[28px]">
                     &rarr;
                   </span>
                 </button>
 
-                <div className="mt-5 flex w-full items-center justify-center">
+                <div className="mt-4 flex w-full items-center justify-center sm:mt-5">
                   <a
                     className="text-[15px] font-bold leading-6 text-[#006dff] underline"
                     href="/forgot-password"
@@ -215,7 +215,7 @@ function LoginPage() {
                 </div>
 
                 <div
-                  className="mt-7 flex w-full items-center gap-4 px-10 sm:px-14"
+                  className="mt-5 flex w-full items-center gap-4 px-10 sm:mt-7 sm:px-14"
                   aria-hidden="true"
                 >
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
@@ -225,7 +225,7 @@ function LoginPage() {
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
                 </div>
 
-                <div className="mt-5 flex w-full items-center justify-center text-center">
+                <div className="mt-4 flex w-full items-center justify-center text-center sm:mt-5">
                   <div className="text-[15px]">
                     <button
                       type="button"
@@ -253,7 +253,7 @@ function LoginPage() {
                 </div>
               </form>
 
-              <div className="bg-[#f1f4f8]/92 px-5 py-5 text-center text-[14px] font-medium text-[#5571a6]">
+              <div className="bg-[#f1f4f8]/92 px-5 py-4 text-center text-[13px] font-medium text-[#5571a6] sm:py-5 sm:text-[14px]">
                 {release.label && (
                   <p>
                     Versão{" "}

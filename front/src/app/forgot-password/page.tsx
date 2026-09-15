@@ -51,10 +51,10 @@ function TextField({
 }: TextFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[16px] font-bold leading-6 text-[#0b2455]">
+      <span className="mb-1.5 block text-[15px] font-bold leading-6 text-[#0b2455] sm:mb-2 sm:text-[16px]">
         {label}
       </span>
-      <span className="flex h-[52px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff]">
+      <span className="flex h-[46px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px]">
         <Image width={23} height={23} src={icon} alt="" className="mr-3 h-[20px] w-[20px] opacity-80" />
         <input
           type={type}
@@ -85,10 +85,10 @@ function PasswordField({
 }: PasswordFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[16px] font-bold leading-6 text-[#0b2455]">
+      <span className="mb-1.5 block text-[15px] font-bold leading-6 text-[#0b2455] sm:mb-2 sm:text-[16px]">
         {label}
       </span>
-      <span className="flex h-[52px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff]">
+      <span className="flex h-[46px] items-center rounded-[10px] border-2 border-[#b9d0ee] bg-white/70 px-4 shadow-[inset_0_1px_2px_rgba(21,72,130,0.03)] focus-within:border-[#6ea7f4] focus-within:ring-4 focus-within:ring-[#dcecff] sm:h-[52px]">
         <Image width={23} height={23} src="/locker.svg" alt="" className="mr-3 h-[20px] w-[20px] opacity-80" />
         <input
           type={visible ? "text" : "password"}
@@ -277,10 +277,10 @@ function ForgotPasswordPage() {
         : "Defina a nova senha da sua conta.";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-sky-50 text-[#061542]">
+    <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542] lg:overflow-hidden">
       <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1220px] flex-col px-4 py-5 sm:px-8 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1220px] flex-col px-3 py-3 sm:px-8 sm:py-5 lg:px-10">
         <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(460px,1fr)_430px] xl:gap-24">
           <section className="hidden items-center justify-center pb-8 lg:flex">
             <Image
@@ -293,7 +293,7 @@ function ForgotPasswordPage() {
             />
           </section>
 
-          <section className="flex min-h-[calc(100vh-2.5rem)] items-center justify-center lg:min-h-0 lg:justify-end">
+          <section className="flex min-h-0 items-start justify-center py-2 sm:items-center sm:py-6 lg:min-h-0 lg:justify-end lg:py-0">
             <div className="w-full max-w-[430px] overflow-hidden rounded-[20px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm">
               <form
                 onSubmit={
@@ -303,27 +303,27 @@ function ForgotPasswordPage() {
                       ? handleVerifyCode
                       : handleResetPassword
                 }
-                className="flex w-full flex-col px-5 pb-7 pt-7 sm:px-9 sm:pb-8 sm:pt-9"
+                className="flex w-full flex-col px-4 pb-5 pt-5 sm:px-9 sm:pb-8 sm:pt-9"
               >
-                <div className="mb-6 flex justify-center lg:hidden">
+                <div className="mb-4 flex justify-center sm:mb-6 lg:hidden">
                   <Image
                     src="/login.svg"
                     alt="Edutrace"
                     width={364}
                     height={281}
                     priority
-                    className="h-auto w-52 sm:w-60"
+                    className="h-auto w-36 min-[390px]:w-44 sm:w-60"
                   />
                 </div>
 
-                <h1 className="text-[31px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
+                <h1 className="text-[28px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
                   {title}
                 </h1>
-                <p className="mt-5 text-[15px] font-medium leading-6 text-[#5872a8] sm:text-[16px]">
+                <p className="mt-4 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
                   {description}
                 </p>
 
-                <div className="mt-8 space-y-5">
+                <div className="mt-5 space-y-3 sm:mt-8 sm:space-y-5">
                   {step === "email" && (
                     <TextField
                       label="Email"
@@ -380,14 +380,14 @@ function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-6 flex h-[56px] w-full items-center justify-center gap-4 rounded-[12px] bg-[#006ee8] text-[17px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-5 flex h-[50px] w-full items-center justify-center gap-4 rounded-[12px] bg-[#006ee8] text-[16px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60 sm:mt-6 sm:h-[56px] sm:text-[17px]"
                 >
                   {step === "email"
                     ? "Enviar código"
                     : step === "code"
                       ? "Verificar código"
                       : "Redefinir senha"}
-                  <span aria-hidden="true" className="text-[26px] leading-none">&rarr;</span>
+                  <span aria-hidden="true" className="text-[24px] leading-none sm:text-[26px]">&rarr;</span>
                 </button>
 
                 {step === "code" && (
@@ -395,20 +395,20 @@ function ForgotPasswordPage() {
                     type="button"
                     onClick={handleResendCode}
                     disabled={loading}
-                    className="mt-5 text-[15px] font-bold leading-6 text-[#006dff] underline disabled:opacity-60"
+                    className="mt-4 text-[15px] font-bold leading-6 text-[#006dff] underline disabled:opacity-60 sm:mt-5"
                   >
                     Reenviar código
                   </button>
                 )}
 
-                <div className="mt-7 flex w-full items-center gap-4 px-10 sm:px-14" aria-hidden="true">
+                <div className="mt-5 flex w-full items-center gap-4 px-10 sm:mt-7 sm:px-14" aria-hidden="true">
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
                   <span className="text-[15px] font-bold text-[#7182aa]">ou</span>
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
                 </div>
 
                 <a
-                  className="mt-5 text-center text-[15px] font-bold leading-6 text-[#00866b] underline"
+                  className="mt-4 text-center text-[15px] font-bold leading-6 text-[#00866b] underline sm:mt-5"
                   href="/login"
                 >
                   Voltar para o login
