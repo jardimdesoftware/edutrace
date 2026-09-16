@@ -97,10 +97,10 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
     container.replaceChildren();
     window.google.accounts.id.renderButton(container, {
       type: "standard",
-      theme: "filled_blue",
+      theme: "outline",
       size: "large",
-      text: "continue_with",
-      shape: "pill",
+      text: "signin_with",
+      shape: "rectangular",
       logo_alignment: "left",
       width: buttonWidth,
     });
@@ -117,7 +117,7 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
       />
       <div
         ref={containerRef}
-        className="flex min-h-[44px] w-full justify-center overflow-hidden rounded-full [&_iframe]:!m-0"
+        className="flex h-11 w-full items-center justify-center overflow-hidden rounded-lg border border-[#d4e1f2] bg-white shadow-[0_2px_7px_rgba(29,78,135,0.08)] [&>div]:!w-full [&_iframe]:!m-0 [&_iframe]:!w-full"
       />
     </>
   );

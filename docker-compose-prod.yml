@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   nest-app:
-    image: ghcr.io/ifpebj-ti/back-pe-estudantes:latest
+    image: ghcr.io/jardimdesoftware/edutrace-backend:latest
     container_name: nest-backend
     ports:
       - "${PORT_MACHINE_BACKEND}:3000"
