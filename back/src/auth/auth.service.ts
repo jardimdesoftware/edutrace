@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -12,6 +13,7 @@ import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import { randomInt, randomUUID } from 'node:crypto';
 import { SessionsService } from 'src/sessions/sessions.service';
+import { LEVELS } from 'src/constants';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
@@ -19,6 +21,7 @@ const MAX_RESET_ATTEMPTS = 5;
 // Resposta única para qualquer falha de autenticação. Mensagens distintas para
 // e-mail inexistente e senha incorreta revelam quais contas existem.
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
+const GOOGLE_DISCENTE_DOMAIN = '@discente.ifpe.edu.br';
 
 // Hash bcrypt (custo 10, o mesmo usado nas senhas reais) de uma senha aleatória
 // descartável. Serve para que o caminho de e-mail inexistente pague o mesmo custo
@@ -30,6 +33,14 @@ const NON_EXISTENT_USER_PASSWORD_HASH =
 export type SessionContext = {
   ip?: string | null;
   userAgent?: string | null;
+};
+
+type GoogleTokenInfo = {
+  aud?: string;
+  email?: string;
+  email_verified?: string | boolean;
+  name?: string;
+  sub?: string;
 };
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
@@ -82,6 +93,141 @@ export class AuthService {
     }
 
     return this.issueSessionToken(user, context);
+  }
+
+  getGoogleConfig(): { enabled: boolean; clientId: string | null } {
+    const clientId = process.env.GOOGLE_CLIENT_ID || null;
+    return { enabled: !!clientId, clientId };
+  }
+
+  async signInWithGoogle(
+    credential: string,
+    context?: SessionContext,
+  ): Promise<{ access_token: string }> {
+    const tokenInfo = await this.verifyGoogleCredential(credential);
+    const email = tokenInfo.email?.trim().toLowerCase();
+
+    if (!email || !tokenInfo.sub) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    if (email.endsWith(GOOGLE_DISCENTE_DOMAIN)) {
+      const fullName = tokenInfo.name?.trim() || email.split('@')[0];
+      const passwordHash = await bcrypt.hash(randomUUID(), 10);
+
+      try {
+        const user = await this.userService.ensureGoogleStudentUser({
+          email,
+          fullName,
+          passwordHash,
+          googleSubject: tokenInfo.sub,
+        });
+
+        return await this.issueSessionToken(user, context);
+      } catch (error) {
+        this.throwIfDatabaseUnavailable(error);
+        throw error;
+      }
+    }
+
+    let user: Awaited<ReturnType<UsersService['findOne']>>;
+
+    try {
+      user = await this.userService.findOne(email);
+    } catch (error) {
+      this.throwIfDatabaseUnavailable(error);
+      throw error;
+    }
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Use um e-mail institucional discente ou uma conta cadastrada.',
+      );
+    }
+
+    if (this.isLocked(user)) {
+      this.logger.warn(
+        `Tentativa de login com Google recusada, conta bloqueada: ${user.email}`,
+      );
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+
+    try {
+      return await this.issueSessionToken(
+        {
+          ...user,
+          must_change_password: false,
+          id_level: email.endsWith(GOOGLE_DISCENTE_DOMAIN)
+            ? LEVELS.ALUNO_ESTUDANTE
+            : user.id_level,
+        },
+        context,
+      );
+    } catch (error) {
+      this.throwIfDatabaseUnavailable(error);
+      throw error;
+    }
+  }
+
+  private async verifyGoogleCredential(
+    credential: string,
+  ): Promise<GoogleTokenInfo> {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+
+    if (!clientId) {
+      throw new BadRequestException('Login com Google não configurado.');
+    }
+
+    let response: Response;
+
+    try {
+      response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(
+          credential,
+        )}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        'Falha ao validar credencial do Google.',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new ServiceUnavailableException(
+        'Nao foi possivel validar o login com Google. Tente novamente em instantes.',
+      );
+    }
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    const tokenInfo = (await response.json()) as GoogleTokenInfo;
+    const emailVerified =
+      tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
+
+    if (tokenInfo.aud !== clientId || !emailVerified) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    return tokenInfo;
+  }
+
+  private throwIfDatabaseUnavailable(error: unknown): void {
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? (error as { code?: unknown }).code
+        : null;
+
+    if (code !== 'ECONNREFUSED') {
+      return;
+    }
+
+    this.logger.error(
+      'Banco de dados indisponivel durante o login com Google.',
+      error instanceof Error ? error.stack : String(error),
+    );
+    throw new ServiceUnavailableException(
+      'Banco de dados indisponivel. Verifique se o Postgres esta rodando.',
+    );
   }
 
   async logout(jti: string): Promise<{ message: string }> {

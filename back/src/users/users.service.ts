@@ -86,6 +86,31 @@ export class UsersService {
     });
   }
 
+  async ensureGoogleStudentUser(data: {
+    email: string;
+    fullName: string;
+    passwordHash: string;
+    googleSubject: string;
+  }) {
+    return this.prisma.user.upsert({
+      where: { email: data.email },
+      update: {
+        full_name: data.fullName,
+        id_level: LEVELS.ALUNO_ESTUDANTE,
+        must_change_password: false,
+      },
+      create: {
+        full_name: data.fullName,
+        cpf: `google:${data.googleSubject}`,
+        email: data.email,
+        password: data.passwordHash,
+        id_level: LEVELS.ALUNO_ESTUDANTE,
+        id_current_phase: PHASES.TRIAGEM,
+        must_change_password: false,
+      },
+    });
+  }
+
   async update(email: string, updateUserDto: UpdateUserDto) {
     const updated = await this.prisma.user.update({
       where: { email: email },

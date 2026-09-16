@@ -2,12 +2,13 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { login } from "@/services/auth/login";
+import { login, loginWithGoogle } from "@/services/auth/login";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { decodeToken } from "@/services/auth/decodeToken";
 import Swal from "sweetalert2";
 import Loading from "@/components/Loading";
+import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 
 const GITHUB_LATEST_RELEASE_API =
   "https://api.github.com/repos/jardimdesoftware/edutrace/releases/latest";
@@ -82,6 +83,15 @@ function LoginPage() {
       showLoginError(error);
     }
   };
+
+  const handleGoogleCredential = useCallback(async (credential: string) => {
+    try {
+      await loginWithGoogle(credential);
+      finishLogin();
+    } catch (error) {
+      showLoginError(error);
+    }
+  }, [finishLogin, showLoginError]);
 
   return (
     <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542] lg:overflow-hidden">
@@ -197,17 +207,24 @@ function LoginPage() {
 
                 <button
                   type="submit"
-                  className="mt-3.5 flex h-[46px] w-full items-center justify-center gap-3 rounded-[12px] bg-[#006ee8] text-[16px] font-bold text-white shadow-[0_10px_20px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] sm:mt-6 sm:h-[56px] sm:gap-4 sm:text-[18px]"
+                  className="mt-3.5 flex h-11 w-full items-center justify-center gap-3 rounded-lg bg-[#006ee8] text-[15px] font-bold text-white shadow-[0_8px_18px_rgba(0,110,232,0.25)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] sm:mt-6 sm:gap-4 sm:text-[16px]"
                 >
                   Entrar
-                  <span aria-hidden="true" className="text-[26px] leading-none sm:text-[28px]">
+                  <span aria-hidden="true" className="text-[23px] leading-none">
                     &rarr;
                   </span>
                 </button>
 
-                <div className="mt-2.5 flex w-full items-center justify-center sm:mt-5">
+                <div className="mt-2.5 sm:mt-3">
+                  <GoogleLoginButton
+                    onCredential={handleGoogleCredential}
+                    onError={showLoginError}
+                  />
+                </div>
+
+                <div className="mt-2.5 flex w-full items-center justify-center sm:mt-4">
                   <a
-                    className="text-[15px] font-bold leading-6 text-[#006dff] underline"
+                    className="text-[14px] font-bold leading-6 text-[#006dff] underline sm:text-[15px]"
                     href="/forgot-password"
                   >
                     Esqueci minha senha
@@ -215,7 +232,7 @@ function LoginPage() {
                 </div>
 
                 <div
-                  className="mt-5 hidden w-full items-center gap-4 px-10 sm:mt-7 sm:flex sm:px-14"
+                  className="mt-3 flex w-full items-center gap-4 px-10 sm:mt-5 sm:px-14"
                   aria-hidden="true"
                 >
                   <span className="h-px flex-1 bg-[#d9e1ee]" />
