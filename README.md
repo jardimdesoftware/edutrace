@@ -8,12 +8,13 @@
 ![Forks](https://img.shields.io/github/forks/ifpebj-ti/pe-estudantes)
 ![Stars](https://img.shields.io/github/stars/ifpebj-ti/pe-estudantes)
 ![Coverage](https://img.shields.io/badge/Coverage-90.85%25-brightgreen) <!-- COVERAGE_BADGE -->
+![OWASP ZAP](https://github.com/jardimdesoftware/edutrace/actions/workflows/owasp-zap.yml/badge.svg)
 
 # 🏫 Edutrace - Prontuário Eletrônico para Estudantes NEE
 
 Sistema web para gerenciar prontuários eletrônicos de estudantes com necessidades educacionais específicas, permitindo o registro de informações acadêmicas, de saúde, crises e desempenho, com segurança, acessibilidade e suporte personalizado.
 
-Acesse agora pelo [Link](https://front.edutrace.site/)
+Acesse agora pelo [Link](https://edutrace.valerialima.me/)
 
 ## 🛠 Tecnologias Utilizadas
 - **Front-end:** Next.js e estilizado com Tailwind CSS
@@ -25,6 +26,12 @@ Acesse agora pelo [Link](https://front.edutrace.site/)
 
 ## 📖 Documentação e Wiki
 Acesse a Wiki do Projeto para mais detalhes sobre requisitos, arquitetura e fluxo do sistema.
+
+## Segurança
+
+- O OWASP ZAP executa um baseline DAST semanalmente ou por acionamento manual.
+- As imagens publicadas no GHCR incluem atestação SBOM e proveniência.
+- Cada publicação de release disponibiliza SBOMs CycloneDX do backend e do frontend como artefatos por 90 dias.
 
 ## Weekly
 Acesse nossa weekly no [Canva](https://canva.link/ig3m8fzockzm8yh).

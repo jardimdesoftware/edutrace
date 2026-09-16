@@ -53,6 +53,8 @@ jobs:
           context: ./back
           file: ./back/Dockerfile
           push: true
+          sbom: true
+          provenance: mode=min
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.BACKEND_IMAGE_NAME }}:${{ env.VERSION }}
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.BACKEND_IMAGE_NAME }}:latest
@@ -70,6 +72,8 @@ jobs:
           context: ./front
           file: ./front/Dockerfile
           push: true
+          sbom: true
+          provenance: mode=min
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.VERSION }}
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
@@ -82,3 +86,34 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=Apache-2.0
+
+      - name: Create SBOM directory
+        run: mkdir -p sbom
+
+      - name: Generate backend CycloneDX SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.BACKEND_IMAGE_NAME }}:${{ env.VERSION }}
+          format: cyclonedx
+          output: sbom/edutrace-backend.cdx.json
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate frontend CycloneDX SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.VERSION }}
+          format: cyclonedx
+          output: sbom/edutrace-frontend.cdx.json
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload CycloneDX SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: edutrace-sbom-${{ env.VERSION }}
+          path: sbom/*.cdx.json
+          if-no-files-found: error
+          retention-days: 90
