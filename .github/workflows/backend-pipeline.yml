@@ -230,6 +230,8 @@ jobs:
           context: ./back
           file: ./back/Dockerfile
           push: true
+          sbom: true
+          provenance: mode=min
           build-args: |
             REPO_URL=${{ github.server_url }}/${{ github.repository }}
           tags: |

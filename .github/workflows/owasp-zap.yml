@@ -1,0 +1,36 @@
+name: OWASP ZAP Security Scan
+
+on:
+  schedule:
+    # GitHub Actions cron usa UTC: todo domingo, à meia-noite.
+    - cron: "0 0 * * 0"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: owasp-zap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap-scan:
+    name: Run DAST scan on target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: ${{ vars.ZAP_TARGET_URL || 'https://edutrace.valerialima.me' }}
+          rules_file_name: ".zap/rules.tsv"
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: "OWASP ZAP Security Scan Report"

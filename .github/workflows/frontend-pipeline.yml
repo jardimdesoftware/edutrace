@@ -176,6 +176,8 @@ jobs:
           context: ./front
           file: ./front/Dockerfile
           push: true
+          sbom: true
+          provenance: mode=min
           build-args: |
             REPO_URL=${{ github.server_url }}/${{ github.repository }}
             NEXT_PUBLIC_API_EDU_TRACE=${{ secrets.NEXT_PUBLIC_API_EDU_TRACE }}
