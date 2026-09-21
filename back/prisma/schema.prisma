@@ -83,16 +83,28 @@ model Screening {
 }
 
 model Comments {
-  id          Int       @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   comment     String
   id_author   Int
   author_name String
-  created_at  DateTime  @default(now())
-  updated_at  DateTime? @updatedAt
+  created_at  DateTime       @default(now())
+  updated_at  DateTime?      @updatedAt
   deleted_at  DateTime?
+  edits       CommentEdits[]
 
   id_user Int
   user    User @relation(fields: [id_user], references: [id])
+}
+
+model CommentEdits {
+  id         Int      @id @default(autoincrement())
+  comment    String
+  created_at DateTime @default(now())
+
+  id_comment Int
+  parent     Comments @relation(fields: [id_comment], references: [id], onDelete: Cascade)
+
+  @@index([id_comment])
 }
 
 model CurrentPhases {
