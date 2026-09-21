@@ -471,6 +471,20 @@ describe('PlansEducationController', () => {
     });
   });
 
+  describe('access levels', () => {
+    it('should block only students from listing all records', () => {
+      const levels = Reflect.getMetadata('levels', controller.findAll);
+
+      expect(levels).toEqual([LEVELS.ALUNO_ESTUDANTE]);
+    });
+
+    it('should leave findOne open to every level, relying on the ownership check', () => {
+      const levels = Reflect.getMetadata('levels', controller.findOne);
+
+      expect(levels).toBeUndefined();
+    });
+  });
+
   describe('findOne', () => {
     it('should return a single plans education by email', async () => {
       const email = 'test@example.com';
