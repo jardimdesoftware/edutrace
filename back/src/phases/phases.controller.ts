@@ -18,7 +18,11 @@ import { LEVELS } from 'src/constants';
 export class PhasesController {
   constructor(private readonly phasesService: PhasesService) {}
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @Levels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @ApiBody({
     type: CreatePhaseDto,
     description: 'Objeto para criação de um novo tipo de fase',
@@ -38,13 +42,21 @@ export class PhasesController {
     return this.phasesService.findOne(+id);
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @Levels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePhaseDto: UpdatePhaseDto) {
     return this.phasesService.update(+id, updatePhaseDto);
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @Levels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.phasesService.remove(+id);
