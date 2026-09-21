@@ -2,16 +2,15 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
 
-export class CreateCommentDto {
+export class UpdateCommentDto {
   @ApiProperty({
-    description: 'Anotação que deseja fazer para o estudante.',
-    example: 'Estudante "tal" teve um surto está manhã',
+    description: 'Novo texto da anotação.',
+    example: 'Estudante "tal" teve um surto esta manhã',
     maxLength: 1000,
   })
   @IsNotEmpty({ message: 'O campo comment não deve estar vazio.' })
@@ -21,17 +20,9 @@ export class CreateCommentDto {
   })
   comment: string;
 
-  @ApiProperty({
-    description: 'Id do usuário que vai receber a anotação.',
-    example: '2',
-  })
-  @IsNotEmpty({ message: 'O campo id_user não deve estar vazio.' })
-  @IsNumber({ allowNaN: false })
-  id_user: number;
-
   @ApiPropertyOptional({
     description:
-      'Quando verdadeiro, envia um aviso por e-mail ao estudante informando que ele recebeu uma nova anotação.',
+      'Quando verdadeiro, envia um aviso por e-mail ao estudante informando que a anotação foi atualizada.',
     example: false,
     default: false,
   })

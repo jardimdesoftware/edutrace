@@ -77,7 +77,7 @@ export default function VisualizarEstudanteClient() {
           <Card label="Triagem" icon={ClipboardPlus} status="ok" />
           <Card label="Anamnese" icon={Stethoscope} status="warn" />
           <Card
-            label="Comentários Multiprofissionais"
+            label="Anotações Multiprofissionais"
             icon={MessagesSquare}
             status="info"
           />

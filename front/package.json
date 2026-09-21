@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "node --test --experimental-strip-types --import ./test/register-ts-resolver.mjs \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@govbr-ds/react-components": "^2.15.1",
