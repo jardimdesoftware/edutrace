@@ -147,26 +147,26 @@ describe('UsersController', () => {
   });
 
   describe('update', () => {
-    it('should update a user', async () => {
+    it('should update a user and return it with masked cpf', async () => {
       const updateDto = { full_name: 'Updated' };
-      const updatedUser = { ...mockUser, full_name: 'Updated' };
-      jest.spyOn(service, 'update').mockResolvedValue(updatedUser);
+      const updatedUser = { ...mockPublicUser, full_name: 'Updated' };
+      jest.spyOn(service, 'update').mockResolvedValue(updatedUser as never);
 
       const result = await controller.update('test@test.com', updateDto as any);
 
       expect(service.update).toHaveBeenCalledWith('test@test.com', updateDto);
-      expect(result).toEqual(updatedUser);
+      expect(result).toEqual({ ...maskedUser, full_name: 'Updated' });
     });
   });
 
   describe('remove', () => {
-    it('should remove a user by id', async () => {
-      jest.spyOn(service, 'remove').mockResolvedValue(mockUser);
+    it('should remove a user by id and return it with masked cpf', async () => {
+      jest.spyOn(service, 'remove').mockResolvedValue(mockPublicUser as never);
 
       const result = await controller.remove('1');
 
       expect(service.remove).toHaveBeenCalledWith(1);
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(maskedUser);
     });
   });
 });
