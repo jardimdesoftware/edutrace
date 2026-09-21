@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Delete,
+  Request,
 } from '@nestjs/common';
 import { AnamnesisService } from './anamnesis.service';
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { Levels } from 'src/auth/decorators/levels.decorator';
 import { LEVELS } from 'src/constants';
+import { AuthenticatedRequest } from 'src/comments/types/express';
 
 @Controller('anamnesis')
 export class AnamnesisController {
@@ -22,14 +24,18 @@ export class AnamnesisController {
     return this.anamnesisService.create(createAnamnesisDto);
   }
 
+  @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get()
   findAll() {
     return this.anamnesisService.findAll();
   }
 
   @Get(':email')
-  findOne(@Param('email') email: string) {
-    return this.anamnesisService.findOne(email);
+  findOne(
+    @Param('email') email: string,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.anamnesisService.findOne(email, request);
   }
 
   @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_EDUCACAO)

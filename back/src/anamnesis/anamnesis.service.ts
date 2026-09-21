@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { PHASES } from 'src/constants';
+import { LEVELS, PHASES } from 'src/constants';
+import { AuthenticatedRequest } from 'src/comments/types/express';
 
 @Injectable()
 export class AnamnesisService {
@@ -25,7 +30,16 @@ export class AnamnesisService {
     return this.prisma.anamnesis.findMany();
   }
 
-  findOne(email: string) {
+  async findOne(email: string, request: AuthenticatedRequest) {
+    const isStudent = request.user.id_level == LEVELS.ALUNO_ESTUDANTE;
+    const isViewingOtherProfile = request.user.email !== email;
+
+    if (isStudent && isViewingOtherProfile) {
+      throw new ForbiddenException(
+        'Você não tem permissão para visualizar esta anamnese',
+      );
+    }
+
     return this.prisma.anamnesis.findUnique({
       where: { email },
     });

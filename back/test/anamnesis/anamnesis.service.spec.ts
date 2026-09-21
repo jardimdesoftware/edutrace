@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
-import { PHASES } from 'src/constants';
+import { LEVELS, PHASES } from 'src/constants';
 import { AnamnesisService } from 'src/anamnesis/anamnesis.service';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 describe('AnamnesisService', () => {
   let service: AnamnesisService;
@@ -599,8 +599,11 @@ describe('AnamnesisService', () => {
   });
 
   describe('findOne', () => {
-    it('should return a single anamnesis by email', async () => {
+    it('should return the student own anamnesis', async () => {
       const email = 'test@example.com';
+      const request = {
+        user: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+      } as any;
       const anamnesis = {
         id: 1,
         email: 'test@example.com',
@@ -776,13 +779,54 @@ describe('AnamnesisService', () => {
       };
       jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(anamnesis);
 
-      const result = await service.findOne(email);
+      const result = await service.findOne(email, request);
 
       expect(prisma.anamnesis.findUnique).toHaveBeenCalledWith({
         where: { email: email },
       });
       expect(result).toEqual(anamnesis);
     });
+
+    it("should throw ForbiddenException if student views another student's anamnesis", async () => {
+      const request = {
+        user: {
+          email: 'student@example.com',
+          id_level: LEVELS.ALUNO_ESTUDANTE,
+        },
+      } as any;
+
+      await expect(
+        service.findOne('other@example.com', request),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Você não tem permissão para visualizar esta anamnese',
+        ),
+      );
+      expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+    ])(
+      'should allow level %s to read any student anamnesis',
+      async (id_level) => {
+        const email = 'other@example.com';
+        const request = {
+          user: { email: 'professional@example.com', id_level },
+        } as any;
+        const anamnesis = { id: 1, email } as any;
+        jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(anamnesis);
+
+        const result = await service.findOne(email, request);
+
+        expect(prisma.anamnesis.findUnique).toHaveBeenCalledWith({
+          where: { email },
+        });
+        expect(result).toEqual(anamnesis);
+      },
+    );
   });
 
   describe('update', () => {
