@@ -12,10 +12,11 @@ describe('CommentsController', () => {
     id_user: 10,
     id_author: 5,
     author_name: 'Dr. Silva',
-    content: 'Observação importante',
+    comment: 'Observação importante',
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
+    edits: [],
   };
 
   beforeEach(async () => {
@@ -26,6 +27,7 @@ describe('CommentsController', () => {
           provide: CommentsService,
           useValue: {
             create: jest.fn(),
+            update: jest.fn(),
             findAllByIdUser: jest.fn(),
           },
         },
@@ -42,7 +44,7 @@ describe('CommentsController', () => {
 
   describe('create', () => {
     it('should create a comment using author from request', async () => {
-      const createDto = { id_user: 10, content: 'Observação importante' };
+      const createDto = { id_user: 10, comment: 'Observação importante' };
       const request = {
         user: { sub: 5, name: 'Dr. Silva', id_level: 3 },
       } as any;
@@ -56,16 +58,50 @@ describe('CommentsController', () => {
     });
 
     it('should propagate errors thrown by the service', async () => {
-      const createDto = { id_user: 10, content: 'Observação importante' };
+      const createDto = { id_user: 10, comment: 'Observação importante' };
       const request = {
         user: { sub: 5, name: 'Dr. Silva', id_level: 3 },
       } as any;
 
       jest.spyOn(service, 'create').mockRejectedValue(new Error('DB error'));
 
+      await expect(controller.create(createDto as any, request)).rejects.toThrow(
+        'DB error',
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('should delegate the update to the service with the parsed id', async () => {
+      const updateDto = { comment: 'Texto corrigido' };
+      const request = {
+        user: { sub: 5, name: 'Dr. Silva', id_level: 3 },
+      } as any;
+
+      jest.spyOn(service, 'update').mockResolvedValue(mockComment as any);
+
+      const result = await controller.update(1, updateDto as any, request);
+
+      expect(service.update).toHaveBeenCalledWith(1, updateDto, request);
+      expect(result).toEqual(mockComment);
+    });
+
+    it('should propagate ForbiddenException thrown by the service', async () => {
+      const request = {
+        user: { sub: 7, name: 'Dr. Souza', id_level: 4 },
+      } as any;
+
+      jest
+        .spyOn(service, 'update')
+        .mockRejectedValue(
+          new ForbiddenException(
+            'Você só pode editar as anotações que você mesmo criou',
+          ),
+        );
+
       await expect(
-        controller.create(createDto as any, request),
-      ).rejects.toThrow('DB error');
+        controller.update(1, { comment: 'Texto de outro' } as any, request),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -100,13 +136,13 @@ describe('CommentsController', () => {
         .spyOn(service, 'findAllByIdUser')
         .mockRejectedValue(
           new ForbiddenException(
-            'Você não tem permissão para visualizar estes comentários',
+            'Você não tem permissão para visualizar estas anotações',
           ),
         );
 
-      await expect(
-        controller.findAllByIdUser('10', request),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(controller.findAllByIdUser('10', request)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });
