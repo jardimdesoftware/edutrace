@@ -33,6 +33,58 @@ describe('MailService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('sendNewCommentNotice', () => {
+    it('should send the notice without the note content', async () => {
+      await service.sendNewCommentNotice('estudante@test.com');
+
+      expect(sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: 'EduTrace <nao-responda@test.com>',
+          to: 'estudante@test.com',
+          subject: 'EduTrace - Nova anotação multiprofissional',
+          text: expect.stringContaining('nova anotação multiprofissional'),
+          html: expect.stringContaining('nova anotação multiprofissional'),
+        }),
+      );
+    });
+
+    it('should not interpolate any data into the message', async () => {
+      await service.sendNewCommentNotice('estudante@test.com');
+      await service.sendNewCommentNotice('outro@test.com');
+
+      const [first] = sendMail.mock.calls[0] as [{ text: string; html: string }];
+      const [second] = sendMail.mock.calls[1] as [
+        { text: string; html: string },
+      ];
+
+      expect(first.text).toBe(second.text);
+      expect(first.html).toBe(second.html);
+    });
+
+    it('should propagate errors from sendMail', async () => {
+      sendMail.mockRejectedValue(new Error('SMTP indisponível'));
+
+      await expect(
+        service.sendNewCommentNotice('estudante@test.com'),
+      ).rejects.toThrow('SMTP indisponível');
+    });
+  });
+
+  describe('sendUpdatedCommentNotice', () => {
+    it('should send the update notice without the note content', async () => {
+      await service.sendUpdatedCommentNotice('estudante@test.com');
+
+      expect(sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'estudante@test.com',
+          subject: 'EduTrace - Anotação multiprofissional atualizada',
+          text: expect.stringContaining('atualizou uma anotação'),
+          html: expect.stringContaining('atualizou uma anotação'),
+        }),
+      );
+    });
+  });
+
   describe('sendPasswordResetCode', () => {
     it('should create the transporter with the SMTP environment variables', async () => {
       await service.sendPasswordResetCode('user@test.com', '123456');

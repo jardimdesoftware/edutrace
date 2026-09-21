@@ -49,6 +49,46 @@ export class MailService {
     });
   }
 
+  async sendNewCommentNotice(to: string): Promise<void> {
+    await this.getTransporter().sendMail({
+      from: process.env.MAIL_FROM,
+      to,
+      subject: 'EduTrace - Nova anotação multiprofissional',
+      text: [
+        'Olá!',
+        '',
+        'Um profissional registrou uma nova anotação multiprofissional sobre você no EduTrace.',
+        '',
+        'Acesse o sistema para ler a anotação.',
+      ].join('\n'),
+      html: [
+        '<p>Olá!</p>',
+        '<p>Um profissional registrou uma nova anotação multiprofissional sobre você no EduTrace.</p>',
+        '<p>Acesse o sistema para ler a anotação.</p>',
+      ].join(''),
+    });
+  }
+
+  async sendUpdatedCommentNotice(to: string): Promise<void> {
+    await this.getTransporter().sendMail({
+      from: process.env.MAIL_FROM,
+      to,
+      subject: 'EduTrace - Anotação multiprofissional atualizada',
+      text: [
+        'Olá!',
+        '',
+        'Um profissional atualizou uma anotação multiprofissional sobre você no EduTrace.',
+        '',
+        'Acesse o sistema para ler a versão atual e o histórico de edição.',
+      ].join('\n'),
+      html: [
+        '<p>Olá!</p>',
+        '<p>Um profissional atualizou uma anotação multiprofissional sobre você no EduTrace.</p>',
+        '<p>Acesse o sistema para ler a versão atual e o histórico de edição.</p>',
+      ].join(''),
+    });
+  }
+
   async sendPasswordResetCode(to: string, code: string): Promise<void> {
     await this.getTransporter().sendMail({
       from: process.env.MAIL_FROM,
