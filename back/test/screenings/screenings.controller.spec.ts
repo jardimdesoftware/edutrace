@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ScreeningsController } from 'src/screenings/screenings.controller';
 import { CreateScreeningDto } from 'src/screenings/dto/create-screening.dto';
 import { ScreeningsService } from 'src/screenings/screenings.service';
+import { LEVELS } from 'src/constants';
 
 describe('ScreeningsController', () => {
   let controller: ScreeningsController;
@@ -184,6 +185,20 @@ describe('ScreeningsController', () => {
     });
   });
 
+  describe('access levels', () => {
+    it('should block only students from listing all records', () => {
+      const levels = Reflect.getMetadata('levels', controller.findAll);
+
+      expect(levels).toEqual([LEVELS.ALUNO_ESTUDANTE]);
+    });
+
+    it('should leave findOne open to every level, relying on the ownership check', () => {
+      const levels = Reflect.getMetadata('levels', controller.findOne);
+
+      expect(levels).toBeUndefined();
+    });
+  });
+
   describe('findOne', () => {
     it('should return a single screening by email', async () => {
       const email = 'test@example.com';
@@ -232,8 +247,12 @@ describe('ScreeningsController', () => {
       };
       jest.spyOn(service, 'findOne').mockResolvedValue(result);
 
-      expect(await controller.findOne(email)).toEqual(result);
-      expect(service.findOne).toHaveBeenCalledWith(email);
+      const request = {
+        user: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+      } as any;
+
+      expect(await controller.findOne(email, request)).toEqual(result);
+      expect(service.findOne).toHaveBeenCalledWith(email, request);
     });
   });
 

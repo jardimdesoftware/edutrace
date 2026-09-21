@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Delete,
+  Request,
 } from '@nestjs/common';
 import { ScreeningsService } from './screenings.service';
 import { CreateScreeningDto } from './dto/create-screening.dto';
 import { Levels } from 'src/auth/decorators/levels.decorator';
 import { LEVELS } from 'src/constants';
+import { AuthenticatedRequest } from 'src/comments/types/express';
 
 @Controller('screenings')
 export class ScreeningsController {
@@ -22,14 +24,18 @@ export class ScreeningsController {
     return this.screeningsService.create(createScreeningDto);
   }
 
+  @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get()
   findAll() {
     return this.screeningsService.findAll();
   }
 
   @Get(':email')
-  findOne(@Param('email') email: string) {
-    return this.screeningsService.findOne(email);
+  findOne(
+    @Param('email') email: string,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.screeningsService.findOne(email, request);
   }
 
   @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_EDUCACAO)

@@ -24,6 +24,7 @@ export class PlansEducationController {
     return this.plansEducationService.create(createPlansEducationDto);
   }
 
+  @Levels(LEVELS.ALUNO_ESTUDANTE)
   @Get()
   findAll() {
     return this.plansEducationService.findAll();
