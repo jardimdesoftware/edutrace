@@ -18,7 +18,11 @@ import { LEVELS } from 'src/constants';
 export class LevelsController {
   constructor(private readonly levelsService: LevelsService) {}
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @Levels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @ApiBody({
     type: CreateLevelDto,
     description: 'Objeto para criação de um novo nívels de acesso.',
@@ -38,13 +42,21 @@ export class LevelsController {
     return this.levelsService.findOne(+id);
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @Levels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateLevelDto: UpdateLevelDto) {
     return this.levelsService.update(+id, updateLevelDto);
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @Levels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.levelsService.remove(+id);
