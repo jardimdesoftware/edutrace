@@ -267,6 +267,7 @@ describe('UsersService', () => {
       const result = await service.update('test@test.com', updateDto as any);
 
       expect(prisma.user.update).toHaveBeenCalledWith({
+        select: PUBLIC_USER_SELECT,
         where: { email: 'test@test.com' },
         data: { full_name: updateDto.full_name, id_level: updateDto.id_level },
       });
@@ -500,7 +501,10 @@ describe('UsersService', () => {
 
       const result = await service.remove(1);
 
-      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(prisma.user.delete).toHaveBeenCalledWith({
+        select: PUBLIC_USER_SELECT,
+        where: { id: 1 },
+      });
       expect(result).toEqual(mockUser);
     });
   });

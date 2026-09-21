@@ -113,6 +113,7 @@ export class UsersService {
 
   async update(email: string, updateUserDto: UpdateUserDto) {
     const updated = await this.prisma.user.update({
+      select: PUBLIC_USER_SELECT,
       where: { email: email },
       data: {
         full_name: updateUserDto.full_name,
@@ -257,6 +258,7 @@ export class UsersService {
 
   async remove(id: number) {
     return this.prisma.user.delete({
+      select: PUBLIC_USER_SELECT,
       where: {
         id: id,
       },
