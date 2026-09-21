@@ -67,8 +67,11 @@ export class UsersController {
     description: 'Obejto para atualização de informações de um usuário.',
   })
   @Patch(':email')
-  update(@Param('email') email: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(email, updateUserDto);
+  async update(
+    @Param('email') email: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return maskUserCpf(await this.usersService.update(email, updateUserDto));
   }
 
   @Levels(
@@ -77,7 +80,7 @@ export class UsersController {
     LEVELS.PROFISSIONAL_SAUDE,
   )
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  async remove(@Param('id') id: string) {
+    return maskUserCpf(await this.usersService.remove(+id));
   }
 }
