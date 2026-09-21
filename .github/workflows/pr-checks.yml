@@ -178,6 +178,10 @@ jobs:
         working-directory: ./front
         run: npm run lint
 
+      - name: Testes
+        working-directory: ./front
+        run: npm test
+
       - name: Build
         working-directory: ./front
         env:
