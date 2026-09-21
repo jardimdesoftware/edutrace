@@ -3,6 +3,7 @@ import { CreateLevelDto } from 'src/levels/dto/create-level.dto';
 import { UpdateLevelDto } from 'src/levels/dto/update-level.dto';
 import { LevelsController } from 'src/levels/levels.controller';
 import { LevelsService } from 'src/levels/levels.service';
+import { LEVELS } from 'src/constants';
 
 describe('LevelsController', () => {
   let controller: LevelsController;
@@ -125,5 +126,30 @@ describe('LevelsController', () => {
       expect(await controller.remove(id)).toEqual(result);
       expect(service.remove).toHaveBeenCalledWith(+id);
     });
+  });
+
+  describe('access levels', () => {
+    it.each(['create', 'update', 'remove'] as const)(
+      'should restrict %s to the administrator',
+      (route) => {
+        const levels = Reflect.getMetadata('levels', controller[route]);
+
+        expect(levels).toEqual([
+          LEVELS.ALUNO_ESTUDANTE,
+          LEVELS.PROFISSIONAL_EDUCACAO,
+          LEVELS.PROFISSIONAL_SAUDE,
+        ]);
+        expect(levels).not.toContain(LEVELS.ADMIN);
+      },
+    );
+
+    it.each(['findAll', 'findOne'] as const)(
+      'should leave %s open to every authenticated level',
+      (route) => {
+        expect(
+          Reflect.getMetadata('levels', controller[route]),
+        ).toBeUndefined();
+      },
+    );
   });
 });
