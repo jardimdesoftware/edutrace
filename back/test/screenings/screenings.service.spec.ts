@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { ScreeningsService } from 'src/screenings/screenings.service';
+import { ForbiddenException } from '@nestjs/common';
+import { LEVELS } from 'src/constants';
 
 describe('ScreeningsService', () => {
   let service: ScreeningsService;
@@ -197,8 +199,11 @@ describe('ScreeningsService', () => {
   });
 
   describe('findOne', () => {
-    it('should return a single screening by email', async () => {
+    it('should return the student own screening', async () => {
       const email = 'test@example.com';
+      const request = {
+        user: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+      } as any;
       const screening = {
         id: 1,
         full_name: 'João Silva',
@@ -244,13 +249,54 @@ describe('ScreeningsService', () => {
       };
       jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(screening);
 
-      const result = await service.findOne(email);
+      const result = await service.findOne(email, request);
 
       expect(prisma.screening.findUnique).toHaveBeenCalledWith({
         where: { email: email },
       });
       expect(result).toEqual(screening);
     });
+
+    it("should throw ForbiddenException if student views another student's screening", async () => {
+      const request = {
+        user: {
+          email: 'student@example.com',
+          id_level: LEVELS.ALUNO_ESTUDANTE,
+        },
+      } as any;
+
+      await expect(
+        service.findOne('other@example.com', request),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Você não tem permissão para visualizar esta triagem',
+        ),
+      );
+      expect(prisma.screening.findUnique).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+    ])(
+      'should allow level %s to read any student screening',
+      async (id_level) => {
+        const email = 'other@example.com';
+        const request = {
+          user: { email: 'professional@example.com', id_level },
+        } as any;
+        const screening = { id: 1, email } as any;
+        jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(screening);
+
+        const result = await service.findOne(email, request);
+
+        expect(prisma.screening.findUnique).toHaveBeenCalledWith({
+          where: { email },
+        });
+        expect(result).toEqual(screening);
+      },
+    );
   });
 
   describe('update', () => {

@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateScreeningDto } from './dto/create-screening.dto';
 import { PrismaService } from 'src/database/prisma.service';
+import { AuthenticatedRequest } from 'src/comments/types/express';
+import { LEVELS } from 'src/constants';
 
 @Injectable()
 export class ScreeningsService {
@@ -16,7 +22,16 @@ export class ScreeningsService {
     return this.prisma.screening.findMany();
   }
 
-  findOne(email: string) {
+  async findOne(email: string, request: AuthenticatedRequest) {
+    const isStudent = request.user.id_level == LEVELS.ALUNO_ESTUDANTE;
+    const isViewingOtherProfile = request.user.email !== email;
+
+    if (isStudent && isViewingOtherProfile) {
+      throw new ForbiddenException(
+        'Você não tem permissão para visualizar esta triagem',
+      );
+    }
+
     return this.prisma.screening.findUnique({
       where: { email },
     });
