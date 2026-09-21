@@ -41,7 +41,7 @@ function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <HomeCard label="Triagem" icon={ClipboardPlus} href="/triagem" />
               <HomeCard label="Anamnese" icon={Stethoscope} href="/anamnese" />
-              <HomeCard label="Comentários Multiprofissionais" icon={MessagesSquare} href="/comentarios" />
+              <HomeCard label="Anotações Multiprofissionais" icon={MessagesSquare} href="/comentarios" />
               <HomeCard label="PEI" icon={BookOpenCheck} href="/pei" />
             </div>
           </>
