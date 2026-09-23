@@ -221,6 +221,9 @@ export class UsersService {
         password_reset_expires: null,
         password_reset_attempts: 0,
         must_change_password: false,
+        failed_login_attempts: 0,
+        locked_until: null,
+        login_lock_count: 0,
       },
     });
   }
