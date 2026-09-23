@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
@@ -576,6 +580,138 @@ describe('AuthService', () => {
       const result = await service.forgotPassword('user@test.com');
 
       expect(result).toEqual({ message: genericMessage });
+    });
+  });
+
+  describe('logs de autenticação', () => {
+    // Os logs vão para o stdout do container, fora do controle de acesso do
+    // sistema, e o e-mail identifica estudantes. O id do usuário basta para
+    // correlacionar os eventos de uma conta.
+    let warn: jest.SpyInstance;
+    let error: jest.SpyInstance;
+
+    beforeEach(() => {
+      const logger = (service as unknown as { logger: Logger }).logger;
+      warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+      error = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const loggedText = () =>
+      JSON.stringify([...warn.mock.calls, ...error.mock.calls]);
+
+    it('should identify the account by id when the login is refused by the lock', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUser,
+        locked_until: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.signIn('user@test.com', 'plainPassword'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(warn).toHaveBeenCalledWith(
+        `Tentativa de login recusada, conta bloqueada: usuário ${mockUser.id}`,
+      );
+      expect(loggedText()).not.toContain(mockUser.email);
+    });
+
+    it('should identify the account by id on a failed attempt and on the lock', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-08-23T12:00:00.000Z'));
+
+      try {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+        await expect(
+          service.signIn('user@test.com', 'wrongPassword'),
+        ).rejects.toThrow(UnauthorizedException);
+
+        expect(warn).toHaveBeenCalledWith(
+          `Falha de login 1/5: usuário ${mockUser.id}`,
+        );
+
+        jest
+          .spyOn(usersService, 'findOne')
+          .mockResolvedValue({ ...mockUser, failed_login_attempts: 4 });
+        jest
+          .spyOn(mailService, 'sendAccountLockedNotice')
+          .mockRejectedValue(new Error('SMTP indisponível'));
+
+        await expect(
+          service.signIn('user@test.com', 'wrongPassword'),
+        ).rejects.toThrow(UnauthorizedException);
+
+        expect(warn).toHaveBeenCalledWith(
+          `Conta bloqueada até 2026-08-23T12:15:00.000Z: usuário ${mockUser.id}`,
+        );
+        expect(error).toHaveBeenCalledWith(
+          `Falha ao enviar aviso de bloqueio do usuário ${mockUser.id}`,
+          expect.anything(),
+        );
+        expect(loggedText()).not.toContain(mockUser.email);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should identify the account by id when the recovery e-mail fails', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedCode');
+      jest
+        .spyOn(mailService, 'sendPasswordResetCode')
+        .mockRejectedValue(new Error('SMTP indisponível'));
+
+      await service.forgotPassword('user@test.com');
+
+      expect(error).toHaveBeenCalledWith(
+        `Falha ao enviar e-mail de recuperação de senha do usuário ${mockUser.id}`,
+        expect.anything(),
+      );
+      expect(loggedText()).not.toContain(mockUser.email);
+    });
+
+    it('should identify the account by id when the Google login is refused by the lock', async () => {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const originalFetch = globalThis.fetch;
+      process.env.GOOGLE_CLIENT_ID = 'client-id';
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            aud: 'client-id',
+            email: mockUser.email,
+            email_verified: true,
+            sub: 'google-sub',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )) as typeof fetch;
+
+      try {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue({
+          ...mockUser,
+          locked_until: new Date(Date.now() + 10 * 60 * 1000),
+        });
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          UnauthorizedException,
+        );
+
+        expect(warn).toHaveBeenCalledWith(
+          `Tentativa de login com Google recusada, conta bloqueada: usuário ${mockUser.id}`,
+        );
+        expect(loggedText()).not.toContain(mockUser.email);
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (clientId === undefined) {
+          delete process.env.GOOGLE_CLIENT_ID;
+        } else {
+          process.env.GOOGLE_CLIENT_ID = clientId;
+        }
+      }
     });
   });
 

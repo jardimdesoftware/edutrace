@@ -78,7 +78,7 @@ export class AuthService {
 
     if (this.isLocked(user)) {
       this.logger.warn(
-        `Tentativa de login recusada, conta bloqueada: ${user.email}`,
+        `Tentativa de login recusada, conta bloqueada: usuário ${user.id}`,
       );
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
@@ -147,7 +147,7 @@ export class AuthService {
 
     if (this.isLocked(user)) {
       this.logger.warn(
-        `Tentativa de login com Google recusada, conta bloqueada: ${user.email}`,
+        `Tentativa de login com Google recusada, conta bloqueada: usuário ${user.id}`,
       );
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
@@ -283,6 +283,7 @@ export class AuthService {
   }
 
   private async registerFailedLogin(user: {
+    id: number;
     email: string;
     failed_login_attempts: number;
     login_lock_count: number;
@@ -292,7 +293,7 @@ export class AuthService {
     if (attempts < MAX_FAILED_LOGIN_ATTEMPTS) {
       await this.userService.registerFailedLoginAttempt(user.email);
       this.logger.warn(
-        `Falha de login ${attempts}/${MAX_FAILED_LOGIN_ATTEMPTS}: ${user.email}`,
+        `Falha de login ${attempts}/${MAX_FAILED_LOGIN_ATTEMPTS}: usuário ${user.id}`,
       );
       return;
     }
@@ -303,7 +304,7 @@ export class AuthService {
 
     await this.userService.lockAccount(user.email, lockedUntil);
     this.logger.warn(
-      `Conta bloqueada até ${lockedUntil.toISOString()}: ${user.email}`,
+      `Conta bloqueada até ${lockedUntil.toISOString()}: usuário ${user.id}`,
     );
 
     // O aviso vai por e-mail porque a resposta HTTP é genérica: informar o
@@ -313,7 +314,7 @@ export class AuthService {
       await this.mailService.sendAccountLockedNotice(user.email, lockedUntil);
     } catch (error) {
       this.logger.error(
-        `Falha ao enviar aviso de bloqueio para ${user.email}`,
+        `Falha ao enviar aviso de bloqueio do usuário ${user.id}`,
         error instanceof Error ? error.stack : String(error),
       );
     }
@@ -401,7 +402,7 @@ export class AuthService {
       await this.mailService.sendPasswordResetCode(email, code);
     } catch (error) {
       this.logger.error(
-        `Falha ao enviar e-mail de recuperação de senha para ${email}`,
+        `Falha ao enviar e-mail de recuperação de senha do usuário ${user.id}`,
         error instanceof Error ? error.stack : String(error),
       );
     }
