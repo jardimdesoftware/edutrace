@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { validateSecretKey } from './common/validate-secret-key';
+import { setupSwagger } from './common/setup-swagger';
 
 async function bootstrap() {
   validateSecretKey();
@@ -30,15 +30,7 @@ async function bootstrap() {
   // validação, e o valor com máscara chegaria ao banco assim mesmo.
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
-  const config = new DocumentBuilder()
-    .setTitle('Documentação API pe-estudantes')
-    .setDescription(
-      'API criada para auxiliar estudantes com necessidades educacionais específicas.',
-    )
-    .setVersion('1.0')
-    .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('swagger', app, documentFactory);
+  setupSwagger(app, isProduction);
 
   await app.listen(port);
 }
