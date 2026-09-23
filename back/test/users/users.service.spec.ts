@@ -422,7 +422,7 @@ describe('UsersService', () => {
   });
 
   describe('updatePassword', () => {
-    it('should update the password and invalidate the reset token in the same update', async () => {
+    it('should update the password, invalidate the reset token and clear the login lock in the same update', async () => {
       const updatedUser = { ...mockUser, password: 'newHashedPassword' };
       jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
 
@@ -439,6 +439,9 @@ describe('UsersService', () => {
           password_reset_expires: null,
           password_reset_attempts: 0,
           must_change_password: false,
+          failed_login_attempts: 0,
+          locked_until: null,
+          login_lock_count: 0,
         },
       });
       expect(result).toEqual(updatedUser);

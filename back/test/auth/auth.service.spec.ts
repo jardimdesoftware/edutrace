@@ -666,6 +666,33 @@ describe('AuthService', () => {
       expect(result).toEqual({ message: 'Senha redefinida com sucesso.' });
     });
 
+    it('should let a locked account sign in with the new password after the reset', async () => {
+      const lockedUser = {
+        ...mockUserWithResetToken,
+        locked_until: new Date(Date.now() + 10 * 60 * 1000),
+        login_lock_count: 1,
+        failed_login_attempts: 0,
+      };
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(lockedUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('newHashedPassword');
+
+      await service.resetPassword('user@test.com', '123456', 'novaSenha123');
+
+      // updatePassword limpa locked_until, failed_login_attempts e
+      // login_lock_count junto com a senha, então a conta volta a entrar.
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...lockedUser,
+        password: 'newHashedPassword',
+        locked_until: null,
+        login_lock_count: 0,
+      });
+
+      const result = await service.signIn('user@test.com', 'novaSenha123');
+
+      expect(result).toEqual({ access_token: 'mock.jwt.token' });
+    });
+
     it('should throw and not update the password when the code is invalid', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserWithResetToken);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
