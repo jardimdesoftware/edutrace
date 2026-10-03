@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Semgrep CE
         run: pipx install semgrep==1.177.0
@@ -46,13 +46,13 @@ jobs:
 
       - name: Upload SARIF to code scanning
         if: always() && hashFiles('security-reports/semgrep/semgrep.sarif') != ''
-        uses: github/codeql-action/upload-sarif@7999b86c43a865dc79d8923397f35af22de63401 # v4
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
         with:
           sarif_file: security-reports/semgrep/semgrep.sarif
 
       - name: Upload Semgrep evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: semgrep-evidence
           path: security-reports/semgrep/

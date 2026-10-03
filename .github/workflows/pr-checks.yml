@@ -32,11 +32,11 @@ jobs:
       deploy_config: ${{ steps.filter.outputs.deploy_config }}
       ci_config: ${{ steps.filter.outputs.ci_config }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Filtrar caminhos alterados
         id: filter
-        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
             backend:
@@ -88,10 +88,10 @@ jobs:
       DATABASE_URL: postgresql://test:test@localhost:5432/testdb
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Configurar Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -179,7 +179,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Builda a imagem exatamente como em produção. Reproduz a ordem do
       # Dockerfile (prisma generate -> nest build) e pega regressões que só
@@ -244,10 +244,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Configurar Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -290,7 +290,7 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build da imagem Docker do frontend
         run: docker build ./front -f front/Dockerfile -t edutrace-front:pr-check
@@ -357,7 +357,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # O middleware do front verifica a sessão chamando o backend a partir do
       # servidor Next, que roda dentro do container. Com o endereço publicado no
@@ -416,7 +416,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Renderiza o compose com uma porta de host diferente de 3000. É esse
       # cenário que separa uma configuração correta de uma que só funciona por
@@ -499,7 +499,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # no-new-privileges impede que um processo do container ganhe privilégio
       # por binário setuid/setgid. read_only impede que um processo comprometido
@@ -552,7 +552,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # O back alcança o banco pelo nome do serviço na rede app-net, então o
       # PostgreSQL não precisa de porta no host. Porta publicada abre o banco em
@@ -609,7 +609,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Tag e branch de action são referências móveis: quem controla o
       # repositório da action pode repontá-las para outro código, que passa a
@@ -658,7 +658,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Com QEMU, o build arm64 rodava emulado no runner amd64 e travava no
       # npm ci ("qemu: uncaught target signal 4 (Illegal instruction)") até o
