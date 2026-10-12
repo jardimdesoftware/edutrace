@@ -9,7 +9,8 @@
  *   DELETE /anamnesis/:email
  *
  * ATENÇÃO: A API de anamnesis atualiza a fase do usuário (id_current_phase = 2).
- * Por isso, o usuário testado precisa existir no banco com fase 1 (Triagem já realizada).
+ * Por isso, o titular precisa existir no banco como estudante (id_level 2); o
+ * script o cadastra no passo 0 e o remove no passo 6.
  */
 
 import http from 'k6/http';
@@ -175,8 +176,8 @@ export default function (data) {
   const testEmail = `k6.anamnesis.${Date.now()}.${Math.floor(Math.random() * 10000)}@test.com`;
 
   // ─── 0. POST /users — cria o usuário exigido pela pré-condição acima ──────
-  // POST /anamnesis atualiza id_current_phase do usuário com esse email;
-  // sem essa criação prévia a API retorna 500 (usuário inexistente).
+  // A API só aceita anamnese de estudante cadastrado: sem essa criação prévia,
+  // POST /anamnesis responde 404.
   const createUserRes = http.post(
     `${BASE_URL}/users`,
     JSON.stringify({

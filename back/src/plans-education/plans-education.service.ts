@@ -7,17 +7,25 @@ import { CreatePlansEducationDto } from './dto/create-plans-education.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { LEVELS } from 'src/constants';
+import { StudentsService } from 'src/students/students.service';
 
 @Injectable()
 export class PlansEducationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private studentsService: StudentsService,
+  ) {}
 
   // A autoria vem do usuário autenticado. O PATCH não altera esses campos, e
   // PATCH /auth/me mantém professor_email quando o professor troca de e-mail.
-  create(
+  async create(
     createPlansEducationDto: CreatePlansEducationDto,
     author: AuthenticatedRequest['user'],
   ) {
+    await this.studentsService.findOneOrFail({
+      email: createPlansEducationDto.student_email,
+    });
+
     return this.prisma.plansEducation.create({
       data: {
         ...createPlansEducationDto,
@@ -27,8 +35,12 @@ export class PlansEducationService {
     });
   }
 
-  findAll() {
-    return this.prisma.plansEducation.findMany();
+  async findAll() {
+    const emails = await this.studentsService.findAllEmails();
+
+    return this.prisma.plansEducation.findMany({
+      where: { student_email: { in: emails } },
+    });
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
@@ -41,6 +53,8 @@ export class PlansEducationService {
       );
     }
 
+    await this.studentsService.findOneOrFail({ email });
+
     const planEducation = await this.prisma.plansEducation.findUnique({
       where: { student_email: email },
     });
@@ -51,6 +65,11 @@ export class PlansEducationService {
   }
 
   async update(email: string, data: Partial<CreatePlansEducationDto>) {
+    // O PATCH devolve o registro inteiro: o titular precisa ser estudante,
+    // como na leitura. O DELETE fica sem a conferência para que registros
+    // gravados para quem não é estudante continuem removíveis.
+    await this.studentsService.findOneOrFail({ email });
+
     const existing = await this.prisma.plansEducation.findUnique({
       where: { student_email: email },
     });

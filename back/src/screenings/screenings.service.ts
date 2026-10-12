@@ -7,19 +7,31 @@ import { CreateScreeningDto } from './dto/create-screening.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { LEVELS } from 'src/constants';
+import { StudentsService } from 'src/students/students.service';
 
 @Injectable()
 export class ScreeningsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private studentsService: StudentsService,
+  ) {}
 
   async create(createScreeningDto: CreateScreeningDto) {
+    await this.studentsService.findOneOrFail({
+      email: createScreeningDto.email,
+    });
+
     return this.prisma.screening.create({
       data: createScreeningDto,
     });
   }
 
-  findAll() {
-    return this.prisma.screening.findMany();
+  async findAll() {
+    const emails = await this.studentsService.findAllEmails();
+
+    return this.prisma.screening.findMany({
+      where: { email: { in: emails } },
+    });
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
@@ -32,12 +44,19 @@ export class ScreeningsService {
       );
     }
 
+    await this.studentsService.findOneOrFail({ email });
+
     return this.prisma.screening.findUnique({
       where: { email },
     });
   }
 
   async update(email: string, updateScreeningDto: Partial<CreateScreeningDto>) {
+    // O PATCH devolve o registro inteiro: o titular precisa ser estudante,
+    // como na leitura. O DELETE fica sem a conferência para que registros
+    // gravados para quem não é estudante continuem removíveis.
+    await this.studentsService.findOneOrFail({ email });
+
     const existing = await this.prisma.screening.findUnique({
       where: { email },
     });

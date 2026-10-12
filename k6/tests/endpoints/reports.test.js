@@ -44,18 +44,14 @@ export default function (data) {
     '[reports] tempo de resposta < 500ms': (r) => r.timings.duration < 500,
   });
 
-  // ─── GET com email inexistente (API sempre retorna 200 com array vazio) ───
-  const invalidRes = http.get(`${BASE_URL}/reports/email-inexistente@test.com`, { headers });
+  // ─── GET com email inexistente (só estudante cadastrado tem relatório) ────
+  // O 404 é a resposta esperada e não conta como falha em http_req_failed.
+  const invalidRes = http.get(`${BASE_URL}/reports/email-inexistente@test.com`, {
+    headers,
+    responseCallback: http.expectedStatuses(404),
+  });
   check(invalidRes, {
-    '[reports] email inexistente retorna 200': (r) => r.status === 200,
-    '[reports] email inexistente retorna array vazio': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return Array.isArray(body) && body.length === 0;
-      } catch {
-        return false;
-      }
-    },
+    '[reports] email inexistente retorna 404': (r) => r.status === 404,
   });
 
   sleep(1);

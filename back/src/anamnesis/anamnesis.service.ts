@@ -7,27 +7,39 @@ import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS, PHASES } from 'src/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { StudentsService } from 'src/students/students.service';
 
 @Injectable()
 export class AnamnesisService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private studentsService: StudentsService,
+  ) {}
 
   async create(createAnamnesisDto: CreateAnamnesisDto) {
-    const anamnesisCreated = await this.prisma.anamnesis.create({
-      data: createAnamnesisDto,
+    await this.studentsService.findOneOrFail({
+      email: createAnamnesisDto.email,
     });
 
-    // Atualiza fase do usuário
-    await this.prisma.user.update({
-      where: { email: createAnamnesisDto.email },
-      data: { id_current_phase: PHASES.ANAMNESE },
-    });
+    // A anamnese e a fase do estudante são gravadas juntas: se a fase falhar,
+    // a anamnese não fica no banco.
+    const [anamnesisCreated] = await this.prisma.$transaction([
+      this.prisma.anamnesis.create({ data: createAnamnesisDto }),
+      this.prisma.user.update({
+        where: { email: createAnamnesisDto.email },
+        data: { id_current_phase: PHASES.ANAMNESE },
+      }),
+    ]);
 
     return anamnesisCreated;
   }
 
-  findAll() {
-    return this.prisma.anamnesis.findMany();
+  async findAll() {
+    const emails = await this.studentsService.findAllEmails();
+
+    return this.prisma.anamnesis.findMany({
+      where: { email: { in: emails } },
+    });
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
@@ -40,12 +52,19 @@ export class AnamnesisService {
       );
     }
 
+    await this.studentsService.findOneOrFail({ email });
+
     return this.prisma.anamnesis.findUnique({
       where: { email },
     });
   }
 
   async update(email: string, updateAnamnesisDto: Partial<CreateAnamnesisDto>) {
+    // O PATCH devolve o registro inteiro: o titular precisa ser estudante,
+    // como na leitura. O DELETE fica sem a conferência para que registros
+    // gravados para quem não é estudante continuem removíveis.
+    await this.studentsService.findOneOrFail({ email });
+
     const existing = await this.prisma.anamnesis.findUnique({
       where: { email },
     });
