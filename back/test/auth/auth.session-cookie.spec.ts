@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ThrottlerModule } from '@nestjs/throttler';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { AuthController } from 'src/auth/auth.controller';
@@ -32,7 +31,6 @@ describe('Session cookie over HTTP', () => {
     jwtService = { verifyAsync: jest.fn().mockResolvedValue(payload) };
 
     const module: TestingModule = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }])],
       controllers: [AuthController],
       providers: [
         { provide: AuthService, useValue: authService },
