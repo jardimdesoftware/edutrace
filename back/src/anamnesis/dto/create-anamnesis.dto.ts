@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsObject } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsObject } from 'class-validator';
 
 export class CreateAnamnesisDto {
   @ApiProperty({
@@ -7,7 +7,7 @@ export class CreateAnamnesisDto {
     example: 'joao@example.com',
   })
   @IsNotEmpty({ message: 'O campo email não deve estar vazio.' })
-  @IsString({ message: 'O campo email deve ser uma string.' })
+  @IsEmail({}, { message: 'O campo email deve ser um e-mail válido.' })
   email: string;
 
   @ApiProperty({
