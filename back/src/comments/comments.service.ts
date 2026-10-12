@@ -10,6 +10,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import { MailService } from 'src/mail/mail.service';
 import { COMMENT_EDIT_LIMIT, LEVELS } from 'src/constants';
 import { AuthenticatedRequest } from './types/express';
+import { StudentsService } from 'src/students/students.service';
 
 const editsInclude = {
   edits: {
@@ -24,6 +25,7 @@ export class CommentsService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private studentsService: StudentsService,
   ) {}
 
   async create(
@@ -33,6 +35,8 @@ export class CommentsService {
     authorLevel: number,
   ) {
     const { comment, id_user, notify_by_email } = createCommentDto;
+
+    await this.studentsService.findOneOrFail({ id: id_user });
 
     const commentCreated = await this.prisma.comments.create({
       data: {
@@ -116,6 +120,8 @@ export class CommentsService {
         'Você não tem permissão para visualizar estas anotações',
       );
     }
+
+    await this.studentsService.findOneOrFail({ id: idUser });
 
     const allComments = await this.prisma.comments.findMany({
       where: {

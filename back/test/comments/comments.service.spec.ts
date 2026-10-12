@@ -1,3 +1,4 @@
+import { StudentsService } from 'src/students/students.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
@@ -8,6 +9,7 @@ import { COMMENT_EDIT_LIMIT, LEVELS } from 'src/constants';
 describe('CommentsService', () => {
   let service: CommentsService;
   let prisma: PrismaService;
+  let studentsService: StudentsService;
   let mailService: MailService;
   let transactionClient: {
     commentEdits: { create: jest.Mock };
@@ -38,6 +40,17 @@ describe('CommentsService', () => {
       providers: [
         CommentsService,
         {
+          provide: StudentsService,
+          useValue: {
+            findOneOrFail: jest
+              .fn()
+              .mockResolvedValue({ id: 2, email: 'estudante@example.com' }),
+            findAllEmails: jest
+              .fn()
+              .mockResolvedValue(['estudante@example.com']),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: {
             comments: {
@@ -67,6 +80,7 @@ describe('CommentsService', () => {
 
     service = module.get<CommentsService>(CommentsService);
     prisma = module.get<PrismaService>(PrismaService);
+    studentsService = module.get<StudentsService>(StudentsService);
     mailService = module.get<MailService>(MailService);
   });
 
@@ -623,6 +637,44 @@ describe('CommentsService', () => {
           'Você não tem permissão para visualizar estas anotações',
         ),
       );
+      expect(prisma.comments.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('titular estudante', () => {
+    it('should not create a note nor email someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+
+      await expect(
+        service.create(
+          { comment: 'Texto', id_user: 9, notify_by_email: true },
+          3,
+          'Saúde',
+          LEVELS.PROFISSIONAL_SAUDE,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(studentsService.findOneOrFail).toHaveBeenCalledWith({ id: 9 });
+      expect(prisma.comments.create).not.toHaveBeenCalled();
+      expect(mailService.sendNewCommentNotice).not.toHaveBeenCalled();
+    });
+
+    it('should answer 404 when reading the notes of someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+
+      await expect(
+        service.findAllByIdUser(9, {
+          user: {
+            sub: 3,
+            id_level: LEVELS.PROFISSIONAL_SAUDE,
+            email: 'saude@example.com',
+            name: 'Saúde',
+          },
+        } as never),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.comments.findMany).not.toHaveBeenCalled();
     });
   });
