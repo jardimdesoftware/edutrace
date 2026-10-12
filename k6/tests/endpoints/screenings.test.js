@@ -13,6 +13,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { getToken, authHeaders } from '../../helpers/auth.js';
 import { endpointOptions } from '../../config/options.js';
+import { randomCpf } from '../../helpers/cpf.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
@@ -71,6 +72,22 @@ function buildScreeningPayload(email) {
 export default function (data) {
   const headers = authHeaders(data.token);
   const testEmail = `k6.screening.${Date.now()}.${Math.floor(Math.random() * 10000)}@test.com`;
+
+  // ─── 0. POST /users — cria o estudante titular da ficha ──────────────────
+  // A API só aceita ficha de estudante cadastrado: e-mail sem conta recebe 404.
+  const createUserRes = http.post(
+    `${BASE_URL}/users`,
+    JSON.stringify({
+      full_name: 'Estudante k6 Triagem',
+      cpf: randomCpf(),
+      email: testEmail,
+      id_level: 2,
+    }),
+    { headers },
+  );
+  check(createUserRes, {
+    '[screenings] POST /users (setup) retorna 201': (r) => r.status === 201,
+  });
 
   // ─── 1. POST /screenings ──────────────────────────────────────────────────
   const createRes = http.post(
