@@ -312,54 +312,6 @@ describe('UsersService', () => {
     });
   });
 
-  describe('ensureGoogleStudentUser', () => {
-    const googleData = {
-      email: 'aluno@discente.ifpe.edu.br',
-      fullName: 'Nome no Google',
-      passwordHash: 'randomHash',
-      googleSubject: 'google-sub',
-    };
-
-    it('should create the account as a student when the e-mail is not registered', async () => {
-      jest.spyOn(prisma.user, 'upsert').mockResolvedValue(mockUser);
-
-      await service.ensureGoogleStudentUser(googleData);
-
-      expect(prisma.user.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { email: googleData.email },
-          create: {
-            full_name: googleData.fullName,
-            cpf: 'google:google-sub',
-            email: googleData.email,
-            password: googleData.passwordHash,
-            id_level: LEVELS.ALUNO_ESTUDANTE,
-            id_current_phase: PHASES.TRIAGEM,
-            must_change_password: false,
-          },
-        }),
-      );
-    });
-
-    it('should not change the level, the name or the pending password change of an existing account', async () => {
-      const existing = {
-        ...mockUser,
-        email: googleData.email,
-        full_name: 'Nome cadastrado pelo administrador',
-        id_level: LEVELS.PROFISSIONAL_EDUCACAO,
-        must_change_password: true,
-      };
-      jest.spyOn(prisma.user, 'upsert').mockResolvedValue(existing);
-
-      const result = await service.ensureGoogleStudentUser(googleData);
-
-      expect(prisma.user.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ update: {} }),
-      );
-      expect(result).toEqual(existing);
-    });
-  });
-
   describe('createGoogleStudentUser', () => {
     const googleData = {
       email: 'aluno@discente.ifpe.edu.br',

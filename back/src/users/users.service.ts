@@ -152,29 +152,6 @@ export class UsersService {
     });
   }
 
-  async ensureGoogleStudentUser(data: {
-    email: string;
-    fullName: string;
-    passwordHash: string;
-    googleSubject: string;
-  }) {
-    // O login Google só define nome e perfil ao criar a conta. Uma conta que já
-    // existe mantém o que o administrador cadastrou, inclusive a troca de senha
-    // pendente.
-    return this.prisma.user.upsert({
-      where: { email: data.email },
-      update: {},
-      create: {
-        full_name: data.fullName,
-        cpf: `google:${data.googleSubject}`,
-        email: data.email,
-        password: data.passwordHash,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
-        id_current_phase: PHASES.TRIAGEM,
-        must_change_password: false,
-      },
-    });
-  }
   // Cria a conta do estudante que entra pela primeira vez com o Google, já
   // vinculada ao sub da Conta Google. Conta existente com o mesmo e-mail nunca é
   // reaproveitada: devolve null, e o dono vincula a Conta Google depois de
