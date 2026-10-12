@@ -79,7 +79,7 @@ sudo apt-get update && sudo apt-get install k6
    ```
 
 3. As rotas públicas de `/auth` têm limite de requisições por IP, com teto padrão
-   de 20 por minuto. Os testes de carga passam desse volume, então a API do
+   de 8 por minuto. Os testes de carga passam desse volume, então a API do
    ambiente de teste precisa subir com um teto maior, por exemplo
    `AUTH_RATE_LIMIT=10000`. Em produção o valor padrão é o que vale.
 
