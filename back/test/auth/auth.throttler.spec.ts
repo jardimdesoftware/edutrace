@@ -6,6 +6,8 @@ import { AuthController } from 'src/auth/auth.controller';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { AUTH_RATE_LIMIT_DEFAULT } from 'src/auth/constants/constants';
+import { APP_GUARD } from '@nestjs/core';
+import { UserThrottlerGuard } from 'src/common/user-throttler.guard';
 
 describe('AuthController rate limit', () => {
   let app: INestApplication;
@@ -14,9 +16,13 @@ describe('AuthController rate limit', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: LIMIT }])],
+      // Mesmo arranjo do AppModule: limite geral folgado e UserThrottlerGuard
+      // global. As rotas de autenticação precisam continuar no limite
+      // próprio, sem contar a mesma requisição duas vezes.
+      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }])],
       controllers: [AuthController],
       providers: [
+        { provide: APP_GUARD, useClass: UserThrottlerGuard },
         {
           provide: AuthService,
           useValue: {
