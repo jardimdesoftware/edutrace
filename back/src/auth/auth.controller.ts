@@ -170,9 +170,10 @@ export class AuthController {
   }
 
   // Sem @Levels: qualquer usuário autenticado pode alterar os próprios dados.
-  // A identidade é lida do token (req.user.email), não do corpo.
+  // A identidade é lida do token (req.user.email), não do corpo. O rate limit
+  // limita as tentativas de senha atual feitas com uma sessão aberta.
   @AllowPasswordChange()
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, ThrottlerGuard)
   @ApiBody({
     type: UpdateProfileDto,
     description: 'Altera o e-mail e/ou a senha do próprio usuário autenticado.',

@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
@@ -31,12 +31,22 @@ describe('AuthController rate limit', () => {
             completeRegistration: jest
               .fn()
               .mockResolvedValue({ access_token: 'token' }),
+            updateProfile: jest
+              .fn()
+              .mockResolvedValue({ access_token: 'token' }),
           },
         },
       ],
     })
       .overrideGuard(AuthGuard)
-      .useValue({ canActivate: () => true })
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          context.switchToHttp().getRequest().user = {
+            email: 'user@test.com',
+          };
+          return true;
+        },
+      })
       .compile();
 
     app = module.createNestApplication();
@@ -82,4 +92,20 @@ describe('AuthController rate limit', () => {
       expect(response.status).toBe(429);
     },
   );
+
+  it('should answer 429 to PATCH /auth/me once the limit is exceeded', async () => {
+    const patchMe = () =>
+      request(app.getHttpServer())
+        .patch('/auth/me')
+        .send({ currentPassword: 'senhaErrada123' });
+
+    for (let attempt = 0; attempt < LIMIT; attempt++) {
+      const response = await patchMe();
+      expect(response.status).not.toBe(429);
+    }
+
+    const response = await patchMe();
+
+    expect(response.status).toBe(429);
+  });
 });
