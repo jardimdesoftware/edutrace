@@ -521,22 +521,6 @@ describe('UsersService', () => {
     });
   });
 
-  describe('incrementPasswordResetAttempts', () => {
-    it('should increment the attempts counter', async () => {
-      const updatedUser = { ...mockUser, password_reset_attempts: 1 };
-      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
-
-      const result =
-        await service.incrementPasswordResetAttempts('test@test.com');
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { email: 'test@test.com' },
-        data: { password_reset_attempts: { increment: 1 } },
-      });
-      expect(result).toEqual(updatedUser);
-    });
-  });
-
   describe('update', () => {
     it('should revoke the sessions of the account when the level changes', async () => {
       jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
@@ -615,24 +599,6 @@ describe('UsersService', () => {
           failed_login_attempts: 0,
           locked_until: null,
           login_lock_count: 0,
-        },
-      });
-      expect(result).toEqual(mockUser);
-    });
-  });
-
-  describe('clearPasswordResetToken', () => {
-    it('should clear the token, its expiration and the attempts', async () => {
-      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
-
-      const result = await service.clearPasswordResetToken('test@test.com');
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { email: 'test@test.com' },
-        data: {
-          password_reset_token: null,
-          password_reset_expires: null,
-          password_reset_attempts: 0,
         },
       });
       expect(result).toEqual(mockUser);

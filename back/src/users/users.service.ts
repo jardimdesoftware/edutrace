@@ -291,26 +291,6 @@ export class UsersService {
     });
   }
 
-  async incrementPasswordResetAttempts(email: string) {
-    return this.prisma.user.update({
-      where: { email: email },
-      data: {
-        password_reset_attempts: { increment: 1 },
-      },
-    });
-  }
-
-  async clearPasswordResetToken(email: string) {
-    return this.prisma.user.update({
-      where: { email: email },
-      data: {
-        password_reset_token: null,
-        password_reset_expires: null,
-        password_reset_attempts: 0,
-      },
-    });
-  }
-
   // Usado pela redefinição e pela ativação de conta. Gravar uma senha por
   // qualquer um dos dois caminhos invalida o código e o link pendentes do outro.
   async updatePassword(email: string, hashedPassword: string) {
