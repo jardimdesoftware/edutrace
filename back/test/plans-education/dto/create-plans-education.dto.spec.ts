@@ -39,8 +39,8 @@ describe('CreatePlansEducationDto, campo student_email', () => {
   });
 });
 
-// A autoria vem do usuário autenticado: valores enviados no corpo não são
-// declarados no DTO e o pipe de produção (whitelist) os descarta.
+// A autoria vem do usuário autenticado: os campos não são declarados no DTO,
+// e o pipe de produção recusa com 400 quando chegam no corpo.
 describe('CreatePlansEducationDto, autoria', () => {
   it('should not declare professor_email nor professor_name', () => {
     const dto = plainToInstance(CreatePlansEducationDto, {
