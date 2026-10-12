@@ -46,13 +46,17 @@ export class AuthGuard implements CanActivate {
       // assinatura válida até vencer.
       const session = await this.sessionsService.findActive(payload.jti);
 
-      if (!session) {
+      // O token precisa ser do dono da sessão, e o nível vem do banco. Assim,
+      // um token reassinado com outro sub ou outro id_level não passa, e a
+      // troca de nível vale na requisição seguinte (ASVS 5.0, 8.3.2).
+      if (!session || session.id_user !== payload.sub) {
         throw new UnauthorizedException('Sessão encerrada');
       }
 
       await this.sessionsService.registerUse(session);
 
-      request['user'] = payload;
+      const user = { ...payload, id_level: session.user.id_level };
+      request['user'] = user;
 
       // Enquanto a troca do primeiro acesso não acontece, o token só abre as
       // rotas necessárias para realizá-la. Sem isto a obrigatoriedade existiria
@@ -75,10 +79,7 @@ export class AuthGuard implements CanActivate {
         context.getHandler(),
       );
 
-      if (
-        payload.must_complete_registration &&
-        !allowsIncompleteRegistration
-      ) {
+      if (payload.must_complete_registration && !allowsIncompleteRegistration) {
         throw new ForbiddenException(
           'Cadastre o CPF e a senha antes de continuar.',
         );
@@ -87,10 +88,7 @@ export class AuthGuard implements CanActivate {
       const requiredLevels =
         this.reflector.get<number[]>('levels', context.getHandler()) || [];
 
-      if (
-        requiredLevels.length > 0 &&
-        requiredLevels.includes(payload.id_level)
-      ) {
+      if (requiredLevels.length > 0 && requiredLevels.includes(user.id_level)) {
         throw new ForbiddenException('Nível de acesso insuficiente');
       }
     } catch (error) {

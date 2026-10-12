@@ -38,7 +38,11 @@ describe('Session cookie over HTTP', () => {
         {
           provide: SessionsService,
           useValue: {
-            findActive: jest.fn().mockResolvedValue({ jti: 'sessao-1' }),
+            findActive: jest.fn().mockResolvedValue({
+              jti: 'sessao-1',
+              id_user: 1,
+              user: { id_level: 2 },
+            }),
             registerUse: jest.fn(),
           },
         },
