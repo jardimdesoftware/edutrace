@@ -1,8 +1,8 @@
-import { AnamnesisData } from "../interfaces/AnamnesisData";
+import type { AnamnesisData } from "../interfaces/AnamnesisData";
 import { apiRequest } from "@/services/http";
 
 export async function getAnamneseByEmail(email: string) {
-  return apiRequest(`/anamnesis/${email}`);
+  return apiRequest(`/anamnesis/${encodeURIComponent(email)}`);
 }
 
 export async function getAllAnamneses() {
@@ -17,11 +17,11 @@ export async function postAnamneses(anamneseData: AnamnesisData): Promise<Anamne
 }
 
 export async function deleteAnamnesis(email: string) {
-  return apiRequest(`/anamnesis/${email}`, { method: 'DELETE' });
+  return apiRequest(`/anamnesis/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
 
 export async function patchAnamnesis(anamneseData: AnamnesisData, email: string) {
-  return apiRequest(`/anamnesis/${email}`, {
+  return apiRequest(`/anamnesis/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: anamneseData,
   });

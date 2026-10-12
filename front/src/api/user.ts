@@ -6,7 +6,7 @@ export async function getAllUsers() {
 
 // vai dar certo 2
 export async function updateUser(email: string, id_level: string) {
-  return apiRequest(`/users/${email}`, {
+  return apiRequest(`/users/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: { id_level: Number(id_level) },
   });

@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsEmail,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -37,7 +38,7 @@ export class CreateUserDto {
     example: 'luizin@hotmail.com',
   })
   @IsNotEmpty({ message: 'O campo email não deve estar vazio.' })
-  @IsString({ message: 'O campo email deve ser uma string.' })
+  @IsEmail({}, { message: 'O campo email deve ser um e-mail válido.' })
   email: string;
 
   @ApiProperty({
