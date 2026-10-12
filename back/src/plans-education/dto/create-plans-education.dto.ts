@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsObject } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsObject, IsString } from 'class-validator';
 
 export class CreatePlansEducationDto {
   @ApiProperty({
@@ -23,7 +23,7 @@ export class CreatePlansEducationDto {
     example: 'estudante@example.com',
   })
   @IsNotEmpty({ message: 'O campo student_email não deve estar vazio.' })
-  @IsString({ message: 'O campo student_email deve ser uma string.' })
+  @IsEmail({}, { message: 'O campo student_email deve ser um e-mail válido.' })
   student_email: string;
 
   @ApiProperty({
