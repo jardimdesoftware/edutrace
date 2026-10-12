@@ -1,3 +1,6 @@
+import { StudentsService } from 'src/students/students.service';
+import { AuthenticatedRequest } from 'src/comments/types/express';
+import { CreatePlansEducationDto } from 'src/plans-education/dto/create-plans-education.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -7,11 +10,23 @@ import { PlansEducationService } from 'src/plans-education/plans-education.servi
 describe('PlansEducationService', () => {
   let service: PlansEducationService;
   let prisma: PrismaService;
+  let studentsService: StudentsService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlansEducationService,
+        {
+          provide: StudentsService,
+          useValue: {
+            findOneOrFail: jest
+              .fn()
+              .mockResolvedValue({ id: 2, email: 'estudante@example.com' }),
+            findAllEmails: jest
+              .fn()
+              .mockResolvedValue(['estudante@example.com']),
+          },
+        },
         {
           provide: PrismaService,
           useValue: {
@@ -29,6 +44,7 @@ describe('PlansEducationService', () => {
 
     service = module.get<PlansEducationService>(PlansEducationService);
     prisma = module.get<PrismaService>(PrismaService);
+    studentsService = module.get<StudentsService>(StudentsService);
   });
 
   it('should be defined', () => {
@@ -911,6 +927,64 @@ describe('PlansEducationService', () => {
       jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
 
       await expect(service.remove(email)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('titular estudante', () => {
+    const author = {
+      sub: 7,
+      id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+      email: 'professor@example.com',
+      name: 'Professor',
+    };
+
+    it('should not create a plan for someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+
+      await expect(
+        service.create(
+          { student_email: 'saude@example.com' } as CreatePlansEducationDto,
+          author,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
+        email: 'saude@example.com',
+      });
+      expect(prisma.plansEducation.create).not.toHaveBeenCalled();
+    });
+
+    it('should answer 404 when reading the plan of someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+      const request = {
+        user: {
+          sub: 3,
+          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          email: 'saude@example.com',
+          name: 'Saúde',
+        },
+      } as unknown as AuthenticatedRequest;
+
+      await expect(
+        service.findOne('profissional@example.com', request),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.plansEducation.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should list only the plans of students', async () => {
+      jest
+        .spyOn(studentsService, 'findAllEmails')
+        .mockResolvedValue(['a@example.com']);
+      jest.spyOn(prisma.plansEducation, 'findMany').mockResolvedValue([]);
+
+      await service.findAll();
+
+      expect(prisma.plansEducation.findMany).toHaveBeenCalledWith({
+        where: { student_email: { in: ['a@example.com'] } },
+      });
     });
   });
 });
