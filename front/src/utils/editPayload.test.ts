@@ -58,13 +58,57 @@ describe('pickFields', () => {
     });
   }
 
-  it('keeps the editable fields of each screen', () => {
+  // As listas repetem os campos dos DTOs de atualização do back
+  // (UpdateScreeningDto, UpdateAnamnesisDto e UpdatePlansEducationDto). Campo
+  // a mais faz o PATCH responder 400; campo a menos deixa de ser gravado.
+  it('lists exactly the fields of the back end update DTOs', () => {
     assert.deepEqual(
-      Object.keys(pickFields(record, SCREENING_EDIT_FIELDS as never)),
-      [...SCREENING_EDIT_FIELDS],
+      [...SCREENING_EDIT_FIELDS].sort(),
+      [
+        'full_name',
+        'global_disorder',
+        'hearing_impairment',
+        'other_disabilities',
+        'physical_disability',
+        'report',
+        'special_service',
+        'specific_need',
+        'visual_impairment',
+      ],
     );
-    assert.ok(ANAMNESIS_EDIT_FIELDS.includes('identification'));
-    assert.ok(PEI_EDIT_FIELDS.includes('objectives'));
-    assert.ok(PEI_EDIT_FIELDS.includes('student_name'));
+    assert.deepEqual(
+      [...ANAMNESIS_EDIT_FIELDS].sort(),
+      [
+        'development',
+        'family_conditions',
+        'family_data',
+        'identification',
+        'mother_background',
+        'school_information',
+        'sexuality',
+        'student_assessment',
+        'student_development',
+        'verbal_language_three_years',
+      ],
+    );
+    assert.deepEqual(
+      [...PEI_EDIT_FIELDS].sort(),
+      [
+        'academic_semester',
+        'activities_to_be_developed',
+        'curriculum_accessibility',
+        'evaluation_criteria',
+        'materials_used',
+        'objectives',
+        'resource_equipment_needs',
+        'resource_equipment_used',
+        'school_content',
+        'service_modality',
+        'skills',
+        'student_name',
+        'support_service',
+        'work_methodology',
+      ],
+    );
   });
 });
