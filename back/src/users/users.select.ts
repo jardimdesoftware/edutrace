@@ -5,14 +5,14 @@ import { Prisma } from '@prisma/client';
 // evita que uma coluna sensível vaze por esquecimento.
 //
 // Ficam de fora: password, os campos de recuperação de senha, o link de ativação
-// da conta e os contadores de bloqueio de login.
+// da conta, os contadores de bloqueio de login e as anotações sobre o usuário,
+// que têm rota própria (GET /comments/:id_user) com o controle de acesso delas.
 export const PUBLIC_USER_SELECT = {
   id: true,
   full_name: true,
   affliation: true,
   cpf: true,
   pedagogical_manager: true,
-  comments: true,
   current_phase: true,
   created_at: true,
   deleted_at: true,
