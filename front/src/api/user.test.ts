@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getAllUsers, updateProfile } from './user';
+import { getAllUsers, updateProfile, updateUser } from './user';
 
 const API_URL = 'http://api.test';
 
@@ -88,5 +88,19 @@ describe('updateProfile', () => {
     await assert.rejects(updateProfile({ currentPassword: 'errada' }), {
       message: 'Senha atual incorreta',
     });
+  });
+});
+
+describe('updateUser', () => {
+  it('encodes the e-mail in the path', async () => {
+    respondWith(200, {});
+
+    await updateUser('nome/sobrenome?x#y@edutrace.com', '3');
+
+    assert.equal(
+      calls[0].url,
+      `${API_URL}/users/nome%2Fsobrenome%3Fx%23y%40edutrace.com`,
+    );
+    assert.equal(calls[0].init.body, JSON.stringify({ id_level: 3 }));
   });
 });
