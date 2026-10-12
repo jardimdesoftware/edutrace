@@ -132,6 +132,19 @@ describe('MailService', () => {
       );
     });
 
+    // O código pedido dentro da janela de tentativas herda o prazo dela, então
+    // pode valer menos de 15 minutos.
+    it('should say the code lasts up to fifteen minutes', async () => {
+      await service.sendPasswordResetCode('user@test.com', '123456');
+
+      expect(sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: expect.stringContaining('Ele expira em até 15 minutos.'),
+          html: expect.stringContaining('Ele expira em até 15 minutos.'),
+        }),
+      );
+    });
+
     it('should propagate errors from sendMail', async () => {
       sendMail.mockRejectedValue(new Error('SMTP indisponível'));
 
