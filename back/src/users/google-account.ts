@@ -3,6 +3,9 @@
 // CPF. Enquanto o prefixo existir, a pessoa ainda não cadastrou CPF nem senha.
 export const GOOGLE_CPF_PREFIX = 'google:';
 
+export const GOOGLE_ACCOUNT_IN_USE_MESSAGE =
+  'Esta Conta Google já está vinculada a outra conta.';
+
 export function hasPendingGoogleRegistration(user: { cpf: string }): boolean {
   return user.cpf.startsWith(GOOGLE_CPF_PREFIX);
 }
