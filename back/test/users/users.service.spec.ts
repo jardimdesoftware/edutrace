@@ -36,6 +36,7 @@ describe('UsersService', () => {
     failed_login_attempts: 0,
     locked_until: null,
     login_lock_count: 0,
+    google_sub: null,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
@@ -311,7 +312,7 @@ describe('UsersService', () => {
     });
   });
 
-  describe('ensureGoogleStudentUser', () => {
+  describe('createGoogleStudentUser', () => {
     const googleData = {
       email: 'aluno@discente.ifpe.edu.br',
       fullName: 'Nome no Google',
@@ -319,43 +320,112 @@ describe('UsersService', () => {
       googleSubject: 'google-sub',
     };
 
-    it('should create the account as a student when the e-mail is not registered', async () => {
-      jest.spyOn(prisma.user, 'upsert').mockResolvedValue(mockUser);
+    it('should create the student account already linked to the Google sub', async () => {
+      jest.spyOn(prisma.user, 'create').mockResolvedValue(mockUser);
 
-      await service.ensureGoogleStudentUser(googleData);
+      await service.createGoogleStudentUser(googleData);
 
-      expect(prisma.user.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { email: googleData.email },
-          create: {
-            full_name: googleData.fullName,
-            cpf: 'google:google-sub',
-            email: googleData.email,
-            password: googleData.passwordHash,
-            id_level: LEVELS.ALUNO_ESTUDANTE,
-            id_current_phase: PHASES.TRIAGEM,
-            must_change_password: false,
-          },
-        }),
-      );
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: {
+          full_name: googleData.fullName,
+          cpf: 'google:google-sub',
+          email: googleData.email,
+          password: googleData.passwordHash,
+          google_sub: googleData.googleSubject,
+          id_level: LEVELS.ALUNO_ESTUDANTE,
+          id_current_phase: PHASES.TRIAGEM,
+          must_change_password: false,
+        },
+      });
     });
 
-    it('should not change the level, the name or the pending password change of an existing account', async () => {
-      const existing = {
-        ...mockUser,
-        email: googleData.email,
-        full_name: 'Nome cadastrado pelo administrador',
-        id_level: LEVELS.PROFISSIONAL_EDUCACAO,
-        must_change_password: true,
-      };
-      jest.spyOn(prisma.user, 'upsert').mockResolvedValue(existing);
-
-      const result = await service.ensureGoogleStudentUser(googleData);
-
-      expect(prisma.user.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ update: {} }),
+    // A conta cadastrada pelo administrador com o mesmo e-mail nunca é aberta
+    // pelo Google: o dono vincula a Conta Google depois de entrar com senha.
+    it('should not touch an existing account with the same e-mail', async () => {
+      jest.spyOn(prisma.user, 'create').mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: '6.0.0',
+          meta: { target: ['email'] },
+        }),
       );
-      expect(result).toEqual(existing);
+
+      await expect(service.createGoogleStudentUser(googleData)).resolves.toBe(
+        null,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.user.upsert).not.toHaveBeenCalled();
+    });
+
+    it('should propagate other database errors', async () => {
+      jest
+        .spyOn(prisma.user, 'create')
+        .mockRejectedValue(new Error('banco indisponível'));
+
+      await expect(service.createGoogleStudentUser(googleData)).rejects.toThrow(
+        'banco indisponível',
+      );
+    });
+  });
+
+  describe('findByGoogleSub', () => {
+    it('should look the account up by the Google sub', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
+
+      const result = await service.findByGoogleSub('google-sub');
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { google_sub: 'google-sub' },
+      });
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('setGoogleSub', () => {
+    it('should store the Google sub of the account', async () => {
+      await service.setGoogleSub('test@test.com', 'google-sub');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { google_sub: 'google-sub' },
+      });
+    });
+
+    it('should clear the Google sub of the account', async () => {
+      await service.setGoogleSub('test@test.com', null);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { google_sub: null },
+      });
+    });
+
+    it('should propagate other database errors', async () => {
+      jest
+        .spyOn(prisma.user, 'update')
+        .mockRejectedValue(new Error('banco indisponível'));
+
+      await expect(
+        service.setGoogleSub('test@test.com', 'google-sub'),
+      ).rejects.toThrow('banco indisponível');
+    });
+
+    it('should answer 409 when the Google account is linked to another account', async () => {
+      jest.spyOn(prisma.user, 'update').mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: '6.0.0',
+          meta: { target: ['google_sub'] },
+        }),
+      );
+
+      await expect(
+        service.setGoogleSub('test@test.com', 'google-sub'),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Esta Conta Google já está vinculada a outra conta.',
+        ),
+      );
     });
   });
 
@@ -628,6 +698,7 @@ describe('UsersService', () => {
           failed_login_attempts: 0,
           locked_until: null,
           login_lock_count: 0,
+          google_sub: null,
         },
       });
       expect(result).toEqual(updatedUser);

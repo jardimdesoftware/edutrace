@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -18,6 +19,7 @@ import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { LinkGoogleAccountDto } from './dto/link-google-account.dto';
 import { ActivateAccountDto } from './dto/activate-account.dto';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
 import { AuthGuard } from './auth.guard';
@@ -85,6 +87,33 @@ export class AuthController {
     );
     this.setSessionCookie(response, access_token);
     return { message: 'Sessão iniciada.' };
+  }
+
+  // Vínculo da Conta Google usada no "Entrar com o Google". Exige sessão (sem
+  // @Public), e vincular exige também a senha atual. POST e DELETE usam o
+  // limite das rotas de autenticação, contado por usuário; a consulta (GET) fica
+  // no limite geral.
+  @Get('google/link')
+  getGoogleLinkStatus(@Request() req) {
+    return this.authService.getGoogleLinkStatus(req.user.email);
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    type: LinkGoogleAccountDto,
+    description:
+      'Vincula a Conta Google da credencial à conta da sessão. Exige a senha atual.',
+  })
+  @Post('google/link')
+  linkGoogleAccount(@Request() req, @Body() dto: LinkGoogleAccountDto) {
+    return this.authService.linkGoogleAccount(req.user.email, dto);
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @Delete('google/link')
+  unlinkGoogleAccount(@Request() req) {
+    return this.authService.unlinkGoogleAccount(req.user.email);
   }
 
   @Public()

@@ -16,22 +16,22 @@ describe('google-account', () => {
   });
 
   it('should recognize the placeholder written by the Google sign-in', async () => {
-    const upsert = jest.fn().mockResolvedValue({});
+    const create = jest.fn().mockResolvedValue({});
     const service = new UsersService(
-      { user: { upsert } } as never,
+      { user: { create } } as never,
       {} as never,
       {} as never,
     );
 
-    await service.ensureGoogleStudentUser({
+    await service.createGoogleStudentUser({
       email: 'aluno@discente.ifpe.edu.br',
       fullName: 'Aluno',
       passwordHash: 'hash',
       googleSubject: '1234567890',
     });
 
-    const { create } = upsert.mock.calls[0][0] as { create: { cpf: string } };
-    expect(create.cpf.startsWith(GOOGLE_CPF_PREFIX)).toBe(true);
-    expect(hasPendingGoogleRegistration(create)).toBe(true);
+    const { data } = create.mock.calls[0][0] as { data: { cpf: string } };
+    expect(data.cpf.startsWith(GOOGLE_CPF_PREFIX)).toBe(true);
+    expect(hasPendingGoogleRegistration(data)).toBe(true);
   });
 });

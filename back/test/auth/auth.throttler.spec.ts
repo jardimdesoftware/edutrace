@@ -40,6 +40,8 @@ describe('AuthController rate limit', () => {
             updateProfile: jest
               .fn()
               .mockResolvedValue({ access_token: 'token' }),
+            linkGoogleAccount: jest.fn().mockResolvedValue({ message: 'ok' }),
+            unlinkGoogleAccount: jest.fn().mockResolvedValue({ message: 'ok' }),
           },
         },
       ],
@@ -114,4 +116,22 @@ describe('AuthController rate limit', () => {
 
     expect(response.status).toBe(429);
   });
+
+  it.each([
+    ['post', { credential: 'credencial', currentPassword: 'senhaErrada123' }],
+    ['delete', undefined],
+  ] as const)(
+    'should answer 429 to %s /auth/google/link once the limit is exceeded',
+    async (method, body) => {
+      const call = () =>
+        request(app.getHttpServer())[method]('/auth/google/link').send(body);
+
+      for (let attempt = 0; attempt < LIMIT; attempt++) {
+        const response = await call();
+        expect(response.status).not.toBe(429);
+      }
+
+      expect((await call()).status).toBe(429);
+    },
+  );
 });

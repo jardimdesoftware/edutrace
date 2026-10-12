@@ -32,9 +32,14 @@ declare global {
 type Props = {
   onCredential: (credential: string) => void | Promise<void>;
   onError: (error: unknown) => void;
+  text?: "signin_with" | "continue_with";
 };
 
-export function GoogleLoginButton({ onCredential, onError }: Props) {
+export function GoogleLoginButton({
+  onCredential,
+  onError,
+  text = "signin_with",
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initializedClientIdRef = useRef<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
@@ -99,12 +104,12 @@ export function GoogleLoginButton({ onCredential, onError }: Props) {
       type: "standard",
       theme: "outline",
       size: "large",
-      text: "signin_with",
+      text,
       shape: "rectangular",
       logo_alignment: "left",
       width: buttonWidth,
     });
-  }, [buttonWidth, clientId, onCredential, onError, scriptReady]);
+  }, [buttonWidth, clientId, onCredential, onError, scriptReady, text]);
 
   if (!clientId) return null;
 

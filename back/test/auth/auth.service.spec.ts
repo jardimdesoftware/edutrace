@@ -50,6 +50,7 @@ describe('AuthService', () => {
     failed_login_attempts: 0,
     locked_until: null,
     login_lock_count: 0,
+    google_sub: null,
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
@@ -87,7 +88,9 @@ describe('AuthService', () => {
             registerFailedLoginAttempt: jest.fn(),
             lockAccount: jest.fn(),
             clearLoginLock: jest.fn(),
-            ensureGoogleStudentUser: jest.fn(),
+            createGoogleStudentUser: jest.fn(),
+            findByGoogleSub: jest.fn(),
+            setGoogleSub: jest.fn(),
           },
         },
         {
@@ -101,6 +104,7 @@ describe('AuthService', () => {
           useValue: {
             sendPasswordResetCode: jest.fn(),
             sendAccountLockedNotice: jest.fn().mockResolvedValue(undefined),
+            sendGoogleAccountLinkNotice: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -464,20 +468,23 @@ describe('AuthService', () => {
     });
   });
 
-  describe('signInWithGoogle', () => {
+  describe('login com Google', () => {
     const discenteEmail = 'aluno@discente.ifpe.edu.br';
+    const NOT_LINKED_MESSAGE =
+      'Conta Google não vinculada. Entre com e-mail e senha e vincule a conta em Alterar meus dados.';
     let originalClientId: string | undefined;
     let originalFetch: typeof fetch;
 
-    const mockGoogleCredential = (email: string) => {
+    const mockGoogleCredential = (claims: Record<string, unknown>) => {
       globalThis.fetch = (async () =>
         new Response(
           JSON.stringify({
             aud: 'client-id',
-            email,
+            iss: 'https://accounts.google.com',
             email_verified: true,
             name: 'Nome no Google',
             sub: 'google-sub',
+            ...claims,
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         )) as typeof fetch;
@@ -498,56 +505,415 @@ describe('AuthService', () => {
       }
     });
 
-    it('should issue the token with the level stored for an existing @discente account', async () => {
-      mockGoogleCredential(discenteEmail);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('randomHash');
-      jest.spyOn(usersService, 'ensureGoogleStudentUser').mockResolvedValue({
-        ...mockUser,
-        email: discenteEmail,
-        id_level: 3,
+    describe('signInWithGoogle', () => {
+      // Cenário do administrador do seed: quem compra o domínio do e-mail cria
+      // uma Conta Google com ele, e o token sai com email_verified e sem hd.
+      it('should refuse an existing account with the same e-mail and no linked Google account', async () => {
+        mockGoogleCredential({ email: 'admin@edutrace.com' });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest.spyOn(usersService, 'findOne').mockResolvedValue({
+          ...mockUser,
+          email: 'admin@edutrace.com',
+          id_level: 1,
+        });
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+
+        expect(usersService.findByGoogleSub).toHaveBeenCalledWith('google-sub');
+        expect(usersService.findOne).not.toHaveBeenCalled();
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+        expect(sessionsService.create).not.toHaveBeenCalled();
       });
 
-      await service.signInWithGoogle('credencial');
+      it('should answer the same way for a registered and an unknown e-mail without a link', async () => {
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
 
-      expect(jwtService.signAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ email: discenteEmail, id_level: 3 }),
+        mockGoogleCredential({ email: mockUser.email });
+        const registered = (await service
+          .signInWithGoogle('credencial')
+          .catch((error: unknown) => error)) as UnauthorizedException;
+
+        mockGoogleCredential({ email: 'ninguem@exemplo.org' });
+        const unknown = (await service
+          .signInWithGoogle('credencial')
+          .catch((error: unknown) => error)) as UnauthorizedException;
+
+        expect(registered).toBeInstanceOf(UnauthorizedException);
+        expect(registered.getResponse()).toEqual(unknown.getResponse());
+      });
+
+      it('should sign in the account linked to the sub even when the token e-mail changed', async () => {
+        mockGoogleCredential({ email: 'outro-endereco@exemplo.org' });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
+          ...mockUser,
+          google_sub: 'google-sub',
+          id_level: 3,
+        });
+
+        const result = await service.signInWithGoogle('credencial');
+
+        expect(jwtService.signAsync).toHaveBeenCalledWith(
+          expect.objectContaining({ email: mockUser.email, id_level: 3 }),
+        );
+        expect(result).toEqual({ access_token: 'mock.jwt.token' });
+      });
+
+      it('should keep the pending password change of a linked account', async () => {
+        mockGoogleCredential({ email: mockUser.email });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
+          ...mockUserFirstAccess,
+          google_sub: 'google-sub',
+        });
+
+        await service.signInWithGoogle('credencial');
+
+        expect(jwtService.signAsync).toHaveBeenCalledWith(
+          expect.objectContaining({ must_change_password: true }),
+        );
+      });
+
+      it('should refuse a linked account while it is locked', async () => {
+        mockGoogleCredential({ email: mockUser.email });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
+          ...mockUser,
+          google_sub: 'google-sub',
+          locked_until: new Date(Date.now() + 10 * 60 * 1000),
+        });
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
+        );
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+
+      it.each(['https://evil.example', 'accounts.google.com.evil', undefined])(
+        'should refuse a token issued by %s',
+        async (iss) => {
+          mockGoogleCredential({ email: mockUser.email, iss });
+
+          await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+            new UnauthorizedException('Credencial do Google inválida.'),
+          );
+          expect(usersService.findByGoogleSub).not.toHaveBeenCalled();
+        },
       );
-    });
 
-    it('should keep the pending password change of a registered account that signs in with Google', async () => {
-      mockGoogleCredential(mockUser.email);
-      jest.spyOn(usersService, 'findOne').mockResolvedValue({
-        ...mockUserFirstAccess,
-        id_level: 4,
+      it('should accept both issuers Google uses', async () => {
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
+          ...mockUser,
+          google_sub: 'google-sub',
+        });
+
+        for (const iss of [
+          'accounts.google.com',
+          'https://accounts.google.com',
+        ]) {
+          mockGoogleCredential({ email: mockUser.email, iss });
+          await expect(service.signInWithGoogle('credencial')).resolves.toEqual(
+            { access_token: 'mock.jwt.token' },
+          );
+        }
       });
 
-      await service.signInWithGoogle('credencial');
+      it('should not create an account for a @discente e-mail without the hd claim', async () => {
+        mockGoogleCredential({ email: discenteEmail });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
 
-      expect(jwtService.signAsync).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: mockUser.email,
-          id_level: 4,
-          must_change_password: true,
-        }),
-      );
-    });
-
-    it('should keep the pending password change of an existing @discente account', async () => {
-      mockGoogleCredential(discenteEmail);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('randomHash');
-      jest.spyOn(usersService, 'ensureGoogleStudentUser').mockResolvedValue({
-        ...mockUserFirstAccess,
-        email: discenteEmail,
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+        expect(usersService.createGoogleStudentUser).not.toHaveBeenCalled();
       });
 
-      await service.signInWithGoogle('credencial');
-
-      expect(jwtService.signAsync).toHaveBeenCalledWith(
-        expect.objectContaining({
+      it('should create the student account linked to the sub for a new @discente e-mail with the right hd', async () => {
+        mockGoogleCredential({
           email: discenteEmail,
-          must_change_password: true,
-        }),
-      );
+          hd: 'discente.ifpe.edu.br',
+        });
+        (bcrypt.hash as jest.Mock).mockResolvedValue('randomHash');
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest.spyOn(usersService, 'createGoogleStudentUser').mockResolvedValue({
+          ...mockUser,
+          email: discenteEmail,
+          google_sub: 'google-sub',
+        });
+
+        const result = await service.signInWithGoogle('credencial');
+
+        expect(usersService.createGoogleStudentUser).toHaveBeenCalledWith({
+          email: discenteEmail,
+          fullName: 'Nome no Google',
+          passwordHash: 'randomHash',
+          googleSubject: 'google-sub',
+        });
+        expect(result).toEqual({ access_token: 'mock.jwt.token' });
+      });
+
+      it('should sign in the account created by a simultaneous first login of the same student', async () => {
+        mockGoogleCredential({
+          email: discenteEmail,
+          hd: 'discente.ifpe.edu.br',
+        });
+        (bcrypt.hash as jest.Mock).mockResolvedValue('randomHash');
+        jest
+          .spyOn(usersService, 'findByGoogleSub')
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({
+            ...mockUser,
+            email: discenteEmail,
+            google_sub: 'google-sub',
+          });
+        jest
+          .spyOn(usersService, 'createGoogleStudentUser')
+          .mockResolvedValue(null);
+
+        await expect(service.signInWithGoogle('credencial')).resolves.toEqual({
+          access_token: 'mock.jwt.token',
+        });
+      });
+
+      it('should refuse a @discente e-mail that already has an account without the link', async () => {
+        mockGoogleCredential({
+          email: discenteEmail,
+          hd: 'discente.ifpe.edu.br',
+        });
+        (bcrypt.hash as jest.Mock).mockResolvedValue('randomHash');
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest
+          .spyOn(usersService, 'createGoogleStudentUser')
+          .mockResolvedValue(null);
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('linkGoogleAccount', () => {
+      const dto = { credential: 'credencial', currentPassword: 'senhaAtual123' };
+
+      it('should store the sub in the account of the session and warn the owner', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com' });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+
+        const result = await service.linkGoogleAccount(mockUser.email, dto);
+
+        expect(usersService.setGoogleSub).toHaveBeenCalledWith(
+          mockUser.email,
+          'google-sub',
+        );
+        expect(mailService.sendGoogleAccountLinkNotice).toHaveBeenCalledWith(
+          mockUser.email,
+          true,
+        );
+        expect(result).toEqual({ message: 'Conta Google vinculada.' });
+      });
+
+      it('should answer 409 when the sub is linked to another account', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com' });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
+          ...mockUser,
+          id: 99,
+          email: 'outra@exemplo.org',
+          google_sub: 'google-sub',
+        });
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).rejects.toThrow(
+          new ConflictException(
+            'Esta Conta Google já está vinculada a outra conta.',
+          ),
+        );
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+        expect(mailService.sendGoogleAccountLinkNotice).not.toHaveBeenCalled();
+      });
+
+      // Vincular acrescenta um meio de entrar na conta. Sem a senha atual, quem
+      // usa uma sessão aberta de outra pessoa vincularia a própria Conta Google.
+      it('should count a wrong current password in the account lock and not link', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com' });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).rejects.toThrow(new UnauthorizedException('Senha atual incorreta'));
+        expect(usersService.registerFailedLoginAttempt).toHaveBeenCalledWith(
+          mockUser.email,
+        );
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+      });
+
+      it('should not link while the account is locked', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com' });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue({
+          ...mockUser,
+          locked_until: new Date(Date.now() + 10 * 60 * 1000),
+        });
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).rejects.toThrow(new UnauthorizedException('Senha atual incorreta'));
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+      });
+
+      it('should refuse when the account of the session no longer exists', async () => {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).rejects.toThrow(new UnauthorizedException('Usuário não encontrado'));
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+      });
+
+      it('should refuse a credential without sub', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com', sub: undefined });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).rejects.toThrow(
+          new UnauthorizedException('Credencial do Google inválida.'),
+        );
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+      });
+
+      it('should accept linking again the Google account the session already has', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com' });
+        const linked = { ...mockUser, google_sub: 'google-sub' };
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(linked);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(linked);
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).resolves.toEqual({ message: 'Conta Google vinculada.' });
+        expect(usersService.setGoogleSub).toHaveBeenCalledWith(
+          mockUser.email,
+          'google-sub',
+        );
+      });
+
+      it('should link and log by id when the notice e-mail fails', async () => {
+        const error = jest
+          .spyOn(
+            (service as unknown as { logger: Logger }).logger,
+            'error',
+          )
+          .mockImplementation(() => undefined);
+        mockGoogleCredential({ email: 'pessoal@gmail.com' });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest
+          .spyOn(mailService, 'sendGoogleAccountLinkNotice')
+          .mockRejectedValue(new Error('SMTP indisponível'));
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).resolves.toEqual({ message: 'Conta Google vinculada.' });
+        await flushBackgroundWork();
+
+        expect(error).toHaveBeenCalledWith(
+          `Falha ao enviar aviso de vínculo da Conta Google do usuário ${mockUser.id}`,
+          expect.anything(),
+        );
+        expect(JSON.stringify(error.mock.calls)).not.toContain(mockUser.email);
+        error.mockRestore();
+      });
+
+      it('should refuse a token from another issuer', async () => {
+        mockGoogleCredential({ email: 'pessoal@gmail.com', iss: 'evil' });
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+        await expect(
+          service.linkGoogleAccount(mockUser.email, dto),
+        ).rejects.toThrow(
+          new UnauthorizedException('Credencial do Google inválida.'),
+        );
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('unlinkGoogleAccount', () => {
+      it('should clear the sub, warn the owner and refuse the next Google login with it', async () => {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue({
+          ...mockUser,
+          google_sub: 'google-sub',
+        });
+
+        const result = await service.unlinkGoogleAccount(mockUser.email);
+
+        expect(usersService.setGoogleSub).toHaveBeenCalledWith(
+          mockUser.email,
+          null,
+        );
+        expect(mailService.sendGoogleAccountLinkNotice).toHaveBeenCalledWith(
+          mockUser.email,
+          false,
+        );
+        expect(result).toEqual({ message: 'Conta Google desvinculada.' });
+
+        mockGoogleCredential({ email: mockUser.email });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+      });
+
+      it('should refuse when the account of the session no longer exists', async () => {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
+
+        await expect(
+          service.unlinkGoogleAccount(mockUser.email),
+        ).rejects.toThrow(new UnauthorizedException('Usuário não encontrado'));
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+      });
+
+      it('should not send the notice when nothing was linked', async () => {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+
+        await service.unlinkGoogleAccount(mockUser.email);
+
+        expect(usersService.setGoogleSub).not.toHaveBeenCalled();
+        expect(mailService.sendGoogleAccountLinkNotice).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('getGoogleLinkStatus', () => {
+      it('should report whether the account of the session has a linked Google account', async () => {
+        jest
+          .spyOn(usersService, 'findOne')
+          .mockResolvedValueOnce({ ...mockUser, google_sub: 'google-sub' })
+          .mockResolvedValueOnce(mockUser);
+
+        await expect(
+          service.getGoogleLinkStatus(mockUser.email),
+        ).resolves.toEqual({ enabled: true, linked: true });
+        await expect(
+          service.getGoogleLinkStatus(mockUser.email),
+        ).resolves.toEqual({ enabled: true, linked: false });
+      });
+
+      it('should report the Google login as disabled without GOOGLE_CLIENT_ID', async () => {
+        delete process.env.GOOGLE_CLIENT_ID;
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
+
+        await expect(
+          service.getGoogleLinkStatus(mockUser.email),
+        ).resolves.toEqual({ enabled: false, linked: false });
+      });
     });
   });
 
@@ -946,6 +1312,7 @@ describe('AuthService', () => {
         new Response(
           JSON.stringify({
             aud: 'client-id',
+            iss: 'https://accounts.google.com',
             email: mockUser.email,
             email_verified: true,
             sub: 'google-sub',
@@ -954,8 +1321,9 @@ describe('AuthService', () => {
         )) as typeof fetch;
 
       try {
-        jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
           ...mockUser,
+          google_sub: 'google-sub',
           locked_until: new Date(Date.now() + 10 * 60 * 1000),
         });
 
@@ -1083,6 +1451,40 @@ describe('AuthService', () => {
   });
 
   describe('resetPassword', () => {
+    // Quem conhecia a senha pode ter vinculado a própria Conta Google; a
+    // redefinição desfaz o vínculo (updatePassword) e avisa o dono.
+    it('should warn the owner that the Google account was unlinked', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUserWithResetToken,
+        google_sub: 'google-sub',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('newHashedPassword');
+
+      await service.resetPassword('user@test.com', '123456', 'novaSenha123');
+
+      expect(usersService.updatePassword).toHaveBeenCalledWith(
+        'user@test.com',
+        'newHashedPassword',
+      );
+      expect(mailService.sendGoogleAccountLinkNotice).toHaveBeenCalledWith(
+        mockUser.email,
+        false,
+      );
+    });
+
+    it('should not send the unlink notice when no Google account was linked', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue(mockUserWithResetToken);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('newHashedPassword');
+
+      await service.resetPassword('user@test.com', '123456', 'novaSenha123');
+
+      expect(mailService.sendGoogleAccountLinkNotice).not.toHaveBeenCalled();
+    });
+
     it('should hash the new password and update it when the code is valid', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserWithResetToken);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -1160,6 +1562,20 @@ describe('AuthService', () => {
       activation_token: tokenHash,
       activation_expires: new Date(Date.now() + 60 * 60 * 1000),
     };
+
+    it('should warn the owner that the Google account was unlinked', async () => {
+      jest
+        .spyOn(usersService, 'findByActivationToken')
+        .mockResolvedValue({ ...pendingUser, google_sub: 'google-sub' });
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
+
+      await service.activateAccount(token, 'novaSenha123');
+
+      expect(mailService.sendGoogleAccountLinkNotice).toHaveBeenCalledWith(
+        mockUser.email,
+        false,
+      );
+    });
 
     it('should look the account up by the token hash, never by the token', async () => {
       jest

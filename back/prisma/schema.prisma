@@ -29,6 +29,7 @@ model User {
   failed_login_attempts   Int        @default(0)
   locked_until            DateTime?
   login_lock_count        Int        @default(0)
+  google_sub              String?    @unique
   comments                Comments[]
   sessions                Session[]
   created_at              DateTime   @default(now())

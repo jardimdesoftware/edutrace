@@ -19,4 +19,8 @@ describe('PUBLIC_USER_SELECT', () => {
   it('should select the id used to revoke the sessions after an update', () => {
     expect(PUBLIC_USER_SELECT).toHaveProperty('id', true);
   });
+
+  it('should not select the Google account identifier', () => {
+    expect(PUBLIC_USER_SELECT).not.toHaveProperty('google_sub');
+  });
 });
