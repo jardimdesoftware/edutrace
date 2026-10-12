@@ -10,6 +10,21 @@ const PWNED_PASSWORDS_TIMEOUT_MS = 3000;
 export const COMPROMISED_PASSWORD_MESSAGE =
   'Esta senha é muito comum ou já apareceu em vazamentos de dados. Escolha outra.';
 
+// A lista é lida quando o módulo é carregado: se o arquivo não chegar ao build,
+// o back não sobe, em vez de passar a aceitar qualquer senha sem aviso.
+const COMMON_PASSWORDS = new Set(
+  readFileSync(COMMON_PASSWORDS_FILE, 'utf8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#')),
+);
+
+// A lista está em minúsculas, então "Password123" é recusada como
+// "password123". O seed também a usa para a senha do administrador inicial.
+export function isCommonPassword(password: string): boolean {
+  return COMMON_PASSWORDS.has(password.toLowerCase());
+}
+
 // Recusa senhas comuns e senhas que já vazaram (ASVS 5.0, 6.2.4 e 6.2.12) em
 // todo fluxo que grava uma senha escolhida pelo usuário. Quem chama valida a
 // credencial do fluxo (senha atual, código ou token) antes, para que uma
@@ -18,25 +33,10 @@ export const COMPROMISED_PASSWORD_MESSAGE =
 export class CompromisedPasswordService {
   private readonly logger = new Logger(CompromisedPasswordService.name);
 
-  // A lista é lida na subida da aplicação: se o arquivo não chegar ao build, o
-  // back não sobe, em vez de passar a aceitar qualquer senha sem aviso.
-  private readonly commonPasswords = new Set(
-    readFileSync(COMMON_PASSWORDS_FILE, 'utf8')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#')),
-  );
-
   async assertNotCompromised(password: string): Promise<void> {
-    if (this.isCommon(password) || (await this.isBreached(password))) {
+    if (isCommonPassword(password) || (await this.isBreached(password))) {
       throw new BadRequestException(COMPROMISED_PASSWORD_MESSAGE);
     }
-  }
-
-  // A lista está em minúsculas, então "Password123" é recusada como
-  // "password123".
-  private isCommon(password: string): boolean {
-    return this.commonPasswords.has(password.toLowerCase());
   }
 
   // Pwned Passwords por k-anonimidade: só os 5 primeiros caracteres do SHA-1
@@ -48,7 +48,10 @@ export class CompromisedPasswordService {
   // Se a API não responder, vale só a lista local: a indisponibilidade de um
   // serviço externo não pode impedir ninguém de definir ou trocar a senha.
   private async isBreached(password: string): Promise<boolean> {
-    const hash = createHash('sha1').update(password).digest('hex').toUpperCase();
+    const hash = createHash('sha1')
+      .update(password)
+      .digest('hex')
+      .toUpperCase();
     const prefix = hash.slice(0, 5);
     const suffix = hash.slice(5);
 
