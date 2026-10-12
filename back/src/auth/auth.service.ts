@@ -16,6 +16,7 @@ import { SessionsService } from 'src/sessions/sessions.service';
 import { hashActivationToken } from './activation-token';
 import { CompromisedPasswordService } from './compromised-password.service';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
+import { LinkGoogleAccountDto } from './dto/link-google-account.dto';
 import { hasPendingGoogleRegistration } from 'src/users/google-account';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
@@ -24,7 +25,17 @@ const MAX_RESET_ATTEMPTS = 5;
 // Resposta única para qualquer falha de autenticação. Mensagens distintas para
 // e-mail inexistente e senha incorreta revelam quais contas existem.
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
-const GOOGLE_DISCENTE_DOMAIN = '@discente.ifpe.edu.br';
+
+// O Google Workspace do IFPE é a autoridade sobre os endereços discentes, e os
+// tokens desses endereços trazem o claim hd com o domínio. Sem hd, o Google não
+// é autoridade pelo e-mail, que só foi confirmado quando a Conta Google foi
+// criada.
+const GOOGLE_DISCENTE_HOSTED_DOMAIN = 'discente.ifpe.edu.br';
+const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
+const GOOGLE_NOT_LINKED_MESSAGE =
+  'Conta Google não vinculada. Entre com e-mail e senha e vincule a conta em Alterar meus dados.';
+const GOOGLE_ACCOUNT_IN_USE_MESSAGE =
+  'Esta Conta Google já está vinculada a outra conta.';
 
 // Hash bcrypt (custo 10, o mesmo usado nas senhas reais) de uma senha aleatória
 // descartável. Serve para que o caminho de e-mail inexistente pague o mesmo custo
@@ -43,8 +54,10 @@ export type SessionContext = {
 
 type GoogleTokenInfo = {
   aud?: string;
+  iss?: string;
   email?: string;
   email_verified?: string | boolean;
+  hd?: string;
   name?: string;
   sub?: string;
 };
@@ -107,49 +120,38 @@ export class AuthService {
     return { enabled: !!clientId, clientId };
   }
 
+  // A identidade Google é o sub do token, único entre as Contas Google e nunca
+  // reaproveitado, e o login só abre a conta já vinculada a ele. Coincidência de
+  // e-mail nunca abre nem vincula conta existente (OWASP Authentication Cheat
+  // Sheet, Secure Federated Account Linking): quem cria uma Conta Google com o
+  // e-mail de outra pessoa, num domínio que não é Gmail nem Workspace, recebe o
+  // token com email_verified e entraria na conta dela.
   async signInWithGoogle(
     credential: string,
     context?: SessionContext,
   ): Promise<{ access_token: string }> {
     const tokenInfo = await this.verifyGoogleCredential(credential);
     const email = tokenInfo.email?.trim().toLowerCase();
+    const sub = tokenInfo.sub;
 
-    if (!email || !tokenInfo.sub) {
+    if (!email || !sub) {
       throw new UnauthorizedException('Credencial do Google inválida.');
     }
 
-    if (email.endsWith(GOOGLE_DISCENTE_DOMAIN)) {
-      const fullName = tokenInfo.name?.trim() || email.split('@')[0];
-      const passwordHash = await bcrypt.hash(randomUUID(), 10);
-
-      try {
-        const user = await this.userService.ensureGoogleStudentUser({
-          email,
-          fullName,
-          passwordHash,
-          googleSubject: tokenInfo.sub,
-        });
-
-        return await this.issueSessionToken(user, context);
-      } catch (error) {
-        this.throwIfDatabaseUnavailable(error);
-        throw error;
-      }
-    }
-
-    let user: Awaited<ReturnType<UsersService['findOne']>>;
+    let user: Awaited<ReturnType<UsersService['findByGoogleSub']>>;
 
     try {
-      user = await this.userService.findOne(email);
+      user =
+        (await this.userService.findByGoogleSub(sub)) ??
+        (await this.createGoogleStudent(email, sub, tokenInfo));
     } catch (error) {
       this.throwIfDatabaseUnavailable(error);
       throw error;
     }
 
+    // Mesma resposta para e-mail cadastrado e não cadastrado.
     if (!user) {
-      throw new UnauthorizedException(
-        'Use um e-mail institucional discente ou uma conta cadastrada.',
-      );
+      throw new UnauthorizedException(GOOGLE_NOT_LINKED_MESSAGE);
     }
 
     if (this.isLocked(user)) {
@@ -165,6 +167,106 @@ export class AuthService {
       this.throwIfDatabaseUnavailable(error);
       throw error;
     }
+  }
+
+  // Só o estudante novo do domínio discente entra sem vínculo prévio, porque o
+  // Google é a autoridade sobre esse domínio (hd). A conta nasce vinculada ao
+  // sub. Se o e-mail já tem conta, nada é criado nem aberto.
+  private async createGoogleStudent(
+    email: string,
+    sub: string,
+    tokenInfo: GoogleTokenInfo,
+  ) {
+    const isDiscente =
+      tokenInfo.hd === GOOGLE_DISCENTE_HOSTED_DOMAIN &&
+      email.endsWith(`@${GOOGLE_DISCENTE_HOSTED_DOMAIN}`);
+
+    if (!isDiscente) {
+      return null;
+    }
+
+    const fullName = tokenInfo.name?.trim() || email.split('@')[0];
+    const passwordHash = await bcrypt.hash(randomUUID(), 10);
+
+    return this.userService.createGoogleStudentUser({
+      email,
+      fullName,
+      passwordHash,
+      googleSubject: sub,
+    });
+  }
+
+  async getGoogleLinkStatus(
+    currentEmail: string,
+  ): Promise<{ enabled: boolean; linked: boolean }> {
+    const user = await this.userService.findOne(currentEmail);
+    return {
+      enabled: !!process.env.GOOGLE_CLIENT_ID,
+      linked: !!user?.google_sub,
+    };
+  }
+
+  // Vincular acrescenta um meio de entrar na conta, então exige a sessão e a
+  // senha atual, que conta no bloqueio como em updateProfile. Sem a senha, quem
+  // usa uma sessão aberta de outra pessoa vincularia a própria Conta Google e
+  // continuaria entrando depois da troca de senha. O dono recebe aviso.
+  async linkGoogleAccount(
+    currentEmail: string,
+    dto: LinkGoogleAccountDto,
+  ): Promise<{ message: string }> {
+    const user = await this.userService.findOne(currentEmail);
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    await this.verifyCurrentPassword(user, dto.currentPassword);
+
+    const tokenInfo = await this.verifyGoogleCredential(dto.credential);
+    if (!tokenInfo.sub) {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
+    const owner = await this.userService.findByGoogleSub(tokenInfo.sub);
+    if (owner && owner.id !== user.id) {
+      throw new ConflictException(GOOGLE_ACCOUNT_IN_USE_MESSAGE);
+    }
+
+    await this.userService.setGoogleSub(user.email, tokenInfo.sub);
+    this.logger.log(`Conta Google vinculada: usuário ${user.id}`);
+    this.sendGoogleLinkNotice(user, true);
+
+    return { message: 'Conta Google vinculada.' };
+  }
+
+  async unlinkGoogleAccount(
+    currentEmail: string,
+  ): Promise<{ message: string }> {
+    const user = await this.userService.findOne(currentEmail);
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    if (user.google_sub) {
+      await this.userService.setGoogleSub(user.email, null);
+      this.logger.log(`Conta Google desvinculada: usuário ${user.id}`);
+      this.sendGoogleLinkNotice(user, false);
+    }
+
+    return { message: 'Conta Google desvinculada.' };
+  }
+
+  private sendGoogleLinkNotice(
+    user: { id: number; email: string },
+    linked: boolean,
+  ): void {
+    void this.mailService
+      .sendGoogleAccountLinkNotice(user.email, linked)
+      .catch((error: unknown) =>
+        this.logger.error(
+          `Falha ao enviar aviso de vínculo da Conta Google do usuário ${user.id}`,
+          error instanceof Error ? error.stack : String(error),
+        ),
+      );
   }
 
   private async verifyGoogleCredential(
@@ -202,7 +304,11 @@ export class AuthService {
     const emailVerified =
       tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
 
-    if (tokenInfo.aud !== clientId || !emailVerified) {
+    if (
+      tokenInfo.aud !== clientId ||
+      !emailVerified ||
+      !GOOGLE_ISSUERS.includes(tokenInfo.iss ?? '')
+    ) {
       throw new UnauthorizedException('Credencial do Google inválida.');
     }
 
@@ -322,6 +428,41 @@ export class AuthService {
       );
   }
 
+  // A senha atual protege a sessão que o dono deixou aberta. Errar a senha
+  // conta no mesmo bloqueio por conta do login, e a conta bloqueada não altera
+  // nada, senão a sessão serviria para testar senhas sem limite.
+  private async verifyCurrentPassword(
+    user: {
+      id: number;
+      email: string;
+      password: string;
+      failed_login_attempts: number;
+      login_lock_count: number;
+      locked_until: Date | null;
+    },
+    currentPassword: string,
+  ): Promise<void> {
+    if (this.isLocked(user)) {
+      this.logger.warn(
+        `Alteração de dados recusada, conta bloqueada: usuário ${user.id}`,
+      );
+      throw new UnauthorizedException('Senha atual incorreta');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      await this.registerFailedLogin(user);
+      throw new UnauthorizedException('Senha atual incorreta');
+    }
+
+    if (user.failed_login_attempts > 0 || user.login_lock_count > 0) {
+      await this.userService.clearLoginLock(user.email);
+    }
+  }
+
   // Permite que qualquer usuário autenticado altere o próprio e-mail e/ou senha.
   // A identidade vem do token (currentEmail), nunca do corpo da requisição.
   async updateProfile(
@@ -334,29 +475,7 @@ export class AuthService {
       throw new UnauthorizedException('Usuário não encontrado');
     }
 
-    // A senha atual protege a sessão que o dono deixou aberta. Errar a senha
-    // aqui conta no mesmo bloqueio por conta do login, e a conta bloqueada não
-    // altera e-mail nem senha, senão a sessão serviria para testar senhas sem
-    // limite.
-    if (this.isLocked(user)) {
-      this.logger.warn(
-        `Alteração de dados recusada, conta bloqueada: usuário ${user.id}`,
-      );
-      throw new UnauthorizedException('Senha atual incorreta');
-    }
-
-    const isPasswordValid = await bcrypt.compare(
-      dto.currentPassword,
-      user.password,
-    );
-    if (!isPasswordValid) {
-      await this.registerFailedLogin(user);
-      throw new UnauthorizedException('Senha atual incorreta');
-    }
-
-    if (user.failed_login_attempts > 0 || user.login_lock_count > 0) {
-      await this.userService.clearLoginLock(user.email);
-    }
+    await this.verifyCurrentPassword(user, dto.currentPassword);
 
     // Quem está no primeiro acesso não pode alterar só o e-mail e seguir usando
     // a senha que o administrador cadastrou.
