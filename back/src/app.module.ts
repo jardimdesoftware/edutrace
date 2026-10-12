@@ -35,9 +35,10 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     SessionsModule,
     // Limite de requisições de cada usuário em cada rota, contra a repetição
     // automatizada de chamadas e a varredura das consultas por chave. As rotas
-    // públicas de autenticação têm limite próprio (@Throttle em
-    // AuthController). API_RATE_LIMIT e API_RATE_LIMIT_TTL_MS substituem o
-    // limite e a janela, por exemplo para testes de carga.
+    // de AuthController que recebem senha, código ou credencial têm limite
+    // próprio (@Throttle(AUTH_THROTTLE)). API_RATE_LIMIT e
+    // API_RATE_LIMIT_TTL_MS substituem o limite e a janela, por exemplo para
+    // testes de carga.
     ThrottlerModule.forRoot([
       {
         name: 'default',
