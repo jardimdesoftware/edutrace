@@ -1,3 +1,6 @@
+import { StudentsService } from 'src/students/students.service';
+import { AuthenticatedRequest } from 'src/comments/types/express';
+import { CreateAnamnesisDto } from 'src/anamnesis/dto/create-anamnesis.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS, PHASES } from 'src/constants';
@@ -7,11 +10,23 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 describe('AnamnesisService', () => {
   let service: AnamnesisService;
   let prisma: PrismaService;
+  let studentsService: StudentsService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnamnesisService,
+        {
+          provide: StudentsService,
+          useValue: {
+            findOneOrFail: jest
+              .fn()
+              .mockResolvedValue({ id: 2, email: 'estudante@example.com' }),
+            findAllEmails: jest
+              .fn()
+              .mockResolvedValue(['estudante@example.com']),
+          },
+        },
         {
           provide: PrismaService,
           useValue: {
@@ -25,6 +40,9 @@ describe('AnamnesisService', () => {
             user: {
               update: jest.fn(),
             },
+            $transaction: jest.fn((operations: Promise<unknown>[]) =>
+              Promise.all(operations),
+            ),
           },
         },
       ],
@@ -32,6 +50,7 @@ describe('AnamnesisService', () => {
 
     service = module.get<AnamnesisService>(AnamnesisService);
     prisma = module.get<PrismaService>(PrismaService);
+    studentsService = module.get<StudentsService>(StudentsService);
   });
 
   it('should be defined', () => {
@@ -879,6 +898,71 @@ describe('AnamnesisService', () => {
       jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(null);
 
       await expect(service.remove(email)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('titular estudante', () => {
+    it('should not create an anamnesis nor change the phase of someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+
+      await expect(
+        service.create({
+          email: 'profissional@example.com',
+        } as CreateAnamnesisDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.anamnesis.create).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    // Gravadas juntas: com a fase falhando, a anamnese não fica no banco.
+    it('should record the anamnesis and the phase in a single transaction', async () => {
+      jest.spyOn(prisma.anamnesis, 'create').mockResolvedValue({
+        id: 1,
+      } as never);
+      jest.spyOn(prisma.user, 'update').mockResolvedValue({} as never);
+
+      const result = await service.create({
+        email: 'estudante@example.com',
+      } as CreateAnamnesisDto);
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      const [operations] = (prisma.$transaction as jest.Mock).mock.calls[0];
+      expect(operations).toHaveLength(2);
+      expect(result).toEqual({ id: 1 });
+    });
+
+    it('should answer 404 when reading the anamnesis of someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+      const request = {
+        user: {
+          sub: 3,
+          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          email: 'saude@example.com',
+          name: 'Saúde',
+        },
+      } as unknown as AuthenticatedRequest;
+
+      await expect(
+        service.findOne('profissional@example.com', request),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should list only the anamnesis of students', async () => {
+      jest
+        .spyOn(studentsService, 'findAllEmails')
+        .mockResolvedValue(['a@example.com']);
+      jest.spyOn(prisma.anamnesis, 'findMany').mockResolvedValue([]);
+
+      await service.findAll();
+
+      expect(prisma.anamnesis.findMany).toHaveBeenCalledWith({
+        where: { email: { in: ['a@example.com'] } },
+      });
     });
   });
 });
