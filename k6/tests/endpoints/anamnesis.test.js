@@ -183,7 +183,6 @@ export default function (data) {
       full_name: 'Estudante k6 Anamnese',
       cpf: randomCpf(),
       email: testEmail,
-      password: 'senhaSegura123',
       id_level: 2,
     }),
     { headers },
