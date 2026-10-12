@@ -34,6 +34,8 @@ jobs:
       ci_config: ${{ steps.filter.outputs.ci_config }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Filtrar caminhos alterados
         id: filter
@@ -60,6 +62,8 @@ jobs:
               - '.github/workflows/**'
               - '.github/scripts/**'
               - '.github/dependabot.yml'
+              - 'back/Dockerfile'
+              - 'front/Dockerfile'
 
 # --------------------------------------------------------------------
 # BACKEND TESTS ------------------------------------------------------
@@ -91,6 +95,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Configurar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -237,6 +243,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # Os arquivos de ambiente da pasta do back guardam SECRET_KEY, a senha do
       # SMTP e a senha inicial do administrador, e o COPY . . do Dockerfile os
@@ -394,6 +402,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Configurar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -440,6 +450,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # O next build copia para .next/standalone os .env que carregou, e o
       # Dockerfile leva esse diretório para a imagem final. Os arquivos-isca
@@ -637,6 +649,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # O middleware do front verifica a sessão chamando o backend a partir do
       # servidor Next, que roda dentro do container. Com o endereço publicado no
@@ -696,6 +710,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # Renderiza o compose com uma porta de host diferente de 3000. É esse
       # cenário que separa uma configuração correta de uma que só funciona por
@@ -779,6 +795,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # no-new-privileges impede que um processo do container ganhe privilégio
       # por binário setuid/setgid. read_only impede que um processo comprometido
@@ -880,6 +898,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # O back alcança o banco pelo nome do serviço na rede app-net, então o
       # PostgreSQL não precisa de porta no host. Porta publicada abre o banco em
@@ -937,6 +957,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # Tag e branch de action são referências móveis: quem controla o
       # repositório da action pode repontá-las para outro código, que passa a
@@ -974,6 +996,60 @@ jobs:
 
           echo "OK: todas as entradas do Dependabot têm cooldown de pelo menos 7 dias."
 
+      # O actions/checkout grava o GITHUB_TOKEN no .git/config, legível por todo
+      # processo do job, inclusive pelos scripts de instalação e pelo código das
+      # dependências npm, e o token tem as permissões do job (OWASP Top 10 CI/CD
+      # Security Risks, CICD-SEC-3, 5 e 6). Todo checkout desliga
+      # persist-credentials, job com permissão de escrita não roda npm nem npx,
+      # e os Dockerfiles instalam uma versão fixa do npm.
+      - name: Verificar credenciais do checkout e npm em jobs com escrita
+        run: |
+          status=0
+
+          for arquivo in .github/workflows/*.yml; do
+            yq -o=json '.' "$arquivo" > workflow.json
+
+            python3 - "$arquivo" <<'PY' || status=1
+          import json
+          import re
+          import sys
+
+          arquivo = sys.argv[1]
+          workflow = json.load(open("workflow.json"))
+          falhas = []
+
+          def tem_escrita(permissoes):
+              if permissoes == "write-all":
+                  return True
+              return isinstance(permissoes, dict) and "write" in permissoes.values()
+
+          for nome, job in (workflow.get("jobs") or {}).items():
+              permissoes = job.get("permissions", workflow.get("permissions"))
+              for passo in job.get("steps") or []:
+                  if passo.get("uses", "").startswith("actions/checkout@"):
+                      if (passo.get("with") or {}).get("persist-credentials") is not False:
+                          falhas.append(f"job {nome}: actions/checkout sem persist-credentials: false")
+                  if tem_escrita(permissoes) and re.search(r"\bnp[mx]\b", passo.get("run", "")):
+                      falhas.append(f"job {nome}: roda npm ou npx com permissão de escrita")
+
+          for falha in falhas:
+              print(f"ERRO: {arquivo}: {falha}.")
+
+          sys.exit(1 if falhas else 0)
+          PY
+          done
+
+          if grep -nH 'npm@latest' back/Dockerfile front/Dockerfile; then
+            echo "ERRO: Dockerfile instala npm@latest, que muda a cada publicação do npm; fixe a versão."
+            status=1
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "OK: checkouts sem credencial persistida, sem npm em job com escrita e npm fixo nos Dockerfiles."
+
 # --------------------------------------------------------------------
 # CONFIG: BUILD DAS IMAGENS SEM EMULAÇÃO -----------------------------
 # --------------------------------------------------------------------
@@ -986,6 +1062,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # Com QEMU, o build arm64 rodava emulado no runner amd64 e travava no
       # npm ci ("qemu: uncaught target signal 4 (Illegal instruction)") até o
@@ -1020,6 +1098,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Testar o cálculo da versão
         run: bash .github/scripts/release-version.test.sh
