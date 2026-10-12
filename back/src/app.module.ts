@@ -16,6 +16,8 @@ import { CommentsModule } from './comments/comments.module';
 import { PlansEducationModule } from './plans-education/plans-education.module';
 import { ReportsModule } from './reports/reports.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { UserThrottlerGuard } from './common/user-throttler.guard';
 
 @Module({
   imports: [
@@ -31,12 +33,27 @@ import { SessionsModule } from './sessions/sessions.module';
     PlansEducationModule,
     ReportsModule,
     SessionsModule,
+    // Limite de requisições de cada usuário em cada rota, contra a repetição
+    // automatizada de chamadas e a varredura das consultas por chave. As rotas
+    // públicas de autenticação têm limite próprio (@Throttle em
+    // AuthController). API_RATE_LIMIT e API_RATE_LIMIT_TTL_MS substituem o
+    // limite e a janela, por exemplo para testes de carga.
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: Number(process.env.API_RATE_LIMIT_TTL_MS) || 60_000,
+        limit: Number(process.env.API_RATE_LIMIT) || 300,
+      },
+    ]),
   ],
   controllers: [AppController],
   providers: [
     AppService,
     PrismaService,
+    // A ordem importa: o AuthGuard preenche request.user antes da contagem
+    // por usuário do UserThrottlerGuard.
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: UserThrottlerGuard },
   ],
   exports: [AppService],
 })

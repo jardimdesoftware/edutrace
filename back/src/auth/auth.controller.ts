@@ -21,11 +21,11 @@ import { GoogleAuthDto } from './dto/google-auth.dto';
 import { ActivateAccountDto } from './dto/activate-account.dto';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
 import { AuthGuard } from './auth.guard';
-import { Public } from './constants/constants';
+import { AUTH_THROTTLE, Public } from './constants/constants';
 import { AllowPasswordChange } from './decorators/allow-password-change.decorator';
 import { AllowIncompleteRegistration } from './decorators/allow-incomplete-registration.decorator';
 import { ApiBody } from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import {
   sessionCookieName,
   sessionCookieOptions,
@@ -36,7 +36,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: AuthDto,
     description: 'Objeto para obter o token.',
@@ -68,7 +68,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @Post('google')
   async signInWithGoogle(
@@ -88,7 +88,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: ForgotPasswordDto,
     description: 'Objeto para solicitar o código de recuperação de senha.',
@@ -100,7 +100,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: VerifyResetCodeDto,
     description: 'Objeto para verificar o código de recuperação de senha.',
@@ -112,7 +112,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: ResetPasswordDto,
     description: 'Objeto para redefinir a senha com o código de recuperação.',
@@ -128,7 +128,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: ActivateAccountDto,
     description:
@@ -173,7 +173,8 @@ export class AuthController {
   // A identidade é lida do token (req.user.email), não do corpo. O rate limit
   // limita as tentativas de senha atual feitas com uma sessão aberta.
   @AllowPasswordChange()
-  @UseGuards(AuthGuard, ThrottlerGuard)
+  @UseGuards(AuthGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: UpdateProfileDto,
     description: 'Altera o e-mail e/ou a senha do próprio usuário autenticado.',
@@ -200,7 +201,8 @@ export class AuthController {
   // cadastrou CPF e senha. O rate limit reduz o uso da resposta de CPF já
   // cadastrado para descobrir CPFs de outras contas.
   @AllowIncompleteRegistration()
-  @UseGuards(AuthGuard, ThrottlerGuard)
+  @UseGuards(AuthGuard)
+  @Throttle(AUTH_THROTTLE)
   @ApiBody({
     type: CompleteRegistrationDto,
     description:
