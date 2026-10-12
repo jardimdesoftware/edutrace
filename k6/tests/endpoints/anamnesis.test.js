@@ -9,7 +9,8 @@
  *   DELETE /anamnesis/:email
  *
  * ATENÇÃO: A API de anamnesis atualiza a fase do usuário (id_current_phase = 2).
- * Por isso, o usuário testado precisa existir no banco com fase 1 (Triagem já realizada).
+ * Por isso, o titular precisa existir no banco como estudante (id_level 2); o
+ * script o cadastra no passo 0 e o remove no passo 6.
  */
 
 import http from 'k6/http';
