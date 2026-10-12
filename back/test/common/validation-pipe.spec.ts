@@ -22,17 +22,33 @@ function validate(metatype: new () => object, value: object) {
   return createValidationPipe().transform(value, { type: 'body', metatype });
 }
 
-describe('createValidationPipe', () => {
-  it('should drop the properties that are not declared in the DTO', async () => {
-    const result = await validate(CreateScreeningDto, {
-      ...screening,
-      id: 999,
-      created_at: '1999-12-31T00:00:00.000Z',
-    });
+async function messages(metatype: new () => object, value: object) {
+  try {
+    await validate(metatype, value);
+  } catch (error) {
+    if (error instanceof BadRequestException) {
+      return (error.getResponse() as { message: string[] }).message;
+    }
+    throw error;
+  }
+  return [];
+}
 
-    expect(result).not.toHaveProperty('id');
-    expect(result).not.toHaveProperty('created_at');
-    expect(result).toEqual(screening);
+describe('createValidationPipe', () => {
+  // Campo fora do DTO é recusado com o nome dele na mensagem, para que a
+  // tentativa de gravar um campo indevido ou um erro de contrato não passe
+  // como alteração aceita.
+  it('should reject the properties that are not declared in the DTO', async () => {
+    expect(
+      await messages(CreateScreeningDto, {
+        ...screening,
+        id: 999,
+        created_at: '1999-12-31T00:00:00.000Z',
+      }),
+    ).toEqual([
+      'property id should not exist',
+      'property created_at should not exist',
+    ]);
   });
 
   it('should keep every key inside the JSON fields', async () => {
@@ -59,22 +75,22 @@ describe('createValidationPipe', () => {
     const result = await validate(CreateUserDto, {
       full_name: 'Usuário de Teste',
       email: 'usuario@edutrace.com',
-      password: 'senhaSegura123',
       cpf: '012.345.678-90',
     });
 
     expect(result).toHaveProperty('cpf', '01234567890');
   });
 
-  it('should discard a password sent in the user registration', async () => {
-    const result = await validate(CreateUserDto, {
-      full_name: 'Usuário de Teste',
-      email: 'usuario@edutrace.com',
-      password: 'senhaDoAdministrador',
-      cpf: '012.345.678-90',
-    });
-
-    expect(result).not.toHaveProperty('password');
+  // A senha é definida pelo próprio usuário pelo link de ativação.
+  it('should reject a password sent in the user registration', async () => {
+    expect(
+      await messages(CreateUserDto, {
+        full_name: 'Usuário de Teste',
+        email: 'usuario@edutrace.com',
+        password: 'senhaDoAdministrador',
+        cpf: '012.345.678-90',
+      }),
+    ).toEqual(['property password should not exist']);
   });
 
   it('should reject a field with the wrong type', async () => {

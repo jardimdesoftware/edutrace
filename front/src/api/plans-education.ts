@@ -21,7 +21,7 @@ export async function deletePEI(email: string) {
   return apiRequest(`/plans-education/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
 
-export async function patchPEI(plansEducationData: PlansEducationData, email: string): Promise<PlansEducationData> {
+export async function patchPEI(plansEducationData: Partial<PlansEducationData>, email: string): Promise<PlansEducationData> {
   return apiRequest(`/plans-education/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: plansEducationData,

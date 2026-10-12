@@ -31,3 +31,24 @@ describe('UpdateUserDto, campo id_level', () => {
     },
   );
 });
+
+// UsersService.update grava só o nome e o nível. Os demais campos do cadastro
+// são recusados, em vez de responder 200 sem alterar nada.
+describe('UpdateUserDto, campos do cadastro', () => {
+  it.each([
+    ['email', 'outro@example.com'],
+    ['cpf', '01234567890'],
+    ['affliation', 'Outra'],
+    ['pedagogical_manager', 'Outro'],
+  ])('should refuse %s with 400', async (field, value) => {
+    await expect(validate({ [field]: value })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('should accept the name', async () => {
+    await expect(validate({ full_name: 'Novo Nome' })).resolves.toEqual({
+      full_name: 'Novo Nome',
+    });
+  });
+});

@@ -20,7 +20,7 @@ export async function deleteAnamnesis(email: string) {
   return apiRequest(`/anamnesis/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
 
-export async function patchAnamnesis(anamneseData: AnamnesisData, email: string) {
+export async function patchAnamnesis(anamneseData: Partial<AnamnesisData>, email: string) {
   return apiRequest(`/anamnesis/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: anamneseData,

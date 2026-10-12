@@ -10,6 +10,7 @@ import { PlansEducationData } from "@/interfaces/PlansEducationData";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { getPEIByEmail, patchPEI } from "@/api/plans-education";
+import { pickFields, PEI_EDIT_FIELDS } from "@/utils/editPayload";
 import { ESTUDANTE, PROFISSIONAL_SAUDE } from "@/consts";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
@@ -115,7 +116,7 @@ function PEIPage() {
       }
   
       try {
-          const dadosAtualizados = { ...formData };
+          const dadosAtualizados = pickFields(formData, PEI_EDIT_FIELDS);
           await patchPEI(dadosAtualizados, email);
           alert("PEI atualizado com sucesso!");
           router.push(rotaDoEstudante('/estudantes/visualizar', id));

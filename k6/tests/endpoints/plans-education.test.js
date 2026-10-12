@@ -28,8 +28,6 @@ export function setup() {
 
 function buildPlanPayload(studentEmail) {
   return JSON.stringify({
-    professor_email: 'professor.k6@test.com',
-    professor_name: 'Professor k6',
     student_email: studentEmail,
     student_name: 'Estudante k6',
     academic_semester: { primeiro_semestre: true, segundo_semestre: false },

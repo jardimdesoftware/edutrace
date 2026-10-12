@@ -7,6 +7,7 @@ import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import { Suspense, useEffect, useState } from "react";
 import { getAnamneseByEmail, patchAnamnesis } from "@/api/anamnesis"; 
+import { pickFields, ANAMNESIS_EDIT_FIELDS } from "@/utils/editPayload";
 import { AnamnesisData } from "@/interfaces/AnamnesisData";
 import { useAuth } from "@/contexts/AuthContext";
 import { ESTUDANTE, PROFISSIONAL_EDUCACAO } from "@/consts";
@@ -108,7 +109,7 @@ function AnamnesePage() {
     }
 
     try {
-        const dadosAtualizados = { ...formData };
+        const dadosAtualizados = pickFields(formData, ANAMNESIS_EDIT_FIELDS);
         await patchAnamnesis(dadosAtualizados, email);
         alert("Anamnese atualizada com sucesso!");
         router.push(rotaDoEstudante('/estudantes/visualizar', id));
