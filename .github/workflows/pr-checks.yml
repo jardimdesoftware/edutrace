@@ -145,6 +145,27 @@ jobs:
           fi
           echo "✅ Seed executado com sucesso."
 
+      # A migration de google_sub copia o sub do CPF provisório (google:<sub>)
+      # das contas com cadastro pendente. O banco do job nasce vazio e esse
+      # UPDATE não afeta nenhuma linha no migrate deploy, então ele roda de novo
+      # aqui, lido do próprio arquivo da migration, sobre uma conta pendente
+      # criada no passo. Um erro no recorte do sub reprova o PR.
+      - name: Verificar o preenchimento de google_sub pela migration
+        working-directory: ./back
+        run: |
+          migration=prisma/migrations/20261012120000_add_user_google_sub/migration.sql
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, updated_at) VALUES ('Cadastro pendente', 'google:109876543210', 'pendente@discente.ifpe.edu.br', 'x', (SELECT min(id) FROM \"Level\"), (SELECT min(id) FROM \"CurrentPhases\"), now())"
+          grep '^UPDATE' "$migration" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+
+          sub=$(psql "$DATABASE_URL" -tA -c "SELECT google_sub FROM \"User\" WHERE email = 'pendente@discente.ifpe.edu.br'")
+          if [ "$sub" != "109876543210" ]; then
+            echo "ERRO: a migration gravou google_sub='$sub' para o CPF provisório google:109876543210."
+            exit 1
+          fi
+
+          echo "OK: a migration copia o sub do CPF provisório para google_sub."
+
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
 # --------------------------------------------------------------------
