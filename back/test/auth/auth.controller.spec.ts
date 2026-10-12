@@ -4,6 +4,7 @@ import { AuthController } from 'src/auth/auth.controller';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { IS_PUBLIC_KEY } from 'src/auth/constants/constants';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -26,6 +27,9 @@ describe('AuthController', () => {
             resetPassword: jest.fn(),
             activateAccount: jest.fn(),
             completeRegistration: jest.fn(),
+            getGoogleLinkStatus: jest.fn(),
+            linkGoogleAccount: jest.fn(),
+            unlinkGoogleAccount: jest.fn(),
           },
         },
       ],
@@ -137,6 +141,37 @@ describe('AuthController', () => {
         opcoesDoCookie,
       );
       expect(result).toEqual({ message: 'Sessão iniciada.' });
+    });
+  });
+
+  describe('vínculo da Conta Google', () => {
+    const requestComSessao = { user: { email: 'user@test.com' } };
+
+    it.each(['getGoogleLinkStatus', 'linkGoogleAccount', 'unlinkGoogleAccount'])(
+      '%s should require a session',
+      (method) => {
+        expect(
+          Reflect.getMetadata(
+            IS_PUBLIC_KEY,
+            AuthController.prototype[method as keyof AuthController],
+          ),
+        ).toBeUndefined();
+      },
+    );
+
+    it('should read the account from the session and not from the body', async () => {
+      const dto = { credential: 'credencial', currentPassword: 'senhaAtual123' };
+
+      await controller.getGoogleLinkStatus(requestComSessao);
+      await controller.linkGoogleAccount(requestComSessao, dto);
+      await controller.unlinkGoogleAccount(requestComSessao);
+
+      expect(service.getGoogleLinkStatus).toHaveBeenCalledWith('user@test.com');
+      expect(service.linkGoogleAccount).toHaveBeenCalledWith(
+        'user@test.com',
+        dto,
+      );
+      expect(service.unlinkGoogleAccount).toHaveBeenCalledWith('user@test.com');
     });
   });
 
