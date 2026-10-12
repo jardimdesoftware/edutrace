@@ -44,13 +44,20 @@ describe('UpdatePlansEducationDto', () => {
     await expect(
       validate({
         objectives: 'Novos objetivos',
-        professor_email: 'professor@example.com',
         student_email: 'outro.estudante@example.com',
       }),
-    ).resolves.toEqual({
-      objectives: 'Novos objetivos',
-      professor_email: 'professor@example.com',
-    });
+    ).resolves.toEqual({ objectives: 'Novos objetivos' });
+  });
+
+  // A autoria é de quem criou o PEI e não muda pelo PATCH.
+  it('should drop the author fields', async () => {
+    await expect(
+      validate({
+        objectives: 'Novos objetivos',
+        professor_email: 'outro.professor@example.com',
+        professor_name: 'Outro Professor',
+      }),
+    ).resolves.toEqual({ objectives: 'Novos objetivos' });
   });
 
   it('should reject academic_semester sent as text', async () => {

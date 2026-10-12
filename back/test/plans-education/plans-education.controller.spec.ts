@@ -1,3 +1,4 @@
+import { AuthenticatedRequest } from 'src/comments/types/express';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreatePlansEducationDto } from 'src/plans-education/dto/create-plans-education.dto';
 import { UpdatePlansEducationDto } from 'src/plans-education/dto/update-plans-education.dto';
@@ -35,10 +36,15 @@ describe('PlansEducationController', () => {
   });
 
   describe('create', () => {
-    it('should create a plans education', async () => {
+    it('should pass the authenticated user to the service as the author', async () => {
+      const author = {
+        sub: 7,
+        id_level: 3,
+        email: 'professor@example.com',
+        name: 'Professor',
+      };
+      const request = { user: author } as AuthenticatedRequest;
       const createPlansEducationDto: CreatePlansEducationDto = {
-        professor_email: 'professor@example.com',
-        professor_name: 'Professor',
         student_email: 'estudante@example.com',
         student_name: 'Estudante',
         academic_semester: {
@@ -177,11 +183,18 @@ describe('PlansEducationController', () => {
         updated_at: new Date(),
         deleted_at: null,
         ...createPlansEducationDto,
+        professor_email: author.email,
+        professor_name: author.name,
       };
       jest.spyOn(service, 'create').mockResolvedValue(result);
 
-      expect(await controller.create(createPlansEducationDto)).toEqual(result);
-      expect(service.create).toHaveBeenCalledWith(createPlansEducationDto);
+      expect(await controller.create(createPlansEducationDto, request)).toEqual(
+        result,
+      );
+      expect(service.create).toHaveBeenCalledWith(
+        createPlansEducationDto,
+        author,
+      );
     });
   });
 

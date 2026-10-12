@@ -10,6 +10,7 @@ import { PlansEducationData } from "@/interfaces/PlansEducationData";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { getPEIByEmail, postPEI, deletePEI } from "@/api/plans-education";
+import { buildPEIPayload } from "@/utils/peiPayload";
 import { ESTUDANTE, PROFISSIONAL_SAUDE } from "@/consts";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
@@ -111,14 +112,9 @@ function PEIPage() {
       return;
     }
     try {
-      const peiParaEnviar: PlansEducationData = {
-        ...formData,
-        student_email: email,
-        student_name: nome || 'Nome não encontrado',
-        professor_email: user.email,
-        professor_name: user.name,
-      };
-      await postPEI(peiParaEnviar);
+      await postPEI(
+        buildPEIPayload(formData, email, nome || 'Nome não encontrado'),
+      );
       alert("PEI criado com sucesso!");
       router.push(rotaDoEstudante('/estudantes/visualizar', id));
     } catch (error) {
@@ -163,8 +159,8 @@ function PEIPage() {
           <section>
             <h2 className="text-xl font-semibold mb-4">Informações Gerais</h2>
             <div className="grid md:grid-cols-2 gap-4">
-              <BrInput label="Email do Professor" placeholder={"Este campo é preenchido automaticamente"} value={formData.professor_email} onInput={(e: any) => handleInputChange('professor_email', e.target.value)} disabled/>
-              <BrInput label="Nome do Professor" placeholder={"Este campo é preenchido automaticamente"} value={formData.professor_name} onInput={(e: any) => handleInputChange('professor_name', e.target.value)} disabled/>
+              <BrInput label="Email do Professor" placeholder={"Este campo é preenchido automaticamente"} value={user?.email ?? ""} disabled/>
+              <BrInput label="Nome do Professor" placeholder={"Este campo é preenchido automaticamente"} value={user?.name ?? ""} disabled/>
               <BrInput label="Email do Estudante" placeholder={"Este campo é preenchido automaticamente"} value={formData.student_email} onInput={(e: any) => handleInputChange('student_email', e.target.value)} disabled/>
               <BrInput label="Nome do Estudante" placeholder={"Este campo é preenchido automaticamente"} value={formData.student_name} onInput={(e: any) => handleInputChange('student_name', e.target.value)} disabled/>
             </div>

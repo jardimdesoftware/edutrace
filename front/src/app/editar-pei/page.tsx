@@ -153,8 +153,8 @@ function PEIPage() {
           <section>
             <h2 className="text-xl font-semibold mb-4">Informações Gerais</h2>
             <div className="grid md:grid-cols-2 gap-4">
-              <BrInput label="Email do Professor" value={formData.professor_email} onInput={(e: any) => handleInputChange('professor_email', e.target.value)} />
-              <BrInput label="Nome do Professor" value={formData.professor_name} onInput={(e: any) => handleInputChange('professor_name', e.target.value)} />
+              <BrInput label="Email do Professor" value={formData.professor_email} disabled />
+              <BrInput label="Nome do Professor" value={formData.professor_name} disabled />
               <BrInput label="Email do Estudante" value={formData.student_email} disabled />
               <BrInput label="Nome do Estudante" value={formData.student_name} onInput={(e: any) => handleInputChange('student_name', e.target.value)} />
             </div>

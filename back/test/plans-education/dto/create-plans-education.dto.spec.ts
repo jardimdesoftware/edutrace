@@ -1,4 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 import { createValidationPipe } from 'src/common/validation-pipe';
 import { CreatePlansEducationDto } from 'src/plans-education/dto/create-plans-education.dto';
 
@@ -34,5 +36,29 @@ describe('CreatePlansEducationDto, campo student_email', () => {
     expect(
       await messages({ student_email: 'aluno@example.test' }),
     ).not.toContain(INVALID_EMAIL);
+  });
+});
+
+// A autoria vem do usuário autenticado: valores enviados no corpo não são
+// declarados no DTO e o pipe de produção (whitelist) os descarta.
+describe('CreatePlansEducationDto, autoria', () => {
+  it('should not declare professor_email nor professor_name', () => {
+    const dto = plainToInstance(CreatePlansEducationDto, {
+      professor_email: 'outro.professor@example.com',
+      professor_name: 'Outro Professor',
+      objectives: 'Objetivos',
+    });
+
+    validateSync(dto, { whitelist: true });
+
+    expect(dto).not.toHaveProperty('professor_email');
+    expect(dto).not.toHaveProperty('professor_name');
+    expect(dto).toHaveProperty('objectives', 'Objetivos');
+  });
+
+  it('should not require the author fields', async () => {
+    const result = await messages({});
+
+    expect(result.join(' ')).not.toContain('professor_');
   });
 });
