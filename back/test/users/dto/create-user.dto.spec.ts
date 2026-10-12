@@ -64,3 +64,21 @@ describe('CreateUserDto, campo cpf', () => {
     expect(errors[0].constraints).toHaveProperty('isNotEmpty');
   });
 });
+
+describe('CreateUserDto, campo id_level', () => {
+  const valid = { ...base, cpf: '01234567890' };
+
+  it.each([1, 2, 3, 4])('should accept the level %s', (id_level) => {
+    expect(
+      validateSync(plainToInstance(CreateUserDto, { ...valid, id_level })),
+    ).toHaveLength(0);
+  });
+
+  it.each([1.5, 99, -1, 0])('should refuse the level %p', (id_level) => {
+    const errors = validateSync(
+      plainToInstance(CreateUserDto, { ...valid, id_level }),
+    );
+
+    expect(errors.map((error) => error.property)).toEqual(['id_level']);
+  });
+});
