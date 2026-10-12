@@ -308,16 +308,18 @@ export class AuthService {
     );
 
     // O aviso vai por e-mail porque a resposta HTTP é genérica: informar o
-    // bloqueio ali revelaria que aquele e-mail existe. Falha de envio não pode
-    // derrubar o login, mesmo tratamento de forgotPassword.
-    try {
-      await this.mailService.sendAccountLockedNotice(user.email, lockedUntil);
-    } catch (error) {
-      this.logger.error(
-        `Falha ao enviar aviso de bloqueio do usuário ${user.id}`,
-        error instanceof Error ? error.stack : String(error),
+    // bloqueio ali revelaria que aquele e-mail existe. O envio não é aguardado:
+    // esperar o SMTP atrasaria só a tentativa que bloqueia uma conta existente,
+    // e o tempo da resposta revelaria o e-mail cadastrado. Falha de envio fica
+    // no log e não muda a resposta.
+    void this.mailService
+      .sendAccountLockedNotice(user.email, lockedUntil)
+      .catch((error: unknown) =>
+        this.logger.error(
+          `Falha ao enviar aviso de bloqueio do usuário ${user.id}`,
+          error instanceof Error ? error.stack : String(error),
+        ),
       );
-    }
   }
 
   // Permite que qualquer usuário autenticado altere o próprio e-mail e/ou senha.
