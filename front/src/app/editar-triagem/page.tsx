@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ESTUDANTE, PROFISSIONAL_EDUCACAO } from "@/consts";
 import { ScreeningData } from "@/interfaces/ScreeningData";
 import { getScreeningByEmail, patchScreening } from "@/api/screenings"; // Importe o postScreening
+import { pickFields, SCREENING_EDIT_FIELDS } from "@/utils/editPayload";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
@@ -137,7 +138,7 @@ function TriagemPage() {
         }
     
         try {
-            const dadosAtualizados = { ...formData };
+            const dadosAtualizados = pickFields(formData, SCREENING_EDIT_FIELDS);
             await patchScreening(dadosAtualizados, email);
             alert("Triagem atualizada com sucesso!");
             router.push(rotaDoEstudante('/estudantes/visualizar', id));
