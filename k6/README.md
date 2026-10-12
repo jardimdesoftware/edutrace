@@ -79,9 +79,12 @@ sudo apt-get update && sudo apt-get install k6
    ```
 
 3. As rotas públicas de `/auth` têm limite de requisições por IP, com teto padrão
-   de 8 por minuto. Os testes de carga passam desse volume, então a API do
-   ambiente de teste precisa subir com um teto maior, por exemplo
-   `AUTH_RATE_LIMIT=10000`. Em produção o valor padrão é o que vale.
+   de 8 por minuto, e as demais rotas têm limite por usuário, com teto padrão de
+   300 por minuto em cada rota. O teste de carga usa um único token de
+   administrador para todos os VUs e passa dos dois volumes, então a API do
+   ambiente de teste precisa subir com tetos maiores, por exemplo
+   `AUTH_RATE_LIMIT=10000` e `API_RATE_LIMIT=100000`. Em produção os valores
+   padrão são os que valem.
 
 4. Certifique-se que a API está rodando:
    ```powershell
