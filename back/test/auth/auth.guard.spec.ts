@@ -33,6 +33,7 @@ const sessaoAtiva = {
   created_at: new Date(),
   last_used_at: new Date(),
   revoked_at: null,
+  user: { id_level: 2 },
 };
 
 describe('AuthGuard', () => {
@@ -129,7 +130,9 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       const context = createMockExecutionContext({});
 
-      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should allow access with a valid token and no level restriction', async () => {
@@ -138,7 +141,9 @@ describe('AuthGuard', () => {
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue([]);
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -157,7 +162,9 @@ describe('AuthGuard', () => {
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue(undefined);
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -171,9 +178,13 @@ describe('AuthGuard', () => {
 
     it('should throw UnauthorizedException when token is invalid', async () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(new Error('invalid token'));
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockRejectedValue(new Error('invalid token'));
 
-      const context = createMockExecutionContext({ authorization: 'Bearer invalid.token' });
+      const context = createMockExecutionContext({
+        authorization: 'Bearer invalid.token',
+      });
 
       await expect(guard.canActivate(context)).rejects.toThrow(
         new UnauthorizedException('Token expirado'),
@@ -186,7 +197,9 @@ describe('AuthGuard', () => {
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue([2]);
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -224,8 +237,13 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue([2]);
+      jest
+        .spyOn(sessionsService, 'findActive')
+        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 3 } } as never);
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -251,7 +269,9 @@ describe('AuthGuard', () => {
         key === ALLOW_PASSWORD_CHANGE_KEY ? undefined : [],
       );
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -276,7 +296,9 @@ describe('AuthGuard', () => {
         key === ALLOW_PASSWORD_CHANGE_KEY ? true : [],
       );
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -301,7 +323,9 @@ describe('AuthGuard', () => {
         key === ALLOW_PASSWORD_CHANGE_KEY ? undefined : [],
       );
 
-      const mockRequest: any = { headers: { authorization: 'Bearer valid.token' } };
+      const mockRequest: any = {
+        headers: { authorization: 'Bearer valid.token' },
+      };
       const context = {
         switchToHttp: () => ({ getRequest: () => mockRequest }),
         getHandler: () => ({}),
@@ -341,15 +365,15 @@ describe('AuthGuard', () => {
 
       it('should block any route until the CPF and the password are registered', async () => {
         await expect(guard.canActivate(contextWith({}))).rejects.toThrow(
-          new ForbiddenException('Cadastre o CPF e a senha antes de continuar.'),
+          new ForbiddenException(
+            'Cadastre o CPF e a senha antes de continuar.',
+          ),
         );
       });
 
       it('should not open the routes reserved for the first password change', async () => {
         await expect(
-          guard.canActivate(
-            contextWith({ [ALLOW_PASSWORD_CHANGE_KEY]: true }),
-          ),
+          guard.canActivate(contextWith({ [ALLOW_PASSWORD_CHANGE_KEY]: true })),
         ).rejects.toThrow(ForbiddenException);
       });
 
@@ -368,14 +392,18 @@ describe('AuthGuard', () => {
         authorization: 'Basic c29tZXRva2Vu',
       });
 
-      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
   describe('session cookie', () => {
     const originalNodeEnv = process.env.NODE_ENV;
 
-    function contextWithRequest(request: Record<string, any>): ExecutionContext {
+    function contextWithRequest(
+      request: Record<string, any>,
+    ): ExecutionContext {
       return {
         switchToHttp: () => ({ getRequest: () => request }),
         getHandler: () => ({}),
@@ -401,8 +429,13 @@ describe('AuthGuard', () => {
         cookies: { edutrace_session: 'token.do.cookie' },
       };
 
-      await expect(guard.canActivate(contextWithRequest(request))).resolves.toBe(true);
-      expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.do.cookie', expect.any(Object));
+      await expect(
+        guard.canActivate(contextWithRequest(request)),
+      ).resolves.toBe(true);
+      expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+        'token.do.cookie',
+        expect.any(Object),
+      );
       expect(request).toHaveProperty('user.jti', 'sessao-valida');
     });
 
@@ -413,8 +446,13 @@ describe('AuthGuard', () => {
         cookies: { '__Host-edutrace_session': 'token.de.producao' },
       };
 
-      await expect(guard.canActivate(contextWithRequest(request))).resolves.toBe(true);
-      expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.de.producao', expect.any(Object));
+      await expect(
+        guard.canActivate(contextWithRequest(request)),
+      ).resolves.toBe(true);
+      expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+        'token.de.producao',
+        expect.any(Object),
+      );
     });
 
     it('should prefer the cookie over the Authorization header', async () => {
@@ -425,7 +463,10 @@ describe('AuthGuard', () => {
 
       await guard.canActivate(contextWithRequest(request));
 
-      expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.do.cookie', expect.any(Object));
+      expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+        'token.do.cookie',
+        expect.any(Object),
+      );
     });
 
     it('should still accept the Bearer header when there is no session cookie', async () => {
@@ -434,17 +475,84 @@ describe('AuthGuard', () => {
         cookies: {},
       };
 
-      await expect(guard.canActivate(contextWithRequest(request))).resolves.toBe(true);
-      expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.do.header', expect.any(Object));
+      await expect(
+        guard.canActivate(contextWithRequest(request)),
+      ).resolves.toBe(true);
+      expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+        'token.do.header',
+        expect.any(Object),
+      );
     });
 
     it('should reject a request whose only cookie has another name', async () => {
       const request = { headers: {}, cookies: { token: 'token.antigo' } };
 
-      await expect(guard.canActivate(contextWithRequest(request))).rejects.toThrow(
+      await expect(
+        guard.canActivate(contextWithRequest(request)),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  // A autorização usa o nível gravado no banco, e não o claim do token: com o
+  // SECRET_KEY conhecido, um token reassinado com outro id_level e o jti de
+  // uma sessão válida passaria como administrador.
+  describe('identidade da sessão', () => {
+    const request: Record<string, unknown> = {
+      headers: { authorization: 'Bearer token-valido' },
+    };
+    const context = {
+      switchToHttp: () => ({ getRequest: () => request }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as unknown as ExecutionContext;
+
+    beforeEach(() => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+    });
+
+    it('should put the level stored in the database in request.user', async () => {
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+        sub: 1,
+        jti: 'sessao-valida',
+        email: 'estudante@test.com',
+        id_level: 1,
+      });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toEqual(
+        expect.objectContaining({ sub: 1, id_level: 2 }),
+      );
+    });
+
+    it('should check the blocked levels against the level stored in the database', async () => {
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+        sub: 1,
+        jti: 'sessao-valida',
+        id_level: 1,
+      });
+      jest
+        .spyOn(reflector, 'get')
+        .mockImplementation((key: unknown) =>
+          key === 'levels' ? [2] : undefined,
+        );
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should refuse a token whose sub is not the owner of the session', async () => {
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+        sub: 99,
+        jti: 'sessao-valida',
+        id_level: 1,
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
         UnauthorizedException,
       );
-      expect(jwtService.verifyAsync).not.toHaveBeenCalled();
     });
   });
 });

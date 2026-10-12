@@ -1,7 +1,18 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   MIN_SECRET_KEY_LENGTH,
   validateSecretKey,
 } from 'src/common/validate-secret-key';
+
+// Valor de SECRET_KEY em um arquivo de exemplo versionado.
+function exampleSecret(file: string): string {
+  const line = readFileSync(join(__dirname, '..', '..', '..', file), 'utf8')
+    .split('\n')
+    .find((entry) => entry.startsWith('SECRET_KEY='));
+
+  return (line ?? '').replace('SECRET_KEY=', '').trim().replace(/^"|"$/g, '');
+}
 
 describe('validateSecretKey', () => {
   const validSecret = 'a'.repeat(MIN_SECRET_KEY_LENGTH);
@@ -54,5 +65,26 @@ describe('validateSecretKey', () => {
 
     delete process.env.SECRET_KEY;
     expect(() => validateSecretKey()).toThrow('is not set');
+  });
+
+  // O valor de exemplo está publicado no repositório: quem o conhece assina
+  // tokens de sessão aceitos pela API.
+  it('should refuse the example value', () => {
+    expect(() =>
+      validateSecretKey(
+        'troque_por_uma_chave_segura_com_32_caracteres_ou_mais',
+      ),
+    ).toThrow('SECRET_KEY environment variable is set to the example value');
+  });
+
+  it.each([
+    '.env.production.example',
+    '.env.development.example',
+    'back/.env.local.example',
+  ])('should refuse the SECRET_KEY of %s', (file) => {
+    const secret = exampleSecret(file);
+
+    expect(secret.length).toBeGreaterThanOrEqual(MIN_SECRET_KEY_LENGTH);
+    expect(() => validateSecretKey(secret)).toThrow('example value');
   });
 });

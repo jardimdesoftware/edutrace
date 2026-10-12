@@ -10,8 +10,6 @@ import { securityHeaders } from './common/security-headers';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  validateSecretKey();
-
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Sem isto, o limite por IP das rotas de autenticação enxergaria apenas o
@@ -32,6 +30,10 @@ async function bootstrap() {
 
   await app.listen(port);
 }
+
+// Fora do catch do bootstrap, que esconde a causa do erro: SECRET_KEY ausente,
+// curta ou igual ao valor de exemplo aparece com a mensagem no log de subida.
+validateSecretKey();
 
 // Start application
 bootstrap().catch(() => {
