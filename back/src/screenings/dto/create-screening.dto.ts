@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -21,7 +22,7 @@ export class CreateScreeningDto {
     example: 'joao@example.com',
   })
   @IsNotEmpty({ message: 'O campo email não deve estar vazio.' })
-  @IsString({ message: 'O campo email deve ser uma string.' })
+  @IsEmail({}, { message: 'O campo email deve ser um e-mail válido.' })
   email: string;
 
   @ApiProperty({
