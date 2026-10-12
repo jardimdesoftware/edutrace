@@ -236,18 +236,58 @@ export class UsersService {
     });
   }
 
+  // Enquanto o prazo do código anterior não vence, o pedido de código novo só
+  // troca o código: o contador de tentativas e o prazo continuam os mesmos.
+  // Zerar o contador a cada pedido daria mais 5 palpites por pedido contra a
+  // mesma conta. Contador zerado e prazo novo só quando não há prazo ou ele já
+  // venceu, o que limita a 5 palpites por conta a cada janela.
   async setPasswordResetToken(
     email: string,
     tokenHash: string,
     expiresAt: Date,
   ) {
+    const { count } = await this.prisma.user.updateMany({
+      where: { email: email, password_reset_expires: { gt: new Date() } },
+      data: { password_reset_token: tokenHash },
+    });
+
+    if (count === 0) {
+      await this.prisma.user.update({
+        where: { email: email },
+        data: {
+          password_reset_token: tokenHash,
+          password_reset_expires: expiresAt,
+          password_reset_attempts: 0,
+        },
+      });
+    }
+  }
+
+  // Reserva a tentativa num único UPDATE condicionado ao código existente,
+  // dentro do prazo e abaixo do limite. Requisições paralelas não passam todas
+  // pela conferência do limite antes do primeiro incremento, porque a
+  // conferência e o incremento são a mesma operação no banco.
+  async reservePasswordResetAttempt(
+    email: string,
+    maxAttempts: number,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.user.updateMany({
+      where: {
+        email: email,
+        password_reset_token: { not: null },
+        password_reset_expires: { gt: new Date() },
+        password_reset_attempts: { lt: maxAttempts },
+      },
+      data: { password_reset_attempts: { increment: 1 } },
+    });
+
+    return count === 1;
+  }
+
+  async releasePasswordResetAttempt(email: string) {
     return this.prisma.user.update({
       where: { email: email },
-      data: {
-        password_reset_token: tokenHash,
-        password_reset_expires: expiresAt,
-        password_reset_attempts: 0,
-      },
+      data: { password_reset_attempts: { decrement: 1 } },
     });
   }
 
