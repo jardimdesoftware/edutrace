@@ -400,6 +400,16 @@ describe('UsersService', () => {
       });
     });
 
+    it('should propagate other database errors', async () => {
+      jest
+        .spyOn(prisma.user, 'update')
+        .mockRejectedValue(new Error('banco indisponível'));
+
+      await expect(
+        service.setGoogleSub('test@test.com', 'google-sub'),
+      ).rejects.toThrow('banco indisponível');
+    });
+
     it('should answer 409 when the Google account is linked to another account', async () => {
       jest.spyOn(prisma.user, 'update').mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
@@ -688,6 +698,7 @@ describe('UsersService', () => {
           failed_login_attempts: 0,
           locked_until: null,
           login_lock_count: 0,
+          google_sub: null,
         },
       });
       expect(result).toEqual(updatedUser);

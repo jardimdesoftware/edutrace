@@ -12,7 +12,10 @@ import {
   buildActivationLink,
   generateActivationToken,
 } from 'src/auth/activation-token';
-import { GOOGLE_CPF_PREFIX } from './google-account';
+import {
+  GOOGLE_ACCOUNT_IN_USE_MESSAGE,
+  GOOGLE_CPF_PREFIX,
+} from './google-account';
 import { Prisma } from '@prisma/client';
 import { PUBLIC_USER_SELECT } from './users.select';
 
@@ -195,9 +198,7 @@ export class UsersService {
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
-        throw new ConflictException(
-          'Esta Conta Google já está vinculada a outra conta.',
-        );
+        throw new ConflictException(GOOGLE_ACCOUNT_IN_USE_MESSAGE);
       }
       throw error;
     }
@@ -326,6 +327,9 @@ export class UsersService {
 
   // Usado pela redefinição e pela ativação de conta. Gravar uma senha por
   // qualquer um dos dois caminhos invalida o código e o link pendentes do outro.
+  // O vínculo com a Conta Google também cai: quem conhecia a senha pode ter
+  // vinculado a própria Conta Google, e sem isso continuaria entrando depois que
+  // o dono recupera a conta pela redefinição.
   async updatePassword(email: string, hashedPassword: string) {
     return this.prisma.user.update({
       where: { email: email },
@@ -340,6 +344,7 @@ export class UsersService {
         failed_login_attempts: 0,
         locked_until: null,
         login_lock_count: 0,
+        google_sub: null,
       },
     });
   }
