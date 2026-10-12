@@ -80,8 +80,8 @@ describe('AuthService', () => {
             findByActivationToken: jest.fn(),
             completeGoogleRegistration: jest.fn(),
             setPasswordResetToken: jest.fn(),
-            incrementPasswordResetAttempts: jest.fn(),
-            clearPasswordResetToken: jest.fn(),
+            reservePasswordResetAttempt: jest.fn().mockResolvedValue(true),
+            releasePasswordResetAttempt: jest.fn(),
             updatePassword: jest.fn(),
             updateProfile: jest.fn(),
             registerFailedLoginAttempt: jest.fn(),
@@ -917,8 +917,14 @@ describe('AuthService', () => {
 
       const result = await service.verifyResetCode('user@test.com', '123456');
 
+      expect(usersService.reservePasswordResetAttempt).toHaveBeenCalledWith(
+        'user@test.com',
+        5,
+      );
       expect(bcrypt.compare).toHaveBeenCalledWith('123456', 'hashedCode');
-      expect(usersService.clearPasswordResetToken).not.toHaveBeenCalled();
+      expect(usersService.releasePasswordResetAttempt).toHaveBeenCalledWith(
+        'user@test.com',
+      );
       expect(result).toEqual({ message: 'Código válido.' });
     });
 
@@ -938,42 +944,73 @@ describe('AuthService', () => {
       ).rejects.toThrow(new UnauthorizedException('Código inválido ou expirado.'));
     });
 
-    it('should throw UnauthorizedException when the code is expired', async () => {
+    it('should refuse without comparing the code when no attempt can be reserved', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue({
         ...mockUserWithResetToken,
         password_reset_expires: new Date(Date.now() - 1000),
       });
+      jest
+        .spyOn(usersService, 'reservePasswordResetAttempt')
+        .mockResolvedValue(false);
 
       await expect(
         service.verifyResetCode('user@test.com', '123456'),
       ).rejects.toThrow(new UnauthorizedException('Código inválido ou expirado.'));
+      expect(bcrypt.compare).not.toHaveBeenCalled();
     });
 
-    it('should increment attempts and throw when the code is wrong', async () => {
+    it('should keep the reserved attempt and throw when the code is wrong', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserWithResetToken);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
         service.verifyResetCode('user@test.com', '000000'),
       ).rejects.toThrow(new UnauthorizedException('Código inválido ou expirado.'));
-      expect(usersService.incrementPasswordResetAttempts).toHaveBeenCalledWith(
+      expect(usersService.reservePasswordResetAttempt).toHaveBeenCalledWith(
         'user@test.com',
+        5,
       );
+      expect(usersService.releasePasswordResetAttempt).not.toHaveBeenCalled();
     });
 
-    it('should clear the token and throw when max attempts are exceeded', async () => {
+    it('should not clear the code nor give the attempts back when the limit is reached', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue({
         ...mockUserWithResetToken,
         password_reset_attempts: 5,
       });
+      jest
+        .spyOn(usersService, 'reservePasswordResetAttempt')
+        .mockResolvedValue(false);
 
       await expect(
         service.verifyResetCode('user@test.com', '123456'),
       ).rejects.toThrow(new UnauthorizedException('Código inválido ou expirado.'));
-      expect(usersService.clearPasswordResetToken).toHaveBeenCalledWith(
-        'user@test.com',
-      );
       expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(usersService.setPasswordResetToken).not.toHaveBeenCalled();
+      expect(usersService.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('should compare the code at most five times for ten parallel wrong guesses', async () => {
+      let reservations = 0;
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUserWithResetToken);
+      jest
+        .spyOn(usersService, 'reservePasswordResetAttempt')
+        .mockImplementation(async (_email, maxAttempts) => {
+          await Promise.resolve();
+          if (reservations >= maxAttempts) {
+            return false;
+          }
+          reservations += 1;
+          return true;
+        });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      const guesses = Array.from({ length: 10 }, (_, index) =>
+        service.verifyResetCode('user@test.com', String(index).padStart(6, '0')),
+      );
+      await Promise.allSettled(guesses);
+
+      expect(bcrypt.compare).toHaveBeenCalledTimes(5);
     });
   });
 

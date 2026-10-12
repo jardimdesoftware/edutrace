@@ -524,23 +524,25 @@ export class AuthService {
       throw invalidCodeException;
     }
 
-    if (user.password_reset_attempts >= MAX_RESET_ATTEMPTS) {
-      await this.userService.clearPasswordResetToken(email);
-      throw invalidCodeException;
-    }
-
-    if (
-      !user.password_reset_expires ||
-      user.password_reset_expires < new Date()
-    ) {
+    // A tentativa é reservada antes da comparação, e a reserva já confere o
+    // prazo e o limite. Atingido o limite, o código não é apagado: apagar zeraria
+    // o contador e o pedido seguinte reabriria 5 tentativas dentro da janela.
+    const reserved = await this.userService.reservePasswordResetAttempt(
+      email,
+      MAX_RESET_ATTEMPTS,
+    );
+    if (!reserved) {
       throw invalidCodeException;
     }
 
     const isCodeValid = await bcrypt.compare(code, user.password_reset_token);
     if (!isCodeValid) {
-      await this.userService.incrementPasswordResetAttempts(email);
       throw invalidCodeException;
     }
+
+    // Só erro conta como tentativa: o código certo devolve a reserva, e
+    // verify-reset-code seguido de reset-password não gasta duas tentativas.
+    await this.userService.releasePasswordResetAttempt(email);
 
     return user;
   }
