@@ -751,6 +751,8 @@ jobs:
       # nginx-proxy-manager executa useradd em /etc/passwd a cada start e não
       # sobe com o rootfs somente leitura, por isso só ele fica sem read_only.
       - name: Verificar read_only e no-new-privileges nos serviços de infra
+        env:
+          GF_SECURITY_ADMIN_PASSWORD: ci
         run: |
           status=0
 
@@ -783,6 +785,52 @@ jobs:
           fi
 
           echo "OK: os serviços de infra rodam com no-new-privileges e rootfs somente leitura."
+
+      # Loki e Prometheus não têm autenticação, e o Grafana sem
+      # GF_SECURITY_ADMIN_PASSWORD cria o administrador com a senha admin. As
+      # portas publicadas ficam presas a 127.0.0.1: o Docker publica portas com
+      # regras de iptables que passam por cima do firewall do host, e os serviços
+      # se alcançam pela rede observability-net. A tag latest troca a versão a
+      # cada pull, sem mudança no repositório.
+      - name: Verificar portas, senha do Grafana e versões no compose de observabilidade
+        env:
+          GF_SECURITY_ADMIN_PASSWORD: ci
+        run: |
+          if env -u GF_SECURITY_ADMIN_PASSWORD docker compose -f docker-compose-observability.yml config >/dev/null 2>&1; then
+            echo "ERRO: docker-compose-observability.yml sobe sem GF_SECURITY_ADMIN_PASSWORD."
+            exit 1
+          fi
+
+          docker compose -f docker-compose-observability.yml config --format json > compose.json
+
+          python3 - <<'PY'
+          import json
+          import sys
+
+          servicos = json.load(open("compose.json"))["services"]
+          falhas = []
+
+          for nome, servico in servicos.items():
+              imagem = servico.get("image", "")
+              ultimo = imagem.rsplit("/", 1)[-1]
+              tag = ultimo.split(":", 1)[1] if ":" in ultimo else ""
+              if tag in ("", "latest"):
+                  falhas.append(f"{nome} usa a imagem {imagem} sem versão fixa")
+              for porta in servico.get("ports", []):
+                  if porta.get("host_ip") != "127.0.0.1":
+                      falhas.append(f"{nome} publica a porta {porta.get('published')} fora de 127.0.0.1")
+
+          ambiente_grafana = servicos.get("grafana", {}).get("environment") or {}
+          if not ambiente_grafana.get("GF_SECURITY_ADMIN_PASSWORD"):
+              falhas.append("grafana sem GF_SECURITY_ADMIN_PASSWORD")
+
+          for falha in falhas:
+              print(f"ERRO: docker-compose-observability.yml: {falha}.")
+
+          sys.exit(1 if falhas else 0)
+          PY
+
+          echo "OK: observabilidade com portas em 127.0.0.1, senha do Grafana obrigatória e versões fixas."
 
 # --------------------------------------------------------------------
 # CONFIG – PORTA DO POSTGRESQL NO COMPOSE DE PRODUÇÃO -----------------
