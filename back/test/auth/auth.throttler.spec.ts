@@ -5,11 +5,12 @@ import request from 'supertest';
 import { AuthController } from 'src/auth/auth.controller';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { AUTH_RATE_LIMIT_DEFAULT } from 'src/auth/constants/constants';
 
 describe('AuthController rate limit', () => {
   let app: INestApplication;
 
-  const LIMIT = 20;
+  const LIMIT = AUTH_RATE_LIMIT_DEFAULT;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,7 +21,12 @@ describe('AuthController rate limit', () => {
           provide: AuthService,
           useValue: {
             signIn: jest.fn().mockResolvedValue({ access_token: 'token' }),
+            signInWithGoogle: jest
+              .fn()
+              .mockResolvedValue({ access_token: 'token' }),
             forgotPassword: jest.fn().mockResolvedValue({ message: 'ok' }),
+            verifyResetCode: jest.fn().mockResolvedValue({ message: 'ok' }),
+            resetPassword: jest.fn().mockResolvedValue({ message: 'ok' }),
             activateAccount: jest.fn().mockResolvedValue({ message: 'ok' }),
             completeRegistration: jest
               .fn()
@@ -41,75 +47,39 @@ describe('AuthController rate limit', () => {
     await app.close();
   });
 
-  function postLogin(ip: string) {
-    return request(app.getHttpServer())
-      .post('/auth/login')
-      .set('X-Forwarded-For', ip)
-      .send({ email: 'user@test.com', password: 'plainPassword' });
-  }
-
-  it('should accept requests up to the configured limit', async () => {
-    for (let attempt = 0; attempt < LIMIT; attempt++) {
-      const response = await postLogin('10.0.0.1');
-      expect(response.status).toBe(200);
-    }
+  // Uma força bruta de 10 tentativas por minuto precisa receber 429, porque o
+  // bloqueio por conta responde o mesmo 401 de credencial inválida.
+  it('should allow at most eight requests per minute by default', () => {
+    expect(AUTH_RATE_LIMIT_DEFAULT).toBe(8);
   });
 
-  it('should answer 429 once the limit is exceeded', async () => {
-    for (let attempt = 0; attempt < LIMIT; attempt++) {
-      await postLogin('10.0.0.2');
-    }
+  it.each([
+    ['/auth/login', { email: 'user@test.com', password: 'plainPassword' }],
+    ['/auth/google', { credential: 'credencial-do-google' }],
+    ['/auth/forgot-password', { email: 'user@test.com' }],
+    ['/auth/verify-reset-code', { email: 'user@test.com', code: '123456' }],
+    [
+      '/auth/reset-password',
+      { email: 'user@test.com', code: '123456', password: 'novaSenha123' },
+    ],
+    ['/auth/activate', { token: 'token-do-link', password: 'novaSenha123' }],
+    [
+      '/auth/complete-registration',
+      { cpf: '01234567890', password: 'senhaNovaSegura1' },
+    ],
+  ])(
+    'should accept %s up to the limit and answer 429 after it',
+    async (path, body) => {
+      const post = () => request(app.getHttpServer()).post(path).send(body);
 
-    const response = await postLogin('10.0.0.2');
+      for (let attempt = 0; attempt < LIMIT; attempt++) {
+        const response = await post();
+        expect(response.status).not.toBe(429);
+      }
 
-    expect(response.status).toBe(429);
-  });
+      const response = await post();
 
-  it('should also protect the password recovery route', async () => {
-    for (let attempt = 0; attempt < LIMIT; attempt++) {
-      await request(app.getHttpServer())
-        .post('/auth/forgot-password')
-        .set('X-Forwarded-For', '10.0.0.3')
-        .send({ email: 'user@test.com' });
-    }
-
-    const response = await request(app.getHttpServer())
-      .post('/auth/forgot-password')
-      .set('X-Forwarded-For', '10.0.0.3')
-      .send({ email: 'user@test.com' });
-
-    expect(response.status).toBe(429);
-  });
-
-  it('should also protect the account activation route', async () => {
-    const postActivate = () =>
-      request(app.getHttpServer())
-        .post('/auth/activate')
-        .set('X-Forwarded-For', '10.0.0.4')
-        .send({ token: 'token-do-link', password: 'novaSenha123' });
-
-    for (let attempt = 0; attempt < LIMIT; attempt++) {
-      await postActivate();
-    }
-
-    const response = await postActivate();
-
-    expect(response.status).toBe(429);
-  });
-
-  it('should also protect the registration of the Google account', async () => {
-    const postCompleteRegistration = () =>
-      request(app.getHttpServer())
-        .post('/auth/complete-registration')
-        .set('X-Forwarded-For', '10.0.0.5')
-        .send({ cpf: '01234567890', password: 'senhaNovaSegura1' });
-
-    for (let attempt = 0; attempt < LIMIT; attempt++) {
-      await postCompleteRegistration();
-    }
-
-    const response = await postCompleteRegistration();
-
-    expect(response.status).toBe(429);
-  });
+      expect(response.status).toBe(429);
+    },
+  );
 });
