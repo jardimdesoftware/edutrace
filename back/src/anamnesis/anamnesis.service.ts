@@ -60,6 +60,11 @@ export class AnamnesisService {
   }
 
   async update(email: string, updateAnamnesisDto: Partial<CreateAnamnesisDto>) {
+    // O PATCH devolve o registro inteiro: o titular precisa ser estudante,
+    // como na leitura. O DELETE fica sem a conferência para que registros
+    // gravados para quem não é estudante continuem removíveis.
+    await this.studentsService.findOneOrFail({ email });
+
     const existing = await this.prisma.anamnesis.findUnique({
       where: { email },
     });
