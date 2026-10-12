@@ -85,6 +85,35 @@ describe('MailService', () => {
     });
   });
 
+  describe('sendGoogleAccountLinkNotice', () => {
+    it('should tell the owner that a Google account was linked', async () => {
+      await service.sendGoogleAccountLinkNotice('user@test.com', true);
+
+      expect(sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: 'EduTrace <nao-responda@test.com>',
+          to: 'user@test.com',
+          subject: 'EduTrace - Conta Google vinculada',
+          text: expect.stringContaining('foi vinculada à sua conta'),
+          html: expect.stringContaining('foi vinculada à sua conta'),
+        }),
+      );
+    });
+
+    it('should tell the owner that the Google account was unlinked', async () => {
+      await service.sendGoogleAccountLinkNotice('user@test.com', false);
+
+      expect(sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'user@test.com',
+          subject: 'EduTrace - Conta Google desvinculada',
+          text: expect.stringContaining('foi desvinculada da sua conta'),
+          html: expect.stringContaining('foi desvinculada da sua conta'),
+        }),
+      );
+    });
+  });
+
   describe('sendPasswordResetCode', () => {
     it('should create the transporter with the SMTP environment variables', async () => {
       await service.sendPasswordResetCode('user@test.com', '123456');

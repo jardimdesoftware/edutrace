@@ -49,6 +49,33 @@ export class MailService {
     });
   }
 
+  // Aviso de vínculo e desvínculo da Conta Google usada no "Entrar com o
+  // Google". Vincular acrescenta um meio de entrar na conta, então o dono
+  // precisa saber quando isso acontece.
+  async sendGoogleAccountLinkNotice(
+    to: string,
+    linked: boolean,
+  ): Promise<void> {
+    const resumo = linked
+      ? 'Uma Conta Google foi vinculada à sua conta do EduTrace. A partir de agora, o botão "Entrar com o Google" abre a sua conta.'
+      : 'A Conta Google foi desvinculada da sua conta do EduTrace. O botão "Entrar com o Google" deixa de abrir a sua conta.';
+    const orientacao = linked
+      ? 'Se não foi você, desvincule a Conta Google em "Alterar meus dados" e troque sua senha.'
+      : 'Se não foi você, troque sua senha em "Alterar meus dados".';
+
+    await this.getTransporter().sendMail({
+      from: process.env.MAIL_FROM,
+      to,
+      subject: linked
+        ? 'EduTrace - Conta Google vinculada'
+        : 'EduTrace - Conta Google desvinculada',
+      text: ['Olá!', '', resumo, '', orientacao].join('\n'),
+      html: ['<p>Olá!</p>', `<p>${resumo}</p>`, `<p>${orientacao}</p>`].join(
+        '',
+      ),
+    });
+  }
+
   async sendNewCommentNotice(to: string): Promise<void> {
     await this.getTransporter().sendMail({
       from: process.env.MAIL_FROM,
