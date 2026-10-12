@@ -82,3 +82,25 @@ describe('CreateUserDto, campo id_level', () => {
     expect(errors.map((error) => error.property)).toEqual(['id_level']);
   });
 });
+
+describe('CreateUserDto, campo email', () => {
+  // O link de definição de senha vai para o e-mail cadastrado, e o nodemailer
+  // trata vírgula como separador de destinatários.
+  it.each(['aluno.a@example.test,aluno.b@example.test', 'nao e email'])(
+    'should refuse %p',
+    (email) => {
+      const errors = validateSync(
+        plainToInstance(CreateUserDto, {
+          ...base,
+          cpf: '01234567890',
+          email,
+        }),
+      );
+
+      expect(errors.map((error) => error.property)).toEqual(['email']);
+      expect(errors[0].constraints).toEqual({
+        isEmail: 'O campo email deve ser um e-mail válido.',
+      });
+    },
+  );
+});
