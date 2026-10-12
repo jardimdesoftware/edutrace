@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -8,6 +9,7 @@ import {
   IsString,
 } from 'class-validator';
 import { IsCpf, onlyDigits } from 'src/common/validators/is-cpf.validator';
+import { LEVELS } from 'src/constants';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -64,6 +66,9 @@ export class CreateUserDto {
   @IsOptional({ message: 'O campo id_level é opcional.' })
   @IsNumber({}, { message: 'O campo id_level deve ser um número.' })
   @IsInt({ message: 'O campo id_level deve ser um inteiro.' })
+  @IsIn(Object.values(LEVELS), {
+    message: 'O campo id_level deve ser um nível de acesso existente.',
+  })
   id_level?: number;
 
   @ApiProperty({
