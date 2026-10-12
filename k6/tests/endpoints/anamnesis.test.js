@@ -175,8 +175,8 @@ export default function (data) {
   const testEmail = `k6.anamnesis.${Date.now()}.${Math.floor(Math.random() * 10000)}@test.com`;
 
   // ─── 0. POST /users — cria o usuário exigido pela pré-condição acima ──────
-  // POST /anamnesis atualiza id_current_phase do usuário com esse email;
-  // sem essa criação prévia a API retorna 500 (usuário inexistente).
+  // A API só aceita anamnese de estudante cadastrado: sem essa criação prévia,
+  // POST /anamnesis responde 404.
   const createUserRes = http.post(
     `${BASE_URL}/users`,
     JSON.stringify({
