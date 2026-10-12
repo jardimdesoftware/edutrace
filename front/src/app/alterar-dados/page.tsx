@@ -1,6 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
+import { GoogleAccountLink } from "@/components/GoogleAccountLink";
 import { updateProfile } from "@/api/user";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchSessionUser } from "@/services/auth/sessionUser";
@@ -199,6 +200,9 @@ export default function AlterarDadosPage() {
             </button>
           </form>
         </div>
+
+        {/* No primeiro acesso a API só aceita a troca de senha. */}
+        {!trocaObrigatoria && <GoogleAccountLink />}
       </div>
     </AppLayout>
   );
