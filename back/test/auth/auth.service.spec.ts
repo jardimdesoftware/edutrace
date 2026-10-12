@@ -50,6 +50,7 @@ describe('AuthService', () => {
     failed_login_attempts: 0,
     locked_until: null,
     login_lock_count: 0,
+    google_sub: null,
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
