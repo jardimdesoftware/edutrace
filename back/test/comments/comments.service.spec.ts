@@ -638,6 +638,7 @@ describe('CommentsService', () => {
         ),
       );
       expect(prisma.comments.findMany).not.toHaveBeenCalled();
+      expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
     });
   });
 
