@@ -178,7 +178,7 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 
 ## ⚠️ Observações Importantes
 
-1. **Anamnesis**: O endpoint `POST /anamnesis` também atualiza `id_current_phase` do usuário. Para testar o ciclo completo, é necessário que o usuário exista no banco. Os testes de endpoint criam emails únicos por iteração para evitar conflitos.
+1. **Triagem, anamnese e PEI**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail único por iteração e o removem no fim. O `POST /anamnesis` também atualiza `id_current_phase` do estudante.
 
 2. **Users - Criação**: Apenas admins (`id_level: 1`) podem criar usuários. O teste `users.test.js` usa as credenciais de admin.
 
