@@ -28,26 +28,31 @@ describe('UpdateScreeningDto', () => {
     });
   });
 
-  it('should drop the id and the dates the edit screen sends back', async () => {
-    await expect(
-      validate({
+  it('should reject the id and the dates the edit screen sends back', async () => {
+    expect(
+      await messages({
         special_service: false,
         id: 999,
         created_at: '2000-01-01T00:00:00.000Z',
         updated_at: '2000-01-01T00:00:00.000Z',
         deleted_at: null,
       }),
-    ).resolves.toEqual({ special_service: false });
+    ).toEqual([
+      'property id should not exist',
+      'property created_at should not exist',
+      'property updated_at should not exist',
+      'property deleted_at should not exist',
+    ]);
   });
 
-  it('should drop the email that links the screening to its student', async () => {
-    await expect(
-      validate({
+  it('should reject the email that links the screening to its student', async () => {
+    expect(
+      await messages({
         full_name: 'Estudante A',
         special_service: false,
         email: 'outro.estudante@example.com',
       }),
-    ).resolves.toEqual({ full_name: 'Estudante A', special_service: false });
+    ).toEqual(['property email should not exist']);
   });
 
   it('should reject physical_disability sent as text', async () => {

@@ -30,16 +30,21 @@ describe('UpdateAnamnesisDto', () => {
     });
   });
 
-  it('should drop the id and the dates the edit screen sends back', async () => {
-    await expect(
-      validate({
+  it('should reject the id and the dates the edit screen sends back', async () => {
+    expect(
+      await messages({
         identification,
         id: 999,
         created_at: '2000-01-01T00:00:00.000Z',
         updated_at: '2000-01-01T00:00:00.000Z',
         deleted_at: null,
       }),
-    ).resolves.toEqual({ identification });
+    ).toEqual([
+      'property id should not exist',
+      'property created_at should not exist',
+      'property updated_at should not exist',
+      'property deleted_at should not exist',
+    ]);
   });
 
   it('should reject identification sent as text', async () => {
@@ -48,9 +53,9 @@ describe('UpdateAnamnesisDto', () => {
     ]);
   });
 
-  it('should drop the email that links the anamnesis to its student', async () => {
-    await expect(
-      validate({ identification, email: 'outro.estudante@example.com' }),
-    ).resolves.toEqual({ identification });
+  it('should reject the email that links the anamnesis to its student', async () => {
+    expect(
+      await messages({ identification, email: 'outro.estudante@example.com' }),
+    ).toEqual(['property email should not exist']);
   });
 });

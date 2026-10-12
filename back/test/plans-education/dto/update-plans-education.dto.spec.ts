@@ -28,36 +28,44 @@ describe('UpdatePlansEducationDto', () => {
     });
   });
 
-  it('should drop the id and the dates the edit screen sends back', async () => {
-    await expect(
-      validate({
+  it('should reject the id and the dates the edit screen sends back', async () => {
+    expect(
+      await messages({
         objectives: 'Novos objetivos',
         id: 999,
         created_at: '2000-01-01T00:00:00.000Z',
         updated_at: '2000-01-01T00:00:00.000Z',
         deleted_at: null,
       }),
-    ).resolves.toEqual({ objectives: 'Novos objetivos' });
+    ).toEqual([
+      'property id should not exist',
+      'property created_at should not exist',
+      'property updated_at should not exist',
+      'property deleted_at should not exist',
+    ]);
   });
 
-  it('should drop the student_email that links the plan to its student', async () => {
-    await expect(
-      validate({
+  it('should reject the student_email that links the plan to its student', async () => {
+    expect(
+      await messages({
         objectives: 'Novos objetivos',
         student_email: 'outro.estudante@example.com',
       }),
-    ).resolves.toEqual({ objectives: 'Novos objetivos' });
+    ).toEqual(['property student_email should not exist']);
   });
 
   // A autoria é de quem criou o PEI e não muda pelo PATCH.
-  it('should drop the author fields', async () => {
-    await expect(
-      validate({
+  it('should reject the author fields', async () => {
+    expect(
+      await messages({
         objectives: 'Novos objetivos',
         professor_email: 'outro.professor@example.com',
         professor_name: 'Outro Professor',
       }),
-    ).resolves.toEqual({ objectives: 'Novos objetivos' });
+    ).toEqual([
+      'property professor_email should not exist',
+      'property professor_name should not exist',
+    ]);
   });
 
   it('should reject academic_semester sent as text', async () => {
