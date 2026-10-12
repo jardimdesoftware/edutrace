@@ -12,6 +12,7 @@ import {
   buildActivationLink,
   generateActivationToken,
 } from 'src/auth/activation-token';
+import { GOOGLE_CPF_PREFIX } from './google-account';
 import { Prisma } from '@prisma/client';
 import { PUBLIC_USER_SELECT } from './users.select';
 
@@ -88,12 +89,17 @@ export class UsersService {
     }
   }
 
-  private duplicateFieldError(error: unknown): ConflictException | null {
-    const isUniqueViolation =
+  private isUniqueViolation(
+    error: unknown,
+  ): error is Prisma.PrismaClientKnownRequestError {
+    return (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002';
+      error.code === 'P2002'
+    );
+  }
 
-    if (!isUniqueViolation) {
+  private duplicateFieldError(error: unknown): ConflictException | null {
+    if (!this.isUniqueViolation(error)) {
       return null;
     }
 
@@ -168,6 +174,56 @@ export class UsersService {
         must_change_password: false,
       },
     });
+  }
+  // Cria a conta do estudante que entra pela primeira vez com o Google, já
+  // vinculada ao sub da Conta Google. Conta existente com o mesmo e-mail nunca é
+  // reaproveitada: devolve null, e o dono vincula a Conta Google depois de
+  // entrar com e-mail e senha.
+  async createGoogleStudentUser(data: {
+    email: string;
+    fullName: string;
+    passwordHash: string;
+    googleSubject: string;
+  }) {
+    try {
+      return await this.prisma.user.create({
+        data: {
+          full_name: data.fullName,
+          cpf: `${GOOGLE_CPF_PREFIX}${data.googleSubject}`,
+          email: data.email,
+          password: data.passwordHash,
+          google_sub: data.googleSubject,
+          id_level: LEVELS.ALUNO_ESTUDANTE,
+          id_current_phase: PHASES.TRIAGEM,
+          must_change_password: false,
+        },
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async findByGoogleSub(googleSub: string) {
+    return this.prisma.user.findUnique({ where: { google_sub: googleSub } });
+  }
+
+  async setGoogleSub(email: string, googleSub: string | null) {
+    try {
+      return await this.prisma.user.update({
+        where: { email: email },
+        data: { google_sub: googleSub },
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException(
+          'Esta Conta Google já está vinculada a outra conta.',
+        );
+      }
+      throw error;
+    }
   }
 
   async update(email: string, updateUserDto: UpdateUserDto) {
