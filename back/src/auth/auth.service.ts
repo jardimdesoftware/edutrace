@@ -17,7 +17,10 @@ import { hashActivationToken } from './activation-token';
 import { CompromisedPasswordService } from './compromised-password.service';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
 import { LinkGoogleAccountDto } from './dto/link-google-account.dto';
-import { hasPendingGoogleRegistration } from 'src/users/google-account';
+import {
+  GOOGLE_ACCOUNT_IN_USE_MESSAGE,
+  hasPendingGoogleRegistration,
+} from 'src/users/google-account';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
@@ -34,8 +37,6 @@ const GOOGLE_DISCENTE_HOSTED_DOMAIN = 'discente.ifpe.edu.br';
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 const GOOGLE_NOT_LINKED_MESSAGE =
   'Conta Google não vinculada. Entre com e-mail e senha e vincule a conta em Alterar meus dados.';
-const GOOGLE_ACCOUNT_IN_USE_MESSAGE =
-  'Esta Conta Google já está vinculada a outra conta.';
 
 // Hash bcrypt (custo 10, o mesmo usado nas senhas reais) de uma senha aleatória
 // descartável. Serve para que o caminho de e-mail inexistente pague o mesmo custo
@@ -188,12 +189,16 @@ export class AuthService {
     const fullName = tokenInfo.name?.trim() || email.split('@')[0];
     const passwordHash = await bcrypt.hash(randomUUID(), 10);
 
-    return this.userService.createGoogleStudentUser({
+    const created = await this.userService.createGoogleStudentUser({
       email,
       fullName,
       passwordHash,
       googleSubject: sub,
     });
+
+    // Sem criação, o e-mail já tinha conta ou um login simultâneo do mesmo
+    // estudante criou a conta primeiro; só o segundo caso tem dono para o sub.
+    return created ?? this.userService.findByGoogleSub(sub);
   }
 
   async getGoogleLinkStatus(
@@ -201,15 +206,16 @@ export class AuthService {
   ): Promise<{ enabled: boolean; linked: boolean }> {
     const user = await this.userService.findOne(currentEmail);
     return {
-      enabled: !!process.env.GOOGLE_CLIENT_ID,
+      enabled: this.getGoogleConfig().enabled,
       linked: !!user?.google_sub,
     };
   }
 
   // Vincular acrescenta um meio de entrar na conta, então exige a sessão e a
-  // senha atual, que conta no bloqueio como em updateProfile. Sem a senha, quem
-  // usa uma sessão aberta de outra pessoa vincularia a própria Conta Google e
-  // continuaria entrando depois da troca de senha. O dono recebe aviso.
+  // senha atual, que conta no bloqueio como em updateProfile: sem a senha, quem
+  // usa uma sessão aberta de outra pessoa vincularia a própria Conta Google. O
+  // dono recebe aviso, e a redefinição de senha desfaz o vínculo
+  // (updatePassword).
   async linkGoogleAccount(
     currentEmail: string,
     dto: LinkGoogleAccountDto,
@@ -613,7 +619,11 @@ export class AuthService {
 
     // Quem redefine a senha normalmente perdeu o controle da conta, então todas
     // as sessões abertas caem, inclusive as de quem estava usando a senha antiga.
+    // updatePassword também desfaz o vínculo com a Conta Google.
     await this.sessionsService.revokeAllFromUser(user.id);
+    if (user.google_sub) {
+      this.sendGoogleLinkNotice(user, false);
+    }
 
     return { message: 'Senha redefinida com sucesso.' };
   }
@@ -643,8 +653,12 @@ export class AuthService {
     await this.userService.updatePassword(user.email, hashedPassword);
 
     // Mesmo tratamento de resetPassword: sessões abertas antes da senha, como
-    // uma entrada pelo Google, são encerradas.
+    // uma entrada pelo Google, são encerradas, e o vínculo com a Conta Google
+    // cai em updatePassword.
     await this.sessionsService.revokeAllFromUser(user.id);
+    if (user.google_sub) {
+      this.sendGoogleLinkNotice(user, false);
+    }
 
     return { message: 'Senha definida com sucesso.' };
   }
