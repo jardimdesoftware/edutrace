@@ -73,7 +73,7 @@ export default function (data) {
   const headers = authHeaders(data.token);
   const testEmail = `k6.screening.${Date.now()}.${Math.floor(Math.random() * 10000)}@test.com`;
 
-  // ─── 0. POST /users — cria o estudante titular da ficha ──────────────────
+  // ─── 0. POST /users, cria o estudante titular da ficha ───────────────────
   // A API só aceita ficha de estudante cadastrado: e-mail sem conta recebe 404.
   const createUserRes = http.post(
     `${BASE_URL}/users`,
@@ -149,6 +149,16 @@ export default function (data) {
   check(deleteRes, {
     '[screenings] DELETE /screenings/:email retorna 200': (r) => r.status === 200,
   });
+
+
+  // ─── 6. DELETE /users/:id, limpa o estudante criado no passo 0 ────────────
+  try {
+    const userId = JSON.parse(createUserRes.body).id;
+    const deleteUserRes = http.del(`${BASE_URL}/users/${userId}`, null, { headers });
+    check(deleteUserRes, {
+      '[screenings] DELETE /users/:id (cleanup) retorna 200': (r) => r.status === 200,
+    });
+  } catch {}
 
   sleep(1);
 }
