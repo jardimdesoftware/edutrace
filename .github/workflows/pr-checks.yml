@@ -204,11 +204,31 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      # Os arquivos de ambiente da pasta do back guardam SECRET_KEY, a senha do
+      # SMTP e a senha inicial do administrador, e o COPY . . do Dockerfile os
+      # levaria para uma camada da imagem. Os arquivos-isca criados aqui não
+      # podem aparecer na imagem buildada.
+      - name: Criar arquivos .env no contexto de build do backend
+        run: |
+          echo CI_CANARY=1 > back/.env
+          echo CI_CANARY=1 > back/.env.local
+
       # Builda a imagem exatamente como em produção. Reproduz a ordem do
       # Dockerfile (prisma generate -> nest build) e pega regressões que só
       # aparecem no build do container, não nos testes unitários.
       - name: Build da imagem Docker do backend
         run: docker build ./back -f back/Dockerfile -t edutrace-back:pr-check
+
+      - name: Verificar que a imagem do backend não leva arquivos .env
+        run: |
+          arquivos=$(docker run --rm --entrypoint sh edutrace-back:pr-check -c 'ls -A /usr/src/api' | grep '^\.env' || true)
+          if [ -n "$arquivos" ]; then
+            echo "ERRO: a imagem do backend contém arquivos de ambiente: $arquivos"
+            echo "   Liste .env* em back/.dockerignore."
+            exit 1
+          fi
+
+          echo "OK: a imagem do backend não contém arquivos .env."
 
       # A imagem roda sem root e os arquivos dela continuam do root, então o
       # processo não consegue reescrever o próprio código. O CMD (migrations,
@@ -385,8 +405,27 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      # O next build copia para .next/standalone os .env que carregou, e o
+      # Dockerfile leva esse diretório para a imagem final. Os arquivos-isca
+      # criados aqui não podem aparecer na imagem buildada.
+      - name: Criar arquivos .env no contexto de build do frontend
+        run: |
+          echo CI_CANARY=1 > front/.env
+          echo CI_CANARY=1 > front/.env.production
+
       - name: Build da imagem Docker do frontend
         run: docker build ./front -f front/Dockerfile --build-arg APP_VERSION=0.0.0 -t edutrace-front:pr-check
+
+      - name: Verificar que a imagem do frontend não leva arquivos .env
+        run: |
+          arquivos=$(docker run --rm --entrypoint sh edutrace-front:pr-check -c 'ls -A /app' | grep '^\.env' || true)
+          if [ -n "$arquivos" ]; then
+            echo "ERRO: a imagem do frontend contém arquivos de ambiente: $arquivos"
+            echo "   Liste .env* em front/.dockerignore."
+            exit 1
+          fi
+
+          echo "OK: a imagem do frontend não contém arquivos .env."
 
       # O servidor roda sem root. Só o runtime-config.js, que o entrypoint
       # reescreve a cada start, e o cache do otimizador do next/image pertencem
