@@ -1,23 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsObject, IsString } from 'class-validator';
 
+// professor_email e professor_name não são entrada do cliente: a autoria é
+// gravada a partir do usuário autenticado (PlansEducationService.create).
 export class CreatePlansEducationDto {
-  @ApiProperty({
-    description: 'Email do Professor',
-    example: 'professor@example.com',
-  })
-  @IsNotEmpty({ message: 'O campo professor_email não deve estar vazio.' })
-  @IsString({ message: 'O campo professor_email deve ser uma string.' })
-  professor_email: string;
-
-  @ApiProperty({
-    description: 'Nome do Professor',
-    example: 'Professor',
-  })
-  @IsNotEmpty({ message: 'O campo professor_name não deve estar vazio.' })
-  @IsString({ message: 'O campo professor_name deve ser uma string.' })
-  professor_name: string;
-
   @ApiProperty({
     description: 'Email do estudante',
     example: 'estudante@example.com',

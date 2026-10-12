@@ -36,10 +36,15 @@ describe('PlansEducationService', () => {
   });
 
   describe('create', () => {
-    it('should create a plans education', async () => {
+    // A autoria vem do usuário autenticado, nunca do corpo da requisição.
+    it('should record the authenticated user as the author of the plan', async () => {
+      const author = {
+        sub: 7,
+        id_level: 3,
+        email: 'professor@example.com',
+        name: 'Professor',
+      };
       const createPlansEducationDto = {
-        professor_email: 'professor@example.com',
-        professor_name: 'Professor',
         student_email: 'estudante@example.com',
         student_name: 'Estudante',
         academic_semester: {
@@ -177,16 +182,22 @@ describe('PlansEducationService', () => {
         updated_at: new Date(),
         deleted_at: null,
         ...createPlansEducationDto,
+        professor_email: author.email,
+        professor_name: author.name,
       };
 
       jest
         .spyOn(prisma.plansEducation, 'create')
         .mockResolvedValue(createdPlansEducation);
 
-      const result = await service.create(createPlansEducationDto);
+      const result = await service.create(createPlansEducationDto, author);
 
       expect(prisma.plansEducation.create).toHaveBeenCalledWith({
-        data: createPlansEducationDto,
+        data: {
+          ...createPlansEducationDto,
+          professor_email: 'professor@example.com',
+          professor_name: 'Professor',
+        },
       });
       expect(result).toEqual(createdPlansEducation);
     });
@@ -843,7 +854,9 @@ describe('PlansEducationService', () => {
       const existing = { id: 1, student_email: email } as any;
       const updated = { ...existing, ...updateDto };
 
-      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(existing);
+      jest
+        .spyOn(prisma.plansEducation, 'findUnique')
+        .mockResolvedValue(existing);
       jest.spyOn(prisma.plansEducation, 'update').mockResolvedValue(updated);
 
       const result = await service.update(email, updateDto);
@@ -863,7 +876,9 @@ describe('PlansEducationService', () => {
 
       jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.update(email, {})).rejects.toThrow(NotFoundException);
+      await expect(service.update(email, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -872,7 +887,9 @@ describe('PlansEducationService', () => {
       const email = 'estudante@example.com';
       const existing = { id: 1, student_email: email } as any;
 
-      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(existing);
+      jest
+        .spyOn(prisma.plansEducation, 'findUnique')
+        .mockResolvedValue(existing);
       jest.spyOn(prisma.plansEducation, 'delete').mockResolvedValue(existing);
 
       const result = await service.remove(email);
@@ -883,7 +900,9 @@ describe('PlansEducationService', () => {
       expect(prisma.plansEducation.delete).toHaveBeenCalledWith({
         where: { student_email: email },
       });
-      expect(result).toEqual({ message: `PEI do aluno ${email} removido com sucesso` });
+      expect(result).toEqual({
+        message: `PEI do aluno ${email} removido com sucesso`,
+      });
     });
 
     it('should throw NotFoundException when plans education does not exist', async () => {

@@ -12,9 +12,18 @@ import { LEVELS } from 'src/constants';
 export class PlansEducationService {
   constructor(private prisma: PrismaService) {}
 
-  create(createPlansEducationDto: CreatePlansEducationDto) {
+  // A autoria vem do usuário autenticado. O PATCH não altera esses campos, e
+  // PATCH /auth/me mantém professor_email quando o professor troca de e-mail.
+  create(
+    createPlansEducationDto: CreatePlansEducationDto,
+    author: AuthenticatedRequest['user'],
+  ) {
     return this.prisma.plansEducation.create({
-      data: createPlansEducationDto,
+      data: {
+        ...createPlansEducationDto,
+        professor_email: author.email,
+        professor_name: author.name,
+      },
     });
   }
 

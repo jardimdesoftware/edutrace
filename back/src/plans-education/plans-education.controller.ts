@@ -21,8 +21,14 @@ export class PlansEducationController {
 
   @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_SAUDE)
   @Post()
-  create(@Body() createPlansEducationDto: CreatePlansEducationDto) {
-    return this.plansEducationService.create(createPlansEducationDto);
+  create(
+    @Body() createPlansEducationDto: CreatePlansEducationDto,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.plansEducationService.create(
+      createPlansEducationDto,
+      request.user,
+    );
   }
 
   @Levels(LEVELS.ALUNO_ESTUDANTE)
