@@ -847,6 +847,7 @@ describe('PlansEducationService', () => {
       expect(thrownError.message).toBe(
         'Você não tem permissão para visualizar este PEI',
       );
+      expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when plans education is not found', async () => {
@@ -931,6 +932,23 @@ describe('PlansEducationService', () => {
   });
 
   describe('titular estudante', () => {
+    // O PATCH devolve o registro inteiro: sem a conferência, seria um caminho
+    // de leitura e de alteração da ficha de quem não é estudante.
+    it('should not update nor return the record of someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+
+      await expect(
+        service.update('profissional@example.com', { objectives: 'Outros' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
+        email: 'profissional@example.com',
+      });
+      expect(prisma.plansEducation.findUnique).not.toHaveBeenCalled();
+      expect(prisma.plansEducation.update).not.toHaveBeenCalled();
+    });
+
     const author = {
       sub: 7,
       id_level: LEVELS.PROFISSIONAL_EDUCACAO,

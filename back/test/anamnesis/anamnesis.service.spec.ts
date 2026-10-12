@@ -822,6 +822,7 @@ describe('AnamnesisService', () => {
         ),
       );
       expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
+      expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -902,6 +903,21 @@ describe('AnamnesisService', () => {
   });
 
   describe('titular estudante', () => {
+    // O PATCH devolve o registro inteiro: sem a conferência, seria um caminho
+    // de leitura e de alteração da ficha de quem não é estudante.
+    it('should not update nor return the record of someone who is not a student', async () => {
+      jest
+        .spyOn(studentsService, 'findOneOrFail')
+        .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
+
+      await expect(service.update('profissional@example.com', { identification: {} })).rejects.toThrow(NotFoundException);
+      expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
+        email: 'profissional@example.com',
+      });
+      expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
+      expect(prisma.anamnesis.update).not.toHaveBeenCalled();
+    });
+
     it('should not create an anamnesis nor change the phase of someone who is not a student', async () => {
       jest
         .spyOn(studentsService, 'findOneOrFail')
