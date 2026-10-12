@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { GoogleLoginButton } from "@/components/GoogleLoginButton";
+import { errorAlertOptions } from "@/utils/errorAlert";
 import {
   getGoogleLinkStatus,
   linkGoogleAccount,
@@ -10,8 +11,8 @@ import {
   type GoogleLinkStatus,
 } from "@/api/googleLink";
 
-function mensagemDoErro(error: unknown, padrao: string) {
-  return error instanceof Error ? error.message : padrao;
+function avisarErro(title: string, error: unknown, padrao: string) {
+  void Swal.fire(errorAlertOptions(title, error, padrao));
 }
 
 // O "Entrar com o Google" só abre a conta vinculada à Conta Google. Vincular
@@ -33,11 +34,7 @@ export function GoogleAccountLink() {
   }, []);
 
   const handleGoogleError = useCallback((error: unknown) => {
-    void Swal.fire(
-      "Não foi possível usar o Google",
-      mensagemDoErro(error, "Tente novamente."),
-      "error",
-    );
+    avisarErro("Não foi possível usar o Google", error, "Tente novamente.");
   }, []);
 
   if (!status?.enabled) return null;
@@ -59,7 +56,7 @@ export function GoogleAccountLink() {
       setSenhaAtual("");
       await Swal.fire("Conta Google vinculada!", "Agora você também pode entrar pelo botão do Google.", "success");
     } catch (error) {
-      Swal.fire("Não foi possível vincular", mensagemDoErro(error, "Erro ao vincular a Conta Google."), "error");
+      avisarErro("Não foi possível vincular", error, "Erro ao vincular a Conta Google.");
     } finally {
       setEnviando(false);
     }
@@ -82,7 +79,7 @@ export function GoogleAccountLink() {
       setStatus({ ...status, linked: false });
       await Swal.fire("Conta Google desvinculada", "Use seu e-mail e senha para entrar.", "success");
     } catch (error) {
-      Swal.fire("Não foi possível desvincular", mensagemDoErro(error, "Erro ao desvincular a Conta Google."), "error");
+      avisarErro("Não foi possível desvincular", error, "Erro ao desvincular a Conta Google.");
     } finally {
       setEnviando(false);
     }
@@ -128,7 +125,10 @@ export function GoogleAccountLink() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setCredential(null)}
+              onClick={() => {
+                setCredential(null);
+                setSenhaAtual("");
+              }}
               disabled={enviando}
               className="w-1/2 rounded border border-gray-400 px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
