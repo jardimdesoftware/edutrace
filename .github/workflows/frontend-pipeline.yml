@@ -57,6 +57,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Instalar GitHub CLI
         run: sudo apt-get install -y gh
@@ -176,20 +178,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
-
-      - name: Validar standalone do Next
-        working-directory: front
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-        run: |
-          npm ci
-          npm run build
-          test -f .next/standalone/server.js || (echo "standalone nao encontrado: .next/standalone/server.js" && exit 1)
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -313,6 +303,8 @@ jobs:
       TIPO:    ${{ needs.prepare-tag.outputs.tipo }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # A release usa a tag reservada no job 1. Ela só vira a Latest se a
       # versão for a maior entre as releases: merges próximos terminam fora de

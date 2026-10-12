@@ -59,6 +59,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Instalar GitHub CLI
         run: sudo apt-get install -y gh
@@ -132,8 +134,12 @@ jobs:
     name: 2. Rodar testes do backend
     runs-on: ubuntu-latest
     needs: prepare-tag
+    # O job instala e executa as dependências npm, então fica só com leitura:
+    # o README da badge é gravado pelo job update-coverage-badge, sem npm.
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      coverage: ${{ steps.coverage.outputs.coverage }}
 
     # Os testes unitários mockam o Prisma, mas o PrismaService valida a
     # presença de DATABASE_URL na construção — o valor não precisa apontar
@@ -143,6 +149,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Configurar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -179,22 +187,40 @@ jobs:
           echo "Cobertura total: $COVERAGE%"
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
 
+  update-coverage-badge:
+    name: 2.1 Atualizar badge de cobertura
+    runs-on: ubuntu-latest
+    needs: run-tests
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # A cobertura vem de um job que executou o código das dependências, então
+      # entra no shell como variável e só é usada se for um número.
       - name: Atualizar badge no README
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERAGE: ${{ needs.run-tests.outputs.coverage }}
         run: |
-          # Atualizar badge no README.md
-          BADGE="![Coverage](https://img.shields.io/badge/Coverage-${{ steps.coverage.outputs.coverage }}%25-brightgreen)"
+          if ! [[ "$COVERAGE" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "Cobertura inválida: '$COVERAGE'."
+            exit 1
+          fi
+
+          BADGE="![Coverage](https://img.shields.io/badge/Coverage-${COVERAGE}%25-brightgreen)"
           sed -i '0,/<!-- COVERAGE_BADGE -->/s|.*<!-- COVERAGE_BADGE -->|'"$BADGE"' <!-- COVERAGE_BADGE -->|' README.md
 
-          # Fazer commit e push via GitHub API
+          # Commit via API do GitHub, com o GH_TOKEN; o checkout não guarda credencial.
           gh api \
             --method PUT \
             -H "Accept: application/vnd.github.v3+json" \
-            /repos/${{ github.repository }}/contents/README.md \
-            -f message="ci: atualizar badge de cobertura para ${{ steps.coverage.outputs.coverage }}%" \
+            "/repos/${GITHUB_REPOSITORY}/contents/README.md" \
+            -f message="ci: atualizar badge de cobertura para ${COVERAGE}%" \
             -f content="$(base64 -w0 README.md)" \
-            -f sha="$(gh api repos/${{ github.repository }}/contents/README.md --jq .sha)"
+            -f sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/README.md" --jq .sha)"
 
 # --------------------------------------------------------------------
 # 3) SONARQUBE ANALYSIS ----------------------------------------------
@@ -244,6 +270,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -365,6 +393,8 @@ jobs:
       TIPO:    ${{ needs.prepare-tag.outputs.tipo }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # A release usa a tag reservada no job 1. Ela só vira a Latest se a
       # versão for a maior entre as releases: merges próximos terminam fora de
