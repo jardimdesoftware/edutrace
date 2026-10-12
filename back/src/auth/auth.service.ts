@@ -416,15 +416,28 @@ export class AuthService {
     return this.issueSessionToken(updated, context);
   }
 
+  // A resposta não espera a busca da conta, a gravação do código nem o envio do
+  // e-mail: e-mail cadastrado e não cadastrado respondem no mesmo tempo, e o
+  // tempo de resposta deixa de revelar quais contas existem. As falhas do
+  // processamento ficam no log, sem o e-mail informado.
   async forgotPassword(email: string): Promise<{ message: string }> {
-    const genericResponse = {
+    void this.processPasswordResetRequest(email).catch((error: unknown) =>
+      this.logger.error(
+        'Falha ao processar pedido de recuperação de senha',
+        error instanceof Error ? error.stack : String(error),
+      ),
+    );
+
+    return {
       message:
         'Se o e-mail informado estiver cadastrado, um código de recuperação foi enviado.',
     };
+  }
 
+  private async processPasswordResetRequest(email: string): Promise<void> {
     const user = await this.userService.findOne(email);
     if (!user) {
-      return genericResponse;
+      return;
     }
 
     const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
@@ -441,8 +454,6 @@ export class AuthService {
         error instanceof Error ? error.stack : String(error),
       );
     }
-
-    return genericResponse;
   }
 
   async verifyResetCode(

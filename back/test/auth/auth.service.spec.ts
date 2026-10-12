@@ -19,6 +19,11 @@ import { createHash } from 'node:crypto';
 
 jest.mock('bcryptjs');
 
+// forgotPassword responde antes de processar o pedido; os testes que conferem
+// a gravação do código e o envio esperam esse processamento terminar.
+const flushBackgroundWork = () =>
+  new Promise<void>((resolve) => setImmediate(resolve));
+
 describe('AuthService', () => {
   let service: AuthService;
   let usersService: UsersService;
@@ -654,6 +659,7 @@ describe('AuthService', () => {
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashedCode');
 
       const result = await service.forgotPassword('user@test.com');
+      await flushBackgroundWork();
 
       const sentCode = (mailService.sendPasswordResetCode as jest.Mock).mock
         .calls[0][1];
@@ -677,6 +683,7 @@ describe('AuthService', () => {
 
       const before = Date.now();
       await service.forgotPassword('user@test.com');
+      await flushBackgroundWork();
       const after = Date.now();
 
       const expiresAt = (usersService.setPasswordResetToken as jest.Mock).mock
@@ -689,10 +696,45 @@ describe('AuthService', () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(null);
 
       const result = await service.forgotPassword('notfound@test.com');
+      await flushBackgroundWork();
 
       expect(usersService.setPasswordResetToken).not.toHaveBeenCalled();
       expect(mailService.sendPasswordResetCode).not.toHaveBeenCalled();
       expect(result).toEqual({ message: genericMessage });
+    });
+
+    it('should answer the same way for a registered and an unknown e-mail', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValueOnce(mockUser);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedCode');
+      const registered = await service.forgotPassword('user@test.com');
+
+      jest.spyOn(usersService, 'findOne').mockResolvedValueOnce(null);
+      const unknown = await service.forgotPassword('notfound@test.com');
+
+      expect(registered).toEqual(unknown);
+    });
+
+    it('should answer before the code e-mail is sent', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedCode');
+      jest
+        .spyOn(mailService, 'sendPasswordResetCode')
+        .mockReturnValue(new Promise<void>(() => undefined));
+
+      await expect(service.forgotPassword('user@test.com')).resolves.toEqual({
+        message: genericMessage,
+      });
+    });
+
+    it('should answer before the account lookup finishes', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockReturnValue(new Promise(() => undefined));
+
+      await expect(service.forgotPassword('user@test.com')).resolves.toEqual({
+        message: genericMessage,
+      });
+      expect(usersService.setPasswordResetToken).not.toHaveBeenCalled();
     });
 
     it('should not propagate email sending failures', async () => {
@@ -703,6 +745,7 @@ describe('AuthService', () => {
         .mockRejectedValue(new Error('SMTP indisponível'));
 
       const result = await service.forgotPassword('user@test.com');
+      await flushBackgroundWork();
 
       expect(result).toEqual({ message: genericMessage });
     });
@@ -792,6 +835,7 @@ describe('AuthService', () => {
         .mockRejectedValue(new Error('SMTP indisponível'));
 
       await service.forgotPassword('user@test.com');
+      await flushBackgroundWork();
 
       expect(error).toHaveBeenCalledWith(
         `Falha ao enviar e-mail de recuperação de senha do usuário ${mockUser.id}`,
@@ -799,6 +843,32 @@ describe('AuthService', () => {
       );
       expect(loggedText()).not.toContain(mockUser.email);
     });
+
+    it.each([
+      ['the account lookup', 'findOne'],
+      ['the code storage', 'setPasswordResetToken'],
+    ] as const)(
+      'should log a failure in %s without the e-mail and keep the answer',
+      async (_, method) => {
+        jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashedCode');
+        jest
+          .spyOn(usersService, method)
+          .mockRejectedValue(new Error('banco indisponível'));
+
+        await expect(service.forgotPassword('user@test.com')).resolves.toEqual({
+          message:
+            'Se o e-mail informado estiver cadastrado, um código de recuperação foi enviado.',
+        });
+        await flushBackgroundWork();
+
+        expect(error).toHaveBeenCalledWith(
+          'Falha ao processar pedido de recuperação de senha',
+          expect.anything(),
+        );
+        expect(loggedText()).not.toContain(mockUser.email);
+      },
+    );
 
     it('should identify the account by id when the Google login is refused by the lock', async () => {
       const clientId = process.env.GOOGLE_CLIENT_ID;
