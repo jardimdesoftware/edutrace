@@ -81,6 +81,7 @@ describe('SessionsService', () => {
 
       expect(prisma.session.findFirst).toHaveBeenCalledWith({
         where: { jti: 'sessao-1', revoked_at: null },
+        include: { user: { select: { id_level: true } } },
       });
       expect(result).toEqual(sessao);
     });
