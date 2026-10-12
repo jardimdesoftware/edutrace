@@ -1,4 +1,5 @@
 import type { PlansEducationData } from "@/interfaces/PlansEducationData";
+import type { PlansEducationPayload } from "@/utils/peiPayload";
 import { apiRequest } from "@/services/http";
 
 export async function getPEIByEmail(email: string) {
@@ -9,7 +10,7 @@ export async function getAllPEIs() {
   return apiRequest('/plans-education');
 }
 
-export async function postPEI(plansEducationData: PlansEducationData): Promise<PlansEducationData> {
+export async function postPEI(plansEducationData: PlansEducationPayload): Promise<PlansEducationData> {
   return apiRequest('/plans-education', {
     method: 'POST',
     body: plansEducationData,
