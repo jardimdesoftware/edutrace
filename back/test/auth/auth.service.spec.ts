@@ -557,6 +557,74 @@ describe('AuthService', () => {
       currentPassword: 'senhaAtual123',
     };
 
+    // A senha atual protege a sessão que o dono deixou aberta; sem limite de
+    // tentativas, quem usa essa sessão testa senhas até achar a atual.
+    it('should count a wrong current password in the account lock', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.updateProfile('user@test.com', dtoComSenha),
+      ).rejects.toThrow(new UnauthorizedException('Senha atual incorreta'));
+
+      expect(usersService.registerFailedLoginAttempt).toHaveBeenCalledWith(
+        mockUser.email,
+      );
+      expect(usersService.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it('should lock the account and warn the owner on the fifth wrong current password', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 4 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.updateProfile('user@test.com', dtoComSenha),
+      ).rejects.toThrow(new UnauthorizedException('Senha atual incorreta'));
+
+      expect(usersService.lockAccount).toHaveBeenCalledWith(
+        mockUser.email,
+        expect.any(Date),
+      );
+      expect(mailService.sendAccountLockedNotice).toHaveBeenCalledWith(
+        mockUser.email,
+        expect.any(Date),
+      );
+    });
+
+    it('should refuse the correct current password while the account is locked', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUser,
+        locked_until: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.updateProfile('user@test.com', dtoComSenha),
+      ).rejects.toThrow(new UnauthorizedException('Senha atual incorreta'));
+
+      expect(usersService.updateProfile).not.toHaveBeenCalled();
+      expect(usersService.registerFailedLoginAttempt).not.toHaveBeenCalled();
+    });
+
+    it('should clear the pending failures after a correct current password', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 2 });
+      (bcrypt.compare as jest.Mock)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('novoHash');
+      jest
+        .spyOn(usersService, 'updateProfile')
+        .mockResolvedValue({ ...mockUser, password: 'novoHash' });
+
+      await service.updateProfile('user@test.com', dtoComSenha);
+
+      expect(usersService.clearLoginLock).toHaveBeenCalledWith(mockUser.email);
+    });
+
     it('should revoke the sessions opened before the change and open a new one', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock)

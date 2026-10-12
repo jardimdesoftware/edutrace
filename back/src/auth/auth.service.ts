@@ -334,12 +334,28 @@ export class AuthService {
       throw new UnauthorizedException('Usuário não encontrado');
     }
 
+    // A senha atual protege a sessão que o dono deixou aberta. Errar a senha
+    // aqui conta no mesmo bloqueio por conta do login, e a conta bloqueada não
+    // altera e-mail nem senha, senão a sessão serviria para testar senhas sem
+    // limite.
+    if (this.isLocked(user)) {
+      this.logger.warn(
+        `Alteração de dados recusada, conta bloqueada: usuário ${user.id}`,
+      );
+      throw new UnauthorizedException('Senha atual incorreta');
+    }
+
     const isPasswordValid = await bcrypt.compare(
       dto.currentPassword,
       user.password,
     );
     if (!isPasswordValid) {
+      await this.registerFailedLogin(user);
       throw new UnauthorizedException('Senha atual incorreta');
+    }
+
+    if (user.failed_login_attempts > 0 || user.login_lock_count > 0) {
+      await this.userService.clearLoginLock(user.email);
     }
 
     // Quem está no primeiro acesso não pode alterar só o e-mail e seguir usando
