@@ -95,7 +95,7 @@ describe('AuthService', () => {
           provide: MailService,
           useValue: {
             sendPasswordResetCode: jest.fn(),
-            sendAccountLockedNotice: jest.fn(),
+            sendAccountLockedNotice: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -371,6 +371,23 @@ describe('AuthService', () => {
       ).rejects.toThrow(new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE));
 
       expect(usersService.lockAccount).toHaveBeenCalled();
+    });
+
+    it('should answer the locking attempt without waiting for the warning e-mail', async () => {
+      jest
+        .spyOn(usersService, 'findOne')
+        .mockResolvedValue({ ...mockUser, failed_login_attempts: 4 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      jest
+        .spyOn(mailService, 'sendAccountLockedNotice')
+        .mockReturnValue(new Promise<void>(() => undefined));
+
+      await expect(
+        service.signIn('user@test.com', 'wrongPassword'),
+      ).rejects.toThrow(new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE));
+
+      expect(usersService.lockAccount).toHaveBeenCalled();
+      expect(mailService.sendAccountLockedNotice).toHaveBeenCalled();
     });
 
     it('should run a bcrypt comparison when the user does not exist', async () => {
