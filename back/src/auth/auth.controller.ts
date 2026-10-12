@@ -90,8 +90,9 @@ export class AuthController {
   }
 
   // Vínculo da Conta Google usada no "Entrar com o Google". Exige sessão (sem
-  // @Public), e vincular exige também a senha atual. O limite é o das rotas de
-  // autenticação, contado por usuário.
+  // @Public), e vincular exige também a senha atual. POST e DELETE usam o
+  // limite das rotas de autenticação, contado por usuário; a consulta (GET) fica
+  // no limite geral.
   @Get('google/link')
   getGoogleLinkStatus(@Request() req) {
     return this.authService.getGoogleLinkStatus(req.user.email);
