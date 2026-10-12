@@ -51,7 +51,6 @@ export default function (data) {
     full_name: 'Usuário k6 Teste',
     cpf: randomCpf(),
     email: testEmail,
-    password: 'senhaSegura123',
     id_level: 2,
   });
 
