@@ -20,7 +20,7 @@ export async function deleteScreening(email: string) {
   return apiRequest(`/screenings/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
 
-export async function patchScreening(screeningData: ScreeningData, email: string): Promise<ScreeningData> {
+export async function patchScreening(screeningData: Partial<ScreeningData>, email: string): Promise<ScreeningData> {
   return apiRequest(`/screenings/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: screeningData,
