@@ -287,6 +287,45 @@ jobs:
 
           echo "OK: a API envia os cabeçalhos de segurança e não revela a tecnologia do servidor."
 
+      # A proteção contra CSRF depende de o CORS liberar só a origem do front
+      # (FRONTEND_URL). Confere na API real, com o bootstrap de main.ts, que a
+      # origem listada recebe os cabeçalhos e que outra origem não recebe nenhum,
+      # nem no preflight.
+      - name: Verificar o CORS do backend
+        run: |
+          status=0
+          listada=$(curl -s -o /dev/null -D - -H 'Origin: http://localhost:3001' http://localhost:3000/auth/google/config | tr -d '\r')
+          outra=$(curl -s -o /dev/null -D - -H 'Origin: https://atacante.exemplo' http://localhost:3000/auth/google/config | tr -d '\r')
+          preflight=$(curl -s -o /dev/null -D - -X OPTIONS \
+            -H 'Origin: https://atacante.exemplo' \
+            -H 'Access-Control-Request-Method: PATCH' \
+            -H 'Access-Control-Request-Headers: content-type,x-requested-with' \
+            http://localhost:3000/screenings/x | tr -d '\r')
+
+          if ! grep -qixF 'access-control-allow-origin: http://localhost:3001' <<< "$listada" \
+            || ! grep -qixF 'access-control-allow-credentials: true' <<< "$listada"; then
+            echo "ERRO: a origem de FRONTEND_URL não recebeu Access-Control-Allow-Origin e Access-Control-Allow-Credentials."
+            status=1
+          fi
+
+          if grep -qi '^access-control-' <<< "$outra"; then
+            echo "ERRO: uma origem fora de FRONTEND_URL recebeu cabeçalhos de CORS."
+            echo "$outra"
+            status=1
+          fi
+
+          if grep -qi '^access-control-' <<< "$preflight"; then
+            echo "ERRO: o preflight de uma origem fora de FRONTEND_URL recebeu cabeçalhos de CORS."
+            echo "$preflight"
+            status=1
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "OK: o CORS libera só a origem de FRONTEND_URL."
+
 # --------------------------------------------------------------------
 # FRONTEND LINT + BUILD ----------------------------------------------
 # --------------------------------------------------------------------
