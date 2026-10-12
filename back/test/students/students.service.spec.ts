@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS } from 'src/constants';
@@ -125,6 +126,59 @@ describe('StudentsService', () => {
       jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
 
       await expect(service.findOne('admin@edutrace.com')).resolves.toBeNull();
+    });
+  });
+
+  describe('findOneOrFail', () => {
+    it.each([{ email: 'estudante@example.com' }, { id: 2 }])(
+      'should look the student up by %p filtering by the student level',
+      async (where) => {
+        jest
+          .spyOn(prisma.user, 'findFirst')
+          .mockResolvedValue({
+            id: 2,
+            email: 'estudante@example.com',
+          } as never);
+
+        await expect(service.findOneOrFail(where)).resolves.toEqual({
+          id: 2,
+          email: 'estudante@example.com',
+        });
+        expect(prisma.user.findFirst).toHaveBeenCalledWith({
+          where: { ...where, id_level: LEVELS.ALUNO_ESTUDANTE },
+          select: { id: true, email: true },
+        });
+      },
+    );
+
+    // O filtro de nível fica na consulta: administrador, profissional e
+    // e-mail sem conta caem no mesmo 404.
+    it('should throw NotFoundException when no student matches', async () => {
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
+
+      await expect(
+        service.findOneOrFail({ email: 'profissional@example.com' }),
+      ).rejects.toThrow(new NotFoundException('Estudante não encontrado'));
+    });
+  });
+
+  describe('findAllEmails', () => {
+    it('should return the e-mails of the students', async () => {
+      jest
+        .spyOn(prisma.user, 'findMany')
+        .mockResolvedValue([
+          { email: 'a@example.com' },
+          { email: 'b@example.com' },
+        ] as never);
+
+      await expect(service.findAllEmails()).resolves.toEqual([
+        'a@example.com',
+        'b@example.com',
+      ]);
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { id_level: LEVELS.ALUNO_ESTUDANTE },
+        select: { email: true },
+      });
     });
   });
 });
