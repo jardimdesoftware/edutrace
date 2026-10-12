@@ -46,7 +46,6 @@ describe('UsersController', () => {
 
   const mockPublicUser = {
     ...camposPublicos,
-    comments: [],
     level: { id: LEVELS.ALUNO_ESTUDANTE, name: 'Aluno/Estudante' },
     current_phase: { id: 1, name: 'Triagem' },
   };

@@ -12,6 +12,7 @@ describe('PUBLIC_USER_SELECT', () => {
     'failed_login_attempts',
     'locked_until',
     'login_lock_count',
+    'comments',
   ])('should not select %s', (field) => {
     expect(PUBLIC_USER_SELECT).not.toHaveProperty(field);
   });
