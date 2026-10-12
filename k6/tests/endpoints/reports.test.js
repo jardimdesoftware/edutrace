@@ -45,7 +45,11 @@ export default function (data) {
   });
 
   // ─── GET com email inexistente (só estudante cadastrado tem relatório) ────
-  const invalidRes = http.get(`${BASE_URL}/reports/email-inexistente@test.com`, { headers });
+  // O 404 é a resposta esperada e não conta como falha em http_req_failed.
+  const invalidRes = http.get(`${BASE_URL}/reports/email-inexistente@test.com`, {
+    headers,
+    responseCallback: http.expectedStatuses(404),
+  });
   check(invalidRes, {
     '[reports] email inexistente retorna 404': (r) => r.status === 404,
   });
