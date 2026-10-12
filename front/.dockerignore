@@ -5,4 +5,4 @@ dist
 Dockerfile
 .dockerignore
 npm-debug.log*
-.env*.local
+.env*
