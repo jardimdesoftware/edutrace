@@ -198,8 +198,9 @@ export class AuthController {
   }
 
   // Única rota de escrita aberta para a conta criada pelo Google que ainda não
-  // cadastrou CPF e senha. O rate limit reduz o uso da resposta de CPF já
-  // cadastrado para descobrir CPFs de outras contas.
+  // cadastrou CPF e senha. O rate limit, contado por conta, reduz o uso da
+  // resposta de CPF já cadastrado para descobrir CPFs de outras contas; quem
+  // controla várias contas discentes soma o limite de cada uma.
   @AllowIncompleteRegistration()
   @UseGuards(AuthGuard)
   @Throttle(AUTH_THROTTLE)
