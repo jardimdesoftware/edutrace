@@ -4,20 +4,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
-    paths:
-      - 'back/**'
-      - 'front/**'
-      - 'docker-compose-dev.yml'
-      - 'docker-compose-prod.yml'
-      - 'docker-compose-observability.yml'
-      - 'docker-compose-portainer.yml'
-      - 'docker-compose-proxmox.yml'
-      - '.env.development.example'
-      - '.env.production.example'
-      - '.github/workflows/pr-checks.yml'
-      - '.github/workflows/**'
-      - '.github/scripts/**'
-      - '.github/dependabot.yml'
+  # Sem filtro de caminhos: o check pr-checks-result, exigido pela proteção da
+  # main, precisa existir em todo PR, ou o merge fica bloqueado esperando um
+  # check que nunca roda. O job changes decide quais jobs executam.
   workflow_dispatch:
 
 env:
@@ -1050,6 +1039,28 @@ jobs:
 
           echo "OK: checkouts sem credencial persistida, sem npm em job com escrita e npm fixo nos Dockerfiles."
 
+      # pr-checks-result é o único check exigido pela proteção da main, então
+      # precisa depender de todos os jobs do workflow: job fora da lista não
+      # bloqueia o merge quando falha.
+      - name: Verificar que pr-checks-result depende de todos os jobs
+        run: |
+          python3 - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          workflow = json.loads(subprocess.check_output(["yq", "-o=json", ".", ".github/workflows/pr-checks.yml"]))
+          jobs = set(workflow["jobs"]) - {"pr-checks-result"}
+          needs = set(workflow["jobs"]["pr-checks-result"].get("needs", []))
+          faltando = sorted(jobs - needs)
+
+          if faltando:
+              print(f"ERRO: pr-checks-result não depende de: {', '.join(faltando)}.")
+              sys.exit(1)
+
+          print("OK: pr-checks-result depende de todos os jobs do pr-checks.")
+          PY
+
 # --------------------------------------------------------------------
 # CONFIG: BUILD DAS IMAGENS SEM EMULAÇÃO -----------------------------
 # --------------------------------------------------------------------
@@ -1130,3 +1141,31 @@ jobs:
           fi
 
           echo "OK: as duas esteiras rodam em fila e reservam versão e release uma de cada vez."
+
+# --------------------------------------------------------------------
+# RESULTADO DO GATE --------------------------------------------------
+# --------------------------------------------------------------------
+  # Único check exigido pela proteção da main, para que a lista de jobs mude
+  # sem mexer no ruleset. Os jobs que não se aplicam ao PR terminam como
+  # skipped; falha ou cancelamento de qualquer um reprova este.
+  pr-checks-result:
+    name: pr-checks-result
+    runs-on: ubuntu-latest
+    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, ci-dependencies-check, native-image-build-check, release-version-check]
+    if: ${{ always() }}
+    timeout-minutes: 5
+
+    steps:
+      - name: Verificar o resultado dos jobs do pr-checks
+        env:
+          RESULTADOS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTADOS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+
+          reprovados=$(echo "$RESULTADOS" | jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key')
+          if [ -n "$reprovados" ]; then
+            echo "ERRO: jobs reprovados ou cancelados: $(echo $reprovados)."
+            exit 1
+          fi
+
+          echo "OK: nenhum job do pr-checks falhou."
