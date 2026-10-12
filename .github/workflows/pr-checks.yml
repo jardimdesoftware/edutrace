@@ -129,21 +129,55 @@ jobs:
         working-directory: ./back
         run: npx prisma migrate deploy
 
-      # Smoke test do seed: garante que `prisma db seed` continua funcionando.
-      # Cobre regressões do Prisma v7 como: config do seed migrada para
-      # prisma.config.ts e PrismaClient exigindo driver adapter.
+      # Smoke test do seed: garante que `prisma db seed` continua funcionando
+      # (config do seed em prisma.config.ts e driver adapter do Prisma v7) e
+      # cobre o administrador inicial: senha comum recusada sem criar usuário,
+      # duas execuções seguidas e uma execução depois da troca do e-mail do
+      # administrador, que antes fazia o seed falhar e impedia a API de subir.
       - name: Smoke test do seed
         working-directory: ./back
-        env:
-          ADMIN_PASSWORD: admin123
         run: |
-          npm run seed 2>&1 | tee seed-output.log
-          if ! grep -q "Seed concluída" seed-output.log; then
-            echo "❌ O seed não foi executado com sucesso."
-            echo "   Verifique a config do seed em prisma.config.ts e o driver adapter em prisma/seed.ts."
+          usuarios() {
+            psql "$DATABASE_URL" -tA -c 'SELECT count(*) FROM "User"'
+          }
+          administradores() {
+            psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM \"User\" u JOIN \"Level\" l ON l.id = u.id_level WHERE l.name = 'Administrador'"
+          }
+
+          if ADMIN_EMAIL=admin.ci@example.test ADMIN_CPF=01234567890 ADMIN_PASSWORD=admin123 npm run seed > seed-output.log 2>&1; then
+            cat seed-output.log
+            echo "ERRO: o seed aceitou ADMIN_PASSWORD=admin123, que está na lista de senhas comuns."
             exit 1
           fi
-          echo "✅ Seed executado com sucesso."
+          if [ "$(usuarios)" != "0" ]; then
+            echo "ERRO: o seed criou usuário com a senha recusada."
+            exit 1
+          fi
+
+          export ADMIN_EMAIL=admin.ci@example.test
+          export ADMIN_CPF=01234567890
+          export ADMIN_PASSWORD="$(openssl rand -hex 16)"
+
+          for execucao in primeira segunda troca-de-email terceira; do
+            if [ "$execucao" = troca-de-email ]; then
+              echo "UPDATE \"User\" SET email = 'admin.novo@example.test' WHERE email = '$ADMIN_EMAIL';" | npx prisma db execute --stdin
+              continue
+            fi
+
+            npm run seed 2>&1 | tee seed-output.log
+            if ! grep -q "Seed concluída" seed-output.log; then
+              echo "ERRO: a $execucao execução do seed falhou."
+              echo "   Verifique a config do seed em prisma.config.ts e o driver adapter em prisma/seed.ts."
+              exit 1
+            fi
+          done
+
+          if [ "$(administradores)" != "1" ]; then
+            echo "ERRO: o banco terminou com $(administradores) administradores; o esperado é 1."
+            exit 1
+          fi
+
+          echo "OK: o seed recusa senha comum, cria um único administrador e continua passando depois da troca do e-mail dele."
 
       # A migration de google_sub copia o sub do CPF provisório (google:<sub>)
       # das contas com cadastro pendente. O banco do job nasce vazio e esse
@@ -249,7 +283,9 @@ jobs:
             -e NODE_ENV=production \
             -e SECRET_KEY="$(openssl rand -hex 32)" \
             -e FRONTEND_URL=http://localhost:3001 \
-            -e ADMIN_PASSWORD=admin123 \
+            -e ADMIN_EMAIL=admin.ci@example.test \
+            -e ADMIN_CPF=01234567890 \
+            -e ADMIN_PASSWORD="$(openssl rand -hex 16)" \
             edutrace-back:pr-check
 
           status=000
