@@ -6,7 +6,7 @@ import { updateUser } from "@/api/user";
 import { ADMIN } from "@/consts";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
-import { exportStudentReportXlsx } from "@/lib/exportStudentReport";
+import { exportStudentReportPdf } from "@/lib/exportStudentReport";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { listarUsuariosDaTabela, podeExportarRelatorio } from "@/utils/tabelaUsuarios";
 import { Eye, FileDown, UserPlus } from "lucide-react";
@@ -33,7 +33,7 @@ export default function TabelaEstudantes() {
 
   const handleExportar = async (estudante: StudentData) => {
     try {
-      const resultado = await exportStudentReportXlsx(estudante);
+      const resultado = await exportStudentReportPdf(estudante);
       if (resultado === "empty") {
         Swal.fire({
           icon: "info",
