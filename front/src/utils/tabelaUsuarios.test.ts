@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { listarUsuariosDaTabela } from './tabelaUsuarios';
+import { listarUsuariosDaTabela, podeExportarRelatorio } from './tabelaUsuarios';
 import {
   ADMIN,
   ESTUDANTE,
@@ -54,4 +54,20 @@ describe('listarUsuariosDaTabela', () => {
 
     assert.deepEqual(urls, [`${API_URL}/students`]);
   });
+});
+
+describe('podeExportarRelatorio', () => {
+  it('allows the report only for a student', () => {
+    assert.equal(podeExportarRelatorio({ id_level: ESTUDANTE }), true);
+  });
+
+  for (const [nome, nivel] of [
+    ['administrator', ADMIN],
+    ['education professional', PROFISSIONAL_EDUCACAO],
+    ['health professional', PROFISSIONAL_SAUDE],
+  ] as const) {
+    it(`denies the report for the ${nome}, who has no report`, () => {
+      assert.equal(podeExportarRelatorio({ id_level: nivel }), false);
+    });
+  }
 });
