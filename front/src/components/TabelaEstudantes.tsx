@@ -31,9 +31,9 @@ export default function TabelaEstudantes() {
     router.push(rotaDoEstudante('/estudantes/visualizar', estudante.id));
   };
 
-  const handleExportar = async (email: string) => {
+  const handleExportar = async (estudante: StudentData) => {
     try {
-      const resultado = await exportStudentReportXlsx(email);
+      const resultado = await exportStudentReportXlsx(estudante);
       if (resultado === "empty") {
         Swal.fire({
           icon: "info",
@@ -183,7 +183,7 @@ export default function TabelaEstudantes() {
               </button>
               {podeExportarRelatorio(estudante) && (
                 <button
-                  onClick={() => handleExportar(estudante.email)}
+                  onClick={() => handleExportar(estudante)}
                   title="Exportar relatório"
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
                 >
@@ -245,7 +245,7 @@ export default function TabelaEstudantes() {
                       <button
                         type="button"
                         title="Exportar relatório"
-                        onClick={() => handleExportar(estudante.email)}
+                        onClick={() => handleExportar(estudante)}
                         className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
                       >
                         <FileDown className="w-5 h-5" />

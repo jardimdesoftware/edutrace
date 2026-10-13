@@ -6,13 +6,7 @@ describe('ReportsController', () => {
   let controller: ReportsController;
   let service: ReportsService;
 
-  const mockReport = [
-    {
-      id: 1,
-      email: 'student@test.com',
-      full_name: 'Test Student',
-    },
-  ];
+  const mockReport = { screening: null, plansEducation: null };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
