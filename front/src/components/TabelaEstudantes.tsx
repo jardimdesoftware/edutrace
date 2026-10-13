@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
 import { exportStudentReportXlsx } from "@/lib/exportStudentReport";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
-import { listarUsuariosDaTabela } from "@/utils/tabelaUsuarios";
+import { listarUsuariosDaTabela, podeExportarRelatorio } from "@/utils/tabelaUsuarios";
 import { Eye, FileDown, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -181,14 +181,16 @@ export default function TabelaEstudantes() {
                 <Eye className="w-4 h-4" />
                 Visualizar
               </button>
-              <button
-                onClick={() => handleExportar(estudante.email)}
-                title="Exportar relatório"
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
-              >
-                <FileDown className="w-4 h-4" />
-                Exportar
-              </button>
+              {podeExportarRelatorio(estudante) && (
+                <button
+                  onClick={() => handleExportar(estudante.email)}
+                  title="Exportar relatório"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Exportar
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -239,14 +241,16 @@ export default function TabelaEstudantes() {
                     >
                       <Eye className="w-5 h-5" />
                     </button>
-                    <button
-                      type="button"
-                      title="Exportar relatório"
-                      onClick={() => handleExportar(estudante.email)}
-                      className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
-                    >
-                      <FileDown className="w-5 h-5" />
-                    </button>
+                    {podeExportarRelatorio(estudante) && (
+                      <button
+                        type="button"
+                        title="Exportar relatório"
+                        onClick={() => handleExportar(estudante.email)}
+                        className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
+                      >
+                        <FileDown className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
