@@ -182,6 +182,6 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 
 2. **Users - Criação**: Apenas admins (`id_level: 1`) podem criar usuários. O teste `users.test.js` usa as credenciais de admin.
 
-3. **Reports**: O endpoint `GET /reports/:email` busca dados existentes. Configure `TEST_STUDENT_EMAIL` com um email que já possui triagem/anamnese no banco.
+3. **Reports**: O endpoint `GET /reports/:email` busca dados existentes. O relatório traz a triagem e o PEI do estudante (a anamnese não entra). Configure `TEST_STUDENT_EMAIL` com um email que já possui triagem ou PEI no banco.
 
 4. **Dados de teste**: Os testes de CRUD criam e deletam dados em cada iteração (ciclo de vida completo). Certifique-se de rodar apenas contra um ambiente de desenvolvimento/staging.
