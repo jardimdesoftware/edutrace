@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
-    "test": "node --test --experimental-strip-types --import ./test/register-ts-resolver.mjs \"src/**/*.test.ts\""
+    "test": "node --test --experimental-strip-types --import ./test/register-ts-resolver.mjs \"src/**/*.test.ts\"",
+    "test:cov": "node --test --experimental-strip-types --experimental-test-coverage --test-coverage-lines=70 --test-coverage-functions=70 --import ./test/register-ts-resolver.mjs \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@govbr-ds/react-components": "^2.15.1",
@@ -15,9 +16,11 @@
     "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.48.0",
-    "next": "16.3.6",
+    "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "sharp": "^0.35.5",
+    "source-map-js": "^1.2.2",
     "sweetalert2": "^11.26.25",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },

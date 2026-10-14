@@ -35,3 +35,9 @@ Acesse a Wiki do Projeto para mais detalhes sobre requisitos, arquitetura e flux
 
 ## Weekly
 Acesse nossa weekly no [Canva](https://canva.link/ig3m8fzockzm8yh).
+
+## Operação e conformidade
+
+- [Guia de Segurança e Privacidade](docs/SECURITY_AND_PRIVACY.md)
+- [VM pública, TLS, Portainer e observabilidade](docs/operations/PRODUCTION.md)
+- [Testes de carga com k6](k6/README.md)

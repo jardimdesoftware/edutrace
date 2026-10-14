@@ -22,13 +22,17 @@ import { check, group, sleep } from 'k6';
 import { getToken, authHeaders } from '../../helpers/auth.js';
 import { loadOptions } from '../../config/options.js';
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
-const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
+const BASE_URL = __ENV.BASE_URL || 'https://edutrace.valerialima.me/api';
+const ADMIN_EMAIL = __ENV.ADMIN_EMAIL;
+const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD;
 
 export const options = loadOptions;
 
 export function setup() {
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    throw new Error('ADMIN_EMAIL e ADMIN_PASSWORD são obrigatórios para o teste autenticado de produção.');
+  }
+
   const token = getToken(BASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
   return { token };
 }

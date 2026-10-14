@@ -1,0 +1,75 @@
+name: Deploy to public VM
+
+on:
+  workflow_run:
+    workflows: [backend-pipeline, frontend-pipeline]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: edutrace-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VM_HOST: ${{ secrets.VM_HOST }}
+      VM_USER: ${{ secrets.VM_USER }}
+      VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+      VM_KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure verified SSH access
+        run: |
+          set -euo pipefail
+          for variable in VM_HOST VM_USER VM_SSH_KEY VM_KNOWN_HOSTS; do
+            test -n "${!variable:-}" || { echo "Missing secret: $variable" >&2; exit 1; }
+          done
+          install -m 700 -d "${RUNNER_TEMP}/ssh"
+          printf '%s\n' "$VM_SSH_KEY" > "${RUNNER_TEMP}/ssh/key"
+          printf '%s\n' "$VM_KNOWN_HOSTS" > "${RUNNER_TEMP}/ssh/known_hosts"
+          chmod 600 "${RUNNER_TEMP}/ssh/key" "${RUNNER_TEMP}/ssh/known_hosts"
+
+      - name: Synchronize non-secret deployment configuration
+        run: |
+          set -euo pipefail
+          tar -czf deploy-config.tgz \
+            docker-compose-prod.yml docker-compose-observability.yml \
+            docker-compose-portainer.yml nginx observability
+          scp -i "${RUNNER_TEMP}/ssh/key" \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="${RUNNER_TEMP}/ssh/known_hosts" \
+            deploy-config.tgz "${VM_USER}@${VM_HOST}:/tmp/edutrace-deploy-config.tgz"
+
+      - name: Pull images and deploy containers
+        run: |
+          set -euo pipefail
+          ssh -i "${RUNNER_TEMP}/ssh/key" \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="${RUNNER_TEMP}/ssh/known_hosts" \
+            "${VM_USER}@${VM_HOST}" 'flock -w 900 /tmp/edutrace-deploy.lock bash -se' <<'REMOTE'
+          set -euo pipefail
+          install -d /opt/edutrace/app
+          tar -xzf /tmp/edutrace-deploy-config.tgz -C /opt/edutrace/app
+          rm /tmp/edutrace-deploy-config.tgz
+          cd /opt/edutrace/app
+          docker compose --env-file .env.production -f docker-compose-prod.yml pull
+          docker compose --env-file .env.production -f docker-compose-prod.yml up -d --remove-orphans
+          REMOTE
+
+      - name: Verify public HTTPS endpoint
+        run: |
+          for attempt in $(seq 1 18); do
+            if curl --fail --silent --show-error --max-time 10 https://edutrace.valerialima.me/ >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1

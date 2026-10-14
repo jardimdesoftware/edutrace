@@ -1,65 +1,105 @@
-version: "3.8"
-
 services:
-  # Prometheus - Monitoramento
+  nest-app:
+    environment:
+      OTEL_SERVICE_NAME: edutrace-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    networks:
+      - app-net
+      - observability
+
   prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
+    image: prom/prometheus:v3.1.0
+    container_name: edutrace-prometheus
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=15d"]
     volumes:
-      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
     ports:
-      - "9090:9090" # Prometheus UI
-    networks:
-      - observability-net
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    networks: [observability]
     restart: unless-stopped
 
-  # Loki - Logs backend
   loki:
-    image: grafana/loki:latest
-    container_name: loki
-    command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - "3100:3100" # Loki API
-    networks:
-      - observability-net
-    restart: unless-stopped
-
-  # Promtail - Envia logs do Docker para o Loki
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
+    image: grafana/loki:3.4.2
+    container_name: edutrace-loki
+    command: ["-config.file=/etc/loki/config.yml"]
     volumes:
-      - ../prometheus/promtail-config.yml:/etc/promtail/config.yml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
-    networks:
-      - observability-net
+      - ./observability/loki.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    networks: [observability]
     restart: unless-stopped
 
-  # Grafana - Dashboard
+  promtail:
+    image: grafana/promtail:3.4.2
+    container_name: edutrace-promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./observability/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/var/lib/promtail
+    networks: [observability]
+    depends_on: [loki]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    container_name: edutrace-tempo
+    command: ["-config.file=/etc/tempo/config.yml"]
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/config.yml:ro
+      - tempo_data:/var/tempo
+    networks: [observability]
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    container_name: edutrace-otel-collector
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol/config.yml:ro
+    networks: [observability]
+    depends_on: [tempo]
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.2
+    container_name: edutrace-cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks: [observability]
+    restart: unless-stopped
+
   grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000" # Grafana UI
+    image: grafana/grafana:11.5.1
+    container_name: edutrace-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-      - loki
-    networks:
-      - observability-net
-      - management-net
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3002}:3000"
+    networks: [observability]
+    depends_on: [prometheus, loki, tempo]
     restart: unless-stopped
 
 volumes:
+  prometheus_data:
+  loki_data:
+  promtail_positions:
+  tempo_data:
   grafana_data:
 
 networks:
-  observability-net:
-    external: true
-  management-net:
-    external: true
+  observability:
+    driver: bridge

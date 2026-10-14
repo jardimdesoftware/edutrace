@@ -1,0 +1,24 @@
+name: k6 production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: Digite true para confirmar o teste controlado em produção
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    if: ${{ inputs.confirm_production }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Executar carga pública controlada
+        run: docker run --rm -v "$PWD:/work" -w /work grafana/k6:1.8.2 run k6/tests/load/production-public.test.js

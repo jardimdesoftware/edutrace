@@ -2,8 +2,8 @@ services:
   next-app:
     image: ghcr.io/jardimdesoftware/edutrace-frontend:latest
     container_name: next-frontend
-    ports:
-     - "${PORT_MACHINE_FRONTEND}:3000"
+    expose:
+     - "3000"
     environment:
      - PORT=3000
      - API_URL=${API_URL}
@@ -13,14 +13,21 @@ services:
     networks:
      - app-net
     depends_on:
-     - nest-app
+      nest-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
 
   nest-app:
     image: ghcr.io/jardimdesoftware/edutrace-backend:latest
     container_name: nest-backend
-    ports:
-      - "${PORT_MACHINE_BACKEND}:3000"
+    expose:
+      - "3000"
     environment:
      - PORT=3000
      - DATABASE_URL=${DATABASE_URL}
@@ -39,6 +46,33 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(()=>{}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: edutrace-gateway
+    ports:
+      - "127.0.0.1:${PROXY_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - app-net
+    depends_on:
+      next-app:
+        condition: service_healthy
+      nest-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
 
   postgres-db:

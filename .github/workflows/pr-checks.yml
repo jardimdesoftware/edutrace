@@ -106,9 +106,9 @@ jobs:
         working-directory: ./back
         run: npm run build
 
-      - name: Rodar testes
+      - name: Rodar testes e exigir cobertura mínima de 70%
         working-directory: ./back
-        run: npm test -- --ci
+        run: npm run test:cov -- --ci
 
       # Aplica as migrations no banco de teste antes do smoke test do seed.
       - name: Aplicar migrations
@@ -178,9 +178,9 @@ jobs:
         working-directory: ./front
         run: npm run lint
 
-      - name: Testes
+      - name: Testes dos fluxos críticos com cobertura mínima de 70%
         working-directory: ./front
-        run: npm test
+        run: npm run test:cov
 
       - name: Build
         working-directory: ./front
@@ -300,7 +300,7 @@ jobs:
           imagem=$(leia "s['image']")
           imagem_backend=$(python3 -c "import json; s=json.load(open('compose.json'))['services']['nest-app']; print(s['image'])")
           porta=$(leia "s['environment']['PORT']")
-          destino=$(leia "s['ports'][0]['target']")
+          destino=$(leia "s['expose'][0]")
 
           # A imagem precisa ser a que o frontend-pipeline publica e que o
           # deploy consome. Apontar para outro repositório entrega uma versão
@@ -329,7 +329,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Serviço do front aponta para $imagem e escuta em $destino."
+          echo "✅ Serviço do front aponta para $imagem, expõe $destino apenas na rede Docker e é publicado pelo gateway."
 
 # --------------------------------------------------------------------
 # CONFIG – PORTA DO POSTGRESQL NO COMPOSE DE PRODUÇÃO -----------------
