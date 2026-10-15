@@ -7,7 +7,8 @@ import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ESTUDANTE, PROFISSIONAL_EDUCACAO } from "@/consts";
+import { ESTUDANTE } from "@/consts";
+import { canAccessPage } from "@/utils/pageAccess";
 import { ScreeningData } from "@/interfaces/ScreeningData";
 import { getScreeningByEmail, patchScreening } from "@/api/screenings"; // Importe o postScreening
 import { pickFields, SCREENING_EDIT_FIELDS } from "@/utils/editPayload";
@@ -98,7 +99,7 @@ function TriagemPage() {
 
         const isStudent = token.id_level === ESTUDANTE;
 
-        if (token.id_level === PROFISSIONAL_EDUCACAO || isStudent) {
+        if (!canAccessPage("/editar-triagem", token.id_level)) {
           router.push(rotaDoEstudante('/triagem', id));
           return;
         }

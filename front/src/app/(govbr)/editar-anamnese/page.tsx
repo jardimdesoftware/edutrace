@@ -10,7 +10,8 @@ import { getAnamneseByEmail, patchAnamnesis } from "@/api/anamnesis";
 import { pickFields, ANAMNESIS_EDIT_FIELDS } from "@/utils/editPayload";
 import { AnamnesisData } from "@/interfaces/AnamnesisData";
 import { useAuth } from "@/contexts/AuthContext";
-import { ESTUDANTE, PROFISSIONAL_EDUCACAO } from "@/consts";
+import { ESTUDANTE } from "@/consts";
+import { canAccessPage } from "@/utils/pageAccess";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
@@ -70,7 +71,7 @@ function AnamnesePage() {
 
         const isStudent = token.id_level === ESTUDANTE;
 
-        if (token.id_level === PROFISSIONAL_EDUCACAO || isStudent) {
+        if (!canAccessPage("/editar-anamnese", token.id_level)) {
           router.push(rotaDoEstudante('/anamnese', id));
           return;
         }

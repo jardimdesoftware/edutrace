@@ -7,7 +7,8 @@ import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ESTUDANTE, PROFISSIONAL_EDUCACAO } from "@/consts";
+import { ESTUDANTE } from "@/consts";
+import { canAccessPage } from "@/utils/pageAccess";
 import { ScreeningData } from "@/interfaces/ScreeningData";
 import { getScreeningByEmail, postScreening, deleteScreening } from "@/api/screenings"; // Importe o postScreening
 import { useRouter } from "next/navigation";
@@ -97,7 +98,7 @@ function TriagemPage() {
         }
 
         const isStudent = token.id_level === ESTUDANTE;
-        const isReadOnly = isStudent || token.id_level === PROFISSIONAL_EDUCACAO;
+        const isReadOnly = !canAccessPage("/editar-triagem", token.id_level);
         setUserIsReadOnly(isReadOnly);
 
         const target = isStudent ? token.email : email;

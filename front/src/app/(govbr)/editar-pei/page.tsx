@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { getPEIByEmail, patchPEI } from "@/api/plans-education";
 import { pickFields, PEI_EDIT_FIELDS } from "@/utils/editPayload";
-import { ESTUDANTE, PROFISSIONAL_SAUDE } from "@/consts";
+import { ESTUDANTE } from "@/consts";
+import { canAccessPage } from "@/utils/pageAccess";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
@@ -79,7 +80,7 @@ function PEIPage() {
 
         const isStudent = token.id_level === ESTUDANTE;
 
-        if (token.id_level === PROFISSIONAL_SAUDE || isStudent) {
+        if (!canAccessPage("/editar-pei", token.id_level)) {
           router.push(rotaDoEstudante('/pei', id));
           return;
         }
