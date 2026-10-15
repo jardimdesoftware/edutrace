@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buscarUsuarioPorId, rotaDoEstudante } from './estudanteDaUrl';
+import {
+  buscarUsuarioPorId,
+  resolverEstudanteDaUrl,
+  rotaDoEstudante,
+} from './estudanteDaUrl';
 import { ADMIN, PROFISSIONAL_SAUDE } from '../consts';
 
 const API_URL = 'http://api.test';
@@ -70,4 +74,44 @@ describe('buscarUsuarioPorId', () => {
       assert.deepEqual(urls, []);
     });
   }
+});
+
+describe('resolverEstudanteDaUrl', () => {
+  it('returns the record of the student found by the id', async () => {
+    assert.deepEqual(await resolverEstudanteDaUrl('7', PROFISSIONAL_SAUDE), {
+      registro: usuarios[1],
+    });
+  });
+
+  it('returns the not found alert when no listed user has the id', async () => {
+    assert.deepEqual(await resolverEstudanteDaUrl('99', PROFISSIONAL_SAUDE), {
+      alerta: {
+        title: 'Estudante não encontrado',
+        text: 'O estudante não existe ou você não tem acesso a ele.',
+        icon: 'error',
+      },
+    });
+  });
+
+  it('returns the API error message in the alert when the lookup fails', async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ message: 'Falha ao listar estudantes' }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch;
+    const consoleError = console.error;
+    console.error = () => {};
+
+    try {
+      assert.deepEqual(await resolverEstudanteDaUrl('7', PROFISSIONAL_SAUDE), {
+        alerta: {
+          title: 'Estudante não encontrado',
+          text: 'Falha ao listar estudantes',
+          icon: 'error',
+        },
+      });
+    } finally {
+      console.error = consoleError;
+    }
+  });
 });
