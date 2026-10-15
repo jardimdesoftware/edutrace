@@ -825,6 +825,21 @@ describe('AnamnesisService', () => {
       expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
     });
 
+    it("should throw ForbiddenException if a level outside the readers views another student's anamnesis", async () => {
+      const request = {
+        user: { email: 'nivel7@example.com', id_level: 7 },
+      } as any;
+
+      await expect(
+        service.findOne('other@example.com', request),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Você não tem permissão para visualizar esta anamnese',
+        ),
+      );
+      expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
+    });
+
     it.each([
       LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { LEVELS, PHASES } from 'src/constants';
+import { PHASES, STUDENT_RECORD_READERS } from 'src/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { StudentsService } from 'src/students/students.service';
 
@@ -43,10 +43,12 @@ export class AnamnesisService {
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
-    const isStudent = request.user.id_level == LEVELS.ALUNO_ESTUDANTE;
-    const isViewingOtherProfile = request.user.email !== email;
+    const readsAnyStudent = STUDENT_RECORD_READERS.includes(
+      request.user.id_level,
+    );
+    const isOwnRecord = request.user.email === email;
 
-    if (isStudent && isViewingOtherProfile) {
+    if (!readsAnyStudent && !isOwnRecord) {
       throw new ForbiddenException(
         'Você não tem permissão para visualizar esta anamnese',
       );
