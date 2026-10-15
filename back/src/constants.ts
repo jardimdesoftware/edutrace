@@ -10,6 +10,12 @@ export const LEVELS = {
   PROFISSIONAL_SAUDE: 4,
 } as const;
 
+export const STUDENT_RECORD_READERS: readonly number[] = [
+  LEVELS.ADMIN,
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_SAUDE,
+];
+
 export const COMMENT_EDIT_LIMIT = 10;
 
 export type Phase = keyof typeof PHASES;
