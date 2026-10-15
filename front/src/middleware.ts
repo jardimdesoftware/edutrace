@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { SessionUser } from './services/auth/sessionUser'
-import { ADMIN, ESTUDANTE } from './consts'
 import { findSessionCookie, isSecureSessionCookie } from './utils/sessionCookie'
 import { registrationRedirect } from './utils/registrationRedirect'
+import { canAccessPage } from './utils/pageAccess'
 import { buildContentSecurityPolicy, createNonce } from './utils/contentSecurityPolicy'
 
 // O token é verificado pelo backend, que é quem guarda o segredo de assinatura.
@@ -150,23 +150,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/home', request.url))
   }
 
-  const isStudent = payload.id_level === ESTUDANTE
-  const isAdmin = payload.id_level === ADMIN
-  const restrictedPathsStudent = ['/visualizar', '/editar-anamnese', '/editar-pei', '/editar-triagem']
-  const tryingToAccessRestricted = restrictedPathsStudent.some(path =>
-    pathname.startsWith(path)
-  )
-
-  if (isStudent && tryingToAccessRestricted) {
-    return NextResponse.redirect(new URL('/home', request.url))
-  }
-
-  const adminOnlyPaths = ['/admin']
-  const tryingToAccessAdminOnly = adminOnlyPaths.some(path =>
-    pathname.startsWith(path)
-  )
-
-  if (tryingToAccessAdminOnly && !isAdmin) {
+  if (!isPublicPage && !canAccessPage(pathname, payload.id_level)) {
     return NextResponse.redirect(new URL('/home', request.url))
   }
 
