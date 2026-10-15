@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { getPEIByEmail, postPEI, deletePEI } from "@/api/plans-education";
 import { buildPEIPayload } from "@/utils/peiPayload";
-import { ESTUDANTE, PROFISSIONAL_SAUDE } from "@/consts";
+import { ESTUDANTE } from "@/consts";
+import { canAccessPage } from "@/utils/pageAccess";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
@@ -79,7 +80,7 @@ function PEIPage() {
         }
 
         const isStudent = token.id_level === ESTUDANTE;
-        const isReadOnly = isStudent || token.id_level === PROFISSIONAL_SAUDE;
+        const isReadOnly = !canAccessPage("/editar-pei", token.id_level);
         setUserIsReadOnly(isReadOnly);
 
         const target = isStudent ? token.email : email;
