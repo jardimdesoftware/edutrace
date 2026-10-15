@@ -850,6 +850,21 @@ describe('PlansEducationService', () => {
       expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
     });
 
+    it("should throw ForbiddenException if a level outside the readers views another student's PEI", async () => {
+      const request = {
+        user: { email: 'nivel7@example.com', id_level: 7 },
+      } as any;
+
+      await expect(
+        service.findOne('other@example.com', request),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Você não tem permissão para visualizar este PEI',
+        ),
+      );
+      expect(prisma.plansEducation.findUnique).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException when plans education is not found', async () => {
       const email = 'notfound@example.com';
       const request = {

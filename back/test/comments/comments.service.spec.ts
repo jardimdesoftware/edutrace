@@ -640,6 +640,17 @@ describe('CommentsService', () => {
       expect(prisma.comments.findMany).not.toHaveBeenCalled();
       expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
     });
+
+    it('should throw ForbiddenException when a level outside the readers views another user comments', async () => {
+      const request = { user: { sub: 10, id_level: 7 } } as any;
+
+      await expect(service.findAllByIdUser(99, request)).rejects.toThrow(
+        new ForbiddenException(
+          'Você não tem permissão para visualizar estas anotações',
+        ),
+      );
+      expect(prisma.comments.findMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('titular estudante', () => {

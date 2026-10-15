@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { StudentsService } from './students.service';
-import { Levels } from 'src/auth/decorators/levels.decorator';
+import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 
@@ -8,13 +8,21 @@ import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Get()
   async findAll() {
     return maskUsersCpf(await this.studentsService.findAll());
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Get(':email')
   async findOne(@Param('email') email: string) {
     const student = await this.studentsService.findOne(email);

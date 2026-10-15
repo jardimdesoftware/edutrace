@@ -9,6 +9,10 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ALLOW_PASSWORD_CHANGE_KEY } from 'src/auth/decorators/allow-password-change.decorator';
 import { ALLOW_INCOMPLETE_REGISTRATION_KEY } from 'src/auth/decorators/allow-incomplete-registration.decorator';
+import {
+  ALLOW_LEVELS_KEY,
+  ANY_LEVEL,
+} from 'src/auth/decorators/allow-levels.decorator';
 import { SessionsService } from 'src/sessions/sessions.service';
 
 function createMockExecutionContext(
@@ -79,6 +83,12 @@ describe('AuthGuard', () => {
     jest
       .spyOn(sessionsService, 'findActive')
       .mockResolvedValue(sessaoAtiva as never);
+
+    // O guard nega a rota sem níveis declarados; por padrão, a rota dos testes
+    // é aberta a qualquer nível, e os testes de nível sobrescrevem este retorno.
+    (reflector.get as jest.Mock).mockImplementation((key: string) =>
+      key === ALLOW_LEVELS_KEY ? ANY_LEVEL : undefined,
+    );
   });
 
   it('should be defined', () => {
@@ -135,11 +145,10 @@ describe('AuthGuard', () => {
       );
     });
 
-    it('should allow access with a valid token and no level restriction', async () => {
+    it('should allow access with a valid token on a route open to any level', async () => {
       const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
-      jest.spyOn(reflector, 'get').mockReturnValue([]);
 
       const mockRequest: any = {
         headers: { authorization: 'Bearer valid.token' },
@@ -156,24 +165,61 @@ describe('AuthGuard', () => {
       expect(mockRequest.user).toEqual(payload);
     });
 
-    it('should use fallback empty array when reflector.get returns undefined', async () => {
-      const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
+    it.each([
+      ['declares no levels', undefined],
+      ['declares an empty level list', []],
+    ])('should deny by default a route that %s', async (_, levels) => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
-      jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', id_level: 1 });
+      jest
+        .spyOn(sessionsService, 'findActive')
+        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 1 } } as never);
+      jest.spyOn(reflector, 'get').mockReturnValue(levels);
 
-      const mockRequest: any = {
-        headers: { authorization: 'Bearer valid.token' },
-      };
-      const context = {
-        switchToHttp: () => ({ getRequest: () => mockRequest }),
-        getHandler: () => ({}),
-        getClass: () => ({}),
-      } as any;
+      const context = createMockExecutionContext({
+        authorization: 'Bearer valid.token',
+      });
 
-      const result = await guard.canActivate(context);
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new ForbiddenException('Nível de acesso insuficiente'),
+      );
+    });
 
-      expect(result).toBe(true);
+    it('should allow a level created by the administrator on a route open to any level', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', id_level: 7 });
+      jest
+        .spyOn(sessionsService, 'findActive')
+        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 7 } } as never);
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer valid.token',
+      });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+    });
+
+    it('should deny a level created by the administrator on a route that lists the levels', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', id_level: 7 });
+      jest
+        .spyOn(sessionsService, 'findActive')
+        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 7 } } as never);
+      jest.spyOn(reflector, 'get').mockReturnValue([1, 2, 3, 4]);
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer valid.token',
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw UnauthorizedException when token is invalid', async () => {
@@ -191,11 +237,11 @@ describe('AuthGuard', () => {
       );
     });
 
-    it('should throw ForbiddenException when level is restricted', async () => {
+    it('should throw ForbiddenException when the level is not in the allowed list', async () => {
       const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
-      jest.spyOn(reflector, 'get').mockReturnValue([2]);
+      jest.spyOn(reflector, 'get').mockReturnValue([1, 3, 4]);
 
       const mockRequest: any = {
         headers: { authorization: 'Bearer valid.token' },
@@ -215,7 +261,7 @@ describe('AuthGuard', () => {
       const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
-      jest.spyOn(reflector, 'get').mockReturnValue([2]);
+      jest.spyOn(reflector, 'get').mockReturnValue([1]);
 
       const context = createMockExecutionContext({
         authorization: 'Bearer valid.token',
@@ -232,11 +278,11 @@ describe('AuthGuard', () => {
       expect(erro).not.toBeInstanceOf(UnauthorizedException);
     });
 
-    it('should allow access when user level is not in the restricted list', async () => {
+    it('should allow access when the user level is in the allowed list', async () => {
       const payload = { sub: 1, email: 'user@test.com', id_level: 3 };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
-      jest.spyOn(reflector, 'get').mockReturnValue([2]);
+      jest.spyOn(reflector, 'get').mockReturnValue([1, 3]);
       jest
         .spyOn(sessionsService, 'findActive')
         .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 3 } } as never);
@@ -266,7 +312,7 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       (reflector.get as jest.Mock).mockImplementation((key: string) =>
-        key === ALLOW_PASSWORD_CHANGE_KEY ? undefined : [],
+        key === ALLOW_LEVELS_KEY ? ANY_LEVEL : undefined,
       );
 
       const mockRequest: any = {
@@ -293,7 +339,11 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       (reflector.get as jest.Mock).mockImplementation((key: string) =>
-        key === ALLOW_PASSWORD_CHANGE_KEY ? true : [],
+        key === ALLOW_PASSWORD_CHANGE_KEY
+          ? true
+          : key === ALLOW_LEVELS_KEY
+            ? ANY_LEVEL
+            : undefined,
       );
 
       const mockRequest: any = {
@@ -320,7 +370,7 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       (reflector.get as jest.Mock).mockImplementation((key: string) =>
-        key === ALLOW_PASSWORD_CHANGE_KEY ? undefined : [],
+        key === ALLOW_LEVELS_KEY ? ANY_LEVEL : undefined,
       );
 
       const mockRequest: any = {
@@ -350,7 +400,11 @@ describe('AuthGuard', () => {
         jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
         jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
         (reflector.get as jest.Mock).mockImplementation((key: string) =>
-          key in metadata ? metadata[key] : key === 'levels' ? [] : undefined,
+          key in metadata
+            ? metadata[key]
+            : key === ALLOW_LEVELS_KEY
+              ? ANY_LEVEL
+              : undefined,
         );
 
         const mockRequest: any = {
@@ -413,7 +467,6 @@ describe('AuthGuard', () => {
 
     beforeEach(() => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      jest.spyOn(reflector, 'get').mockReturnValue(undefined);
       jest
         .spyOn(jwtService, 'verifyAsync')
         .mockResolvedValue({ sub: 1, id_level: 1, jti: 'sessao-valida' });
@@ -509,7 +562,6 @@ describe('AuthGuard', () => {
 
     beforeEach(() => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      jest.spyOn(reflector, 'get').mockReturnValue(undefined);
     });
 
     it('should put the level stored in the database in request.user', async () => {
@@ -526,7 +578,7 @@ describe('AuthGuard', () => {
       );
     });
 
-    it('should check the blocked levels against the level stored in the database', async () => {
+    it('should check the allowed levels against the level stored in the database', async () => {
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
         sub: 1,
         jti: 'sessao-valida',
@@ -535,7 +587,7 @@ describe('AuthGuard', () => {
       jest
         .spyOn(reflector, 'get')
         .mockImplementation((key: unknown) =>
-          key === 'levels' ? [2] : undefined,
+          key === ALLOW_LEVELS_KEY ? [1] : undefined,
         );
 
       await expect(guard.canActivate(context)).rejects.toThrow(

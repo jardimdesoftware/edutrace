@@ -26,6 +26,7 @@ import { AuthGuard } from './auth.guard';
 import { AUTH_THROTTLE, Public } from './constants/constants';
 import { AllowPasswordChange } from './decorators/allow-password-change.decorator';
 import { AllowIncompleteRegistration } from './decorators/allow-incomplete-registration.decorator';
+import { AllowAnyLevel } from './decorators/allow-levels.decorator';
 import { ApiBody } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -93,11 +94,13 @@ export class AuthController {
   // @Public), e vincular exige também a senha atual. POST e DELETE usam o
   // limite das rotas de autenticação, contado por usuário; a consulta (GET) fica
   // no limite geral.
+  @AllowAnyLevel()
   @Get('google/link')
   getGoogleLinkStatus(@Request() req) {
     return this.authService.getGoogleLinkStatus(req.user.email);
   }
 
+  @AllowAnyLevel()
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @ApiBody({
@@ -110,6 +113,7 @@ export class AuthController {
     return this.authService.linkGoogleAccount(req.user.email, dto);
   }
 
+  @AllowAnyLevel()
   @Throttle(AUTH_THROTTLE)
   @Delete('google/link')
   unlinkGoogleAccount(@Request() req) {
@@ -171,6 +175,7 @@ export class AuthController {
     return await this.authService.activateAccount(dto.token, dto.password);
   }
 
+  @AllowAnyLevel()
   @AllowPasswordChange()
   @AllowIncompleteRegistration()
   @UseGuards(AuthGuard)
@@ -183,6 +188,7 @@ export class AuthController {
     return req.user;
   }
 
+  @AllowAnyLevel()
   @AllowPasswordChange()
   @AllowIncompleteRegistration()
   @UseGuards(AuthGuard)
@@ -198,9 +204,10 @@ export class AuthController {
     return result;
   }
 
-  // Sem @Levels: qualquer usuário autenticado pode alterar os próprios dados.
-  // A identidade é lida do token (req.user.email), não do corpo. O rate limit
-  // limita as tentativas de senha atual feitas com uma sessão aberta.
+  // Qualquer usuário autenticado pode alterar os próprios dados. A identidade
+  // é lida do token (req.user.email), não do corpo. O rate limit limita as
+  // tentativas de senha atual feitas com uma sessão aberta.
+  @AllowAnyLevel()
   @AllowPasswordChange()
   @UseGuards(AuthGuard)
   @Throttle(AUTH_THROTTLE)
@@ -230,6 +237,7 @@ export class AuthController {
   // cadastrou CPF e senha. O rate limit, contado por conta, reduz o uso da
   // resposta de CPF já cadastrado para descobrir CPFs de outras contas; quem
   // controla várias contas discentes soma o limite de cada uma.
+  @AllowAnyLevel()
   @AllowIncompleteRegistration()
   @UseGuards(AuthGuard)
   @Throttle(AUTH_THROTTLE)

@@ -8,7 +8,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { MailService } from 'src/mail/mail.service';
-import { COMMENT_EDIT_LIMIT, LEVELS } from 'src/constants';
+import { COMMENT_EDIT_LIMIT, STUDENT_RECORD_READERS } from 'src/constants';
 import { AuthenticatedRequest } from './types/express';
 import { StudentsService } from 'src/students/students.service';
 
@@ -112,10 +112,12 @@ export class CommentsService {
   }
 
   async findAllByIdUser(idUser: number, request: AuthenticatedRequest) {
-    const isStudent = request.user.id_level === LEVELS.ALUNO_ESTUDANTE;
-    const isViewingOtherProfile = request.user.sub !== idUser;
+    const readsAnyStudent = STUDENT_RECORD_READERS.includes(
+      request.user.id_level,
+    );
+    const isOwnRecord = request.user.sub === idUser;
 
-    if (isStudent && isViewingOtherProfile) {
+    if (!readsAnyStudent && !isOwnRecord) {
       throw new ForbiddenException(
         'Você não tem permissão para visualizar estas anotações',
       );

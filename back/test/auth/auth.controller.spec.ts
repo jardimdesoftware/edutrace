@@ -4,6 +4,10 @@ import { AuthController } from 'src/auth/auth.controller';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { IS_PUBLIC_KEY } from 'src/auth/constants/constants';
+import {
+  ALLOW_LEVELS_KEY,
+  ANY_LEVEL,
+} from 'src/auth/decorators/allow-levels.decorator';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -403,6 +407,20 @@ describe('AuthController', () => {
       const result = controller.getProfile(mockRequest);
 
       expect(result).toBe(mockRequest.user);
+    });
+  });
+
+  describe('access levels', () => {
+    it.each([
+      'getGoogleLinkStatus',
+      'linkGoogleAccount',
+      'unlinkGoogleAccount',
+      'getProfile',
+      'logout',
+      'updateMe',
+      'completeRegistration',
+    ] as const)('should open %s to any level, since it acts on the session account', (route) => {
+      expect(Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route])).toBe(ANY_LEVEL);
     });
   });
 });

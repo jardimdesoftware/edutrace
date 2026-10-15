@@ -11,7 +11,7 @@ import {
 import { PlansEducationService } from './plans-education.service';
 import { CreatePlansEducationDto } from './dto/create-plans-education.dto';
 import { UpdatePlansEducationDto } from './dto/update-plans-education.dto';
-import { Levels } from 'src/auth/decorators/levels.decorator';
+import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 
@@ -19,7 +19,7 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 export class PlansEducationController {
   constructor(private readonly plansEducationService: PlansEducationService) {}
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO)
   @Post()
   create(
     @Body() createPlansEducationDto: CreatePlansEducationDto,
@@ -31,12 +31,22 @@ export class PlansEducationController {
     );
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Get()
   findAll() {
     return this.plansEducationService.findAll();
   }
 
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Get(':email')
   findOne(
     @Param('email') email: string,
@@ -45,13 +55,13 @@ export class PlansEducationController {
     return this.plansEducationService.findOne(email, request);
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO)
   @Patch(':email')
   update(@Param('email') email: string, @Body() data: UpdatePlansEducationDto) {
     return this.plansEducationService.update(email, data);
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO)
   @Delete(':email')
   remove(@Param('email') email: string) {
     return this.plansEducationService.remove(email);

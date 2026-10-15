@@ -11,6 +11,10 @@ import { Request } from 'express';
 import { IS_PUBLIC_KEY, jwtConstants } from './constants/constants';
 import { ALLOW_PASSWORD_CHANGE_KEY } from './decorators/allow-password-change.decorator';
 import { ALLOW_INCOMPLETE_REGISTRATION_KEY } from './decorators/allow-incomplete-registration.decorator';
+import {
+  ALLOW_LEVELS_KEY,
+  ANY_LEVEL,
+} from './decorators/allow-levels.decorator';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { sessionCookieName } from 'src/common/session-cookie';
 
@@ -85,10 +89,16 @@ export class AuthGuard implements CanActivate {
         );
       }
 
-      const requiredLevels =
-        this.reflector.get<number[]>('levels', context.getHandler()) || [];
+      // Nega por padrão: a rota sem níveis declarados fica fechada, para que
+      // esquecer o decorator numa rota nova não a abra a todo usuário logado.
+      const allowedLevels = this.reflector.get<
+        readonly number[] | typeof ANY_LEVEL | undefined
+      >(ALLOW_LEVELS_KEY, context.getHandler());
 
-      if (requiredLevels.length > 0 && requiredLevels.includes(user.id_level)) {
+      if (
+        allowedLevels !== ANY_LEVEL &&
+        !allowedLevels?.includes(user.id_level)
+      ) {
         throw new ForbiddenException('Nível de acesso insuficiente');
       }
     } catch (error) {
