@@ -21,6 +21,7 @@ import {
   listarAutores,
 } from '@/utils/commentFilters';
 import { ESTUDANTE } from '@/consts';
+import { NIVEIS_PROFISSIONAIS } from '@/utils/pageAccess';
 import { ChevronDown, History, Pencil, Search, SlidersHorizontal } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
@@ -120,7 +121,8 @@ function AnotacoesMultiprofissionais() {
 
   const limparFiltros = () => setFiltros(FILTROS_VAZIOS);
 
-  const podeAnotar = !isStudent && targetId !== null;
+  const podeAnotar =
+    !!token && NIVEIS_PROFISSIONAIS.includes(token.id_level) && targetId !== null;
   const alvoDaAnotacao = nomeEstudante?.trim() || 'o estudante';
 
   const handlePublicar = async () => {
