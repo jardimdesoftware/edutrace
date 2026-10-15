@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { canAccessPage } from "./pageAccess";
+import { NIVEIS_PROFISSIONAIS, canAccessPage, conteudoDaHome } from "./pageAccess";
 import {
   ADMIN,
   ESTUDANTE,
@@ -64,6 +64,32 @@ describe("canAccessPage", () => {
 
   it("denies the student view to a student, whose old rule checked a prefix that never matched", () => {
     assert.equal(canAccessPage("/estudantes/visualizar", ESTUDANTE), false);
+  });
+});
+
+describe("NIVEIS_PROFISSIONAIS", () => {
+  it("lists the levels that serve students, as GET /students and POST /comments in the back", () => {
+    assert.deepEqual([...NIVEIS_PROFISSIONAIS].sort(), [
+      ADMIN,
+      PROFISSIONAL_EDUCACAO,
+      PROFISSIONAL_SAUDE,
+    ]);
+  });
+});
+
+describe("conteudoDaHome", () => {
+  it("shows the student cards to the student", () => {
+    assert.equal(conteudoDaHome(ESTUDANTE), "estudante");
+  });
+
+  it("shows the student table to the levels that serve students", () => {
+    for (const nivel of [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]) {
+      assert.equal(conteudoDaHome(nivel), "profissional", String(nivel));
+    }
+  });
+
+  it("shows no table to a level created by the administrator, so the home calls no route it cannot access", () => {
+    assert.equal(conteudoDaHome(NIVEL_CRIADO_PELO_ADMIN), "sem-perfil");
   });
 });
 
