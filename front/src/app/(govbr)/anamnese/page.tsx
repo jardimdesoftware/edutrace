@@ -9,7 +9,8 @@ import { Suspense, useEffect, useState } from "react";
 import { getAnamneseByEmail, postAnamneses, deleteAnamnesis } from "@/api/anamnesis"; 
 import { AnamnesisData } from "@/interfaces/AnamnesisData";
 import { useAuth } from "@/contexts/AuthContext";
-import { ESTUDANTE, PROFISSIONAL_EDUCACAO } from "@/consts";
+import { ESTUDANTE } from "@/consts";
+import { canAccessPage } from "@/utils/pageAccess";
 import { useRouter } from "next/navigation";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
@@ -69,7 +70,7 @@ function AnamnesePage() {
         }
 
         const isStudent = token.id_level === ESTUDANTE;
-        const isReadOnly = isStudent || token.id_level === PROFISSIONAL_EDUCACAO;
+        const isReadOnly = !canAccessPage("/editar-anamnese", token.id_level);
         setUserIsReadOnly(isReadOnly);
 
         const target = isStudent ? token.email : email;
