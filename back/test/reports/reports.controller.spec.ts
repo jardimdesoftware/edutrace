@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReportsController } from 'src/reports/reports.controller';
 import { ReportsService } from 'src/reports/reports.service';
+import { LEVELS } from 'src/constants';
+import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 describe('ReportsController', () => {
   let controller: ReportsController;
@@ -37,6 +39,16 @@ describe('ReportsController', () => {
 
       expect(service.findOne).toHaveBeenCalledWith('student@test.com');
       expect(result).toEqual(mockReport);
+    });
+
+    it('should allow the export to every level except students', () => {
+      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
+
+      expect(levels).toEqual([
+        LEVELS.ADMIN,
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        LEVELS.PROFISSIONAL_SAUDE,
+      ]);
     });
   });
 });

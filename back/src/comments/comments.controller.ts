@@ -11,7 +11,7 @@ import {
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
-import { Levels } from 'src/auth/decorators/levels.decorator';
+import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { ApiBody } from '@nestjs/swagger';
 import { AuthenticatedRequest } from './types/express';
@@ -20,7 +20,11 @@ import { AuthenticatedRequest } from './types/express';
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @ApiBody({
     type: CreateCommentDto,
     description: 'Objeto para criação de uma nova anotação.',
@@ -42,7 +46,11 @@ export class CommentsController {
     );
   }
 
-  @Levels(LEVELS.ALUNO_ESTUDANTE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @ApiBody({
     type: UpdateCommentDto,
     description: 'Objeto para edição de uma anotação existente.',
@@ -56,6 +64,12 @@ export class CommentsController {
     return this.commentsService.update(id, updateCommentDto, request);
   }
 
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+  )
   @Get(':id_user')
   findAllByIdUser(
     @Param('id_user') id_user: string,

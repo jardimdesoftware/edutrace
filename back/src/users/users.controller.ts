@@ -14,7 +14,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBody } from '@nestjs/swagger';
-import { Levels } from 'src/auth/decorators/levels.decorator';
+import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 
@@ -22,11 +22,7 @@ import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Levels(
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.ADMIN)
   @ApiBody({
     type: CreateUserDto,
     description: 'Objeto para criação de um novo usuário por um administrador.',
@@ -44,32 +40,20 @@ export class UsersController {
     return maskUserCpf(await this.usersService.create(createUserDto));
   }
 
-  @Levels(
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.ADMIN)
   @Get()
   async findAll() {
     return maskUsersCpf(await this.usersService.findAll());
   }
 
-  @Levels(
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.ADMIN)
   @Get(':email')
   async findOne(@Param('email') email: string) {
     const user = await this.usersService.findOnePublic(email);
     return user ? maskUserCpf(user) : user;
   }
 
-  @Levels(
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.ADMIN)
   @ApiBody({
     type: UpdateUserDto,
     description: 'Obejto para atualização de informações de um usuário.',
@@ -82,11 +66,7 @@ export class UsersController {
     return maskUserCpf(await this.usersService.update(email, updateUserDto));
   }
 
-  @Levels(
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.ADMIN)
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return maskUserCpf(await this.usersService.remove(+id));

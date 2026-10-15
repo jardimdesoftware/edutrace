@@ -3,6 +3,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { UsersController } from 'src/users/users.controller';
 import { UsersService } from 'src/users/users.service';
 import { LEVELS } from 'src/constants';
+import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -146,17 +147,12 @@ describe('UsersController', () => {
   });
 
   describe('access levels', () => {
-    it.each(['findAll', 'findOne'] as const)(
+    it.each(['create', 'findAll', 'findOne', 'update', 'remove'] as const)(
       'should restrict %s to the administrator',
       (route) => {
-        const levels = Reflect.getMetadata('levels', controller[route]);
+        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
-        expect(levels).toEqual([
-          LEVELS.ALUNO_ESTUDANTE,
-          LEVELS.PROFISSIONAL_EDUCACAO,
-          LEVELS.PROFISSIONAL_SAUDE,
-        ]);
-        expect(levels).not.toContain(LEVELS.ADMIN);
+        expect(levels).toEqual([LEVELS.ADMIN]);
       },
     );
   });

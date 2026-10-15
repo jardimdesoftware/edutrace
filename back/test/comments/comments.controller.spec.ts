@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsController } from 'src/comments/comments.controller';
 import { CommentsService } from 'src/comments/comments.service';
 import { ForbiddenException } from '@nestjs/common';
+import { LEVELS } from 'src/constants';
+import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 describe('CommentsController', () => {
   let controller: CommentsController;
@@ -148,6 +150,35 @@ describe('CommentsController', () => {
       await expect(controller.findAllByIdUser('10', request)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('access levels', () => {
+    it.each(['create', 'update'] as const)(
+      'should allow %s to every level except students',
+      (route) => {
+        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
+
+        expect(levels).toEqual([
+          LEVELS.ADMIN,
+          LEVELS.PROFISSIONAL_EDUCACAO,
+          LEVELS.PROFISSIONAL_SAUDE,
+        ]);
+      },
+    );
+
+    it('should open findAllByIdUser to the four levels, relying on the ownership check', () => {
+      const levels = Reflect.getMetadata(
+        ALLOW_LEVELS_KEY,
+        controller.findAllByIdUser,
+      );
+
+      expect(levels).toEqual([
+        LEVELS.ADMIN,
+        LEVELS.ALUNO_ESTUDANTE,
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        LEVELS.PROFISSIONAL_SAUDE,
+      ]);
     });
   });
 });

@@ -5,6 +5,7 @@ import { UpdatePlansEducationDto } from 'src/plans-education/dto/update-plans-ed
 import { PlansEducationController } from 'src/plans-education/plans-education.controller';
 import { PlansEducationService } from 'src/plans-education/plans-education.service';
 import { LEVELS } from 'src/constants';
+import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 describe('PlansEducationController', () => {
   let controller: PlansEducationController;
@@ -486,17 +487,35 @@ describe('PlansEducationController', () => {
   });
 
   describe('access levels', () => {
-    it('should block only students from listing all records', () => {
-      const levels = Reflect.getMetadata('levels', controller.findAll);
+    it('should allow listing all records to every level except students', () => {
+      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findAll);
 
-      expect(levels).toEqual([LEVELS.ALUNO_ESTUDANTE]);
+      expect(levels).toEqual([
+        LEVELS.ADMIN,
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        LEVELS.PROFISSIONAL_SAUDE,
+      ]);
     });
 
-    it('should leave findOne open to every level, relying on the ownership check', () => {
-      const levels = Reflect.getMetadata('levels', controller.findOne);
+    it('should open findOne to the four levels, relying on the ownership check', () => {
+      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
 
-      expect(levels).toBeUndefined();
+      expect(levels).toEqual([
+        LEVELS.ADMIN,
+        LEVELS.ALUNO_ESTUDANTE,
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        LEVELS.PROFISSIONAL_SAUDE,
+      ]);
     });
+
+    it.each(['create', 'update', 'remove'] as const)(
+      'should allow %s only to the administrator and the education professional',
+      (route) => {
+        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
+
+        expect(levels).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO]);
+      },
+    );
   });
 
   describe('findOne', () => {
