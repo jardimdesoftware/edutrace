@@ -60,6 +60,8 @@ describe('UsersService', () => {
     locked_until: null,
     login_lock_count: 0,
     google_sub: null,
+    enrollment_number: null,
+    course: null,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
