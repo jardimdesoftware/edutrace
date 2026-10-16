@@ -14,6 +14,7 @@ import { check, sleep } from 'k6';
 import { getToken, authHeaders } from '../../helpers/auth.js';
 import { endpointOptions } from '../../config/options.js';
 import { randomCpf } from '../../helpers/cpf.js';
+import { randomEnrollmentNumber } from '../../helpers/enrollment.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
@@ -171,6 +172,8 @@ export default function (data) {
       cpf: randomCpf(),
       email: studentEmail,
       id_level: 2,
+      enrollment_number: randomEnrollmentNumber(),
+      course: 'Curso k6 Teste',
     }),
     { headers },
   );
