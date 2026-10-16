@@ -13,6 +13,29 @@ import * as bcryptjs from 'bcryptjs';
 
 jest.mock('bcryptjs');
 
+// Formato real do P2002 com o @prisma/adapter-pg (Prisma 7), observado contra
+// um PostgreSQL: o erro não traz meta.target, e a constraint violada vem pelo
+// nome do índice em meta.driverAdapterError.cause.constraint.
+function uniqueViolation(index: string) {
+  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+    code: 'P2002',
+    clientVersion: '7.10.0',
+    meta: {
+      modelName: 'User',
+      driverAdapterError: {
+        name: 'DriverAdapterError',
+        cause: {
+          originalCode: '23505',
+          originalMessage: `duplicate key value violates unique constraint "${index}"`,
+          kind: 'UniqueConstraintViolation',
+          constraint: { index },
+          table: 'User',
+        },
+      },
+    },
+  });
+}
+
 describe('UsersService', () => {
   let service: UsersService;
   let prisma: PrismaService;
@@ -342,13 +365,9 @@ describe('UsersService', () => {
     // A conta cadastrada pelo administrador com o mesmo e-mail nunca é aberta
     // pelo Google: o dono vincula a Conta Google depois de entrar com senha.
     it('should not touch an existing account with the same e-mail', async () => {
-      jest.spyOn(prisma.user, 'create').mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-          code: 'P2002',
-          clientVersion: '6.0.0',
-          meta: { target: ['email'] },
-        }),
-      );
+      jest
+        .spyOn(prisma.user, 'create')
+        .mockRejectedValue(uniqueViolation('User_email_key'));
 
       await expect(service.createGoogleStudentUser(googleData)).resolves.toBe(
         null,
@@ -411,13 +430,9 @@ describe('UsersService', () => {
     });
 
     it('should answer 409 when the Google account is linked to another account', async () => {
-      jest.spyOn(prisma.user, 'update').mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-          code: 'P2002',
-          clientVersion: '6.0.0',
-          meta: { target: ['google_sub'] },
-        }),
-      );
+      jest
+        .spyOn(prisma.user, 'update')
+        .mockRejectedValue(uniqueViolation('User_google_sub_key'));
 
       await expect(
         service.setGoogleSub('test@test.com', 'google-sub'),
@@ -436,10 +451,10 @@ describe('UsersService', () => {
       email: 'usuario@edutrace.com',
     };
 
-    function uniqueViolation(target: string[]) {
+    function violationOf(meta: Record<string, unknown>) {
       return new Prisma.PrismaClientKnownRequestError(
         'Unique constraint failed',
-        { code: 'P2002', clientVersion: '6.0.0', meta: { target } },
+        { code: 'P2002', clientVersion: '7.10.0', meta },
       );
     }
 
@@ -450,7 +465,7 @@ describe('UsersService', () => {
     it('should answer 409 when the cpf is already taken', async () => {
       jest
         .spyOn(prisma.user, 'create')
-        .mockRejectedValue(uniqueViolation(['cpf']));
+        .mockRejectedValue(uniqueViolation('User_cpf_key'));
 
       await expect(service.create(createDto as any)).rejects.toThrow(
         new ConflictException('Este CPF já está cadastrado.'),
@@ -460,17 +475,59 @@ describe('UsersService', () => {
     it('should answer 409 when the email is already taken', async () => {
       jest
         .spyOn(prisma.user, 'create')
-        .mockRejectedValue(uniqueViolation(['email']));
+        .mockRejectedValue(uniqueViolation('User_email_key'));
 
       await expect(service.create(createDto as any)).rejects.toThrow(
         new ConflictException('Este e-mail já está cadastrado.'),
       );
     });
 
+    // Sem o nome do índice (o adapter só preenche fields quando o driver não
+    // devolve a constraint) e no formato antigo do Prisma, com meta.target.
+    it.each([
+      [
+        'fields do driver adapter',
+        {
+          driverAdapterError: {
+            cause: { constraint: { fields: ['cpf'] } },
+          },
+        },
+        'Este CPF já está cadastrado.',
+      ],
+      [
+        'meta.target do Prisma sem adapter',
+        { target: ['cpf'] },
+        'Este CPF já está cadastrado.',
+      ],
+      [
+        'meta.target como texto',
+        { target: 'User_email_key' },
+        'Este e-mail já está cadastrado.',
+      ],
+    ])('should read the violated field from %s', async (_, meta, message) => {
+      jest.spyOn(prisma.user, 'create').mockRejectedValue(violationOf(meta));
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        new ConflictException(message),
+      );
+    });
+
+    it.each([
+      ['uma constraint de outro campo', uniqueViolation('User_google_sub_key')],
+      ['um erro sem meta de constraint', violationOf({ modelName: 'User' })],
+      ['um índice de outra tabela', uniqueViolation('Screening_email_key')],
+    ])('should answer the generic 409 for %s', async (_, error) => {
+      jest.spyOn(prisma.user, 'create').mockRejectedValue(error);
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        new ConflictException('Registro já cadastrado.'),
+      );
+    });
+
     it('should not send the activation e-mail when the account is not created', async () => {
       jest
         .spyOn(prisma.user, 'create')
-        .mockRejectedValue(uniqueViolation(['email']));
+        .mockRejectedValue(uniqueViolation('User_email_key'));
 
       await expect(service.create(createDto as any)).rejects.toThrow(
         ConflictException,
@@ -795,13 +852,9 @@ describe('UsersService', () => {
     });
 
     it('should answer 409 and point to the administrator when the CPF belongs to another account', async () => {
-      jest.spyOn(prisma.user, 'update').mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-          code: 'P2002',
-          clientVersion: '6.0.0',
-          meta: { target: ['cpf'] },
-        }),
-      );
+      jest
+        .spyOn(prisma.user, 'update')
+        .mockRejectedValue(uniqueViolation('User_cpf_key'));
 
       await expect(
         service.completeGoogleRegistration(
