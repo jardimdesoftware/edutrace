@@ -6,6 +6,7 @@ import { MailService } from 'src/mail/mail.service';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { UsersService } from 'src/users/users.service';
 import { ServiceQueueService } from 'src/students/service-queue.service';
+import { ServiceStatsService } from 'src/students/service-stats.service';
 import { StudentsService } from 'src/students/students.service';
 import { LEVELS, PHASES } from 'src/constants';
 import { requireIntegrationDatabaseUrl } from '../users/integration-database';
@@ -27,6 +28,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
   () => {
     let prisma: PrismaService;
     let queue: ServiceQueueService;
+    let stats: ServiceStatsService;
     let users: UsersService;
     let originalDatabaseUrl: string | undefined;
     let originalFrontendUrl: string | undefined;
@@ -50,11 +52,11 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
       });
     }
 
-    async function createNapne(capacity: number | null) {
+    async function createNapne(capacity: number | null, fullName?: string) {
       const n = nextNumber();
       return prisma.user.create({
         data: {
-          full_name: `NAPNE ${n}`,
+          full_name: fullName ?? `NAPNE ${n}`,
           cpf: `6${String(n).padStart(10, '0')}`,
           email: `napne${n}${EMAIL_DOMAIN}`,
           password: 'x',
@@ -124,6 +126,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           UsersService,
           StudentsService,
           ServiceQueueService,
+          ServiceStatsService,
           PrismaService,
           {
             provide: SessionsService,
@@ -139,6 +142,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
       await module.init();
       prisma = module.get(PrismaService);
       queue = module.get(ServiceQueueService);
+      stats = module.get(ServiceStatsService);
       users = module.get(UsersService);
     });
 
@@ -368,6 +372,83 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         await expect(queue.assume(student.email, napne.id)).rejects.toThrow(
           'Seu limite de atendimentos ainda não foi definido pelo administrador.',
         );
+      });
+    });
+
+    // Os specs de integração dividem o banco, então os totais gerais incluem
+    // contas de outros specs e só valem como piso. A ocupação é conferida por
+    // profissional, e esses profissionais são só deste teste.
+    describe('estatísticas do atendimento', () => {
+      const OLDEST = new Date('2000-01-01T00:00:00.000Z');
+
+      it('should count the totals, the occupation per NAPNE and the oldest waiting student', async () => {
+        // Criados fora da ordem alfabética, para provar a ordenação por nome.
+        const carla = await createNapne(1, 'Zz Estatística Carla');
+        const bruno = await createNapne(null, 'Zz Estatística Bruno');
+        const ana = await createNapne(3, 'Zz Estatística Ana');
+        // O sexto segue na fila, ao lado do waitingOld.
+        const [first, second, third, closed, waitingOld] = await Promise.all(
+          Array.from({ length: 6 }, () => createStudent()),
+        );
+
+        await queue.assume(first.email, ana.id);
+        await queue.assume(second.email, ana.id);
+        await queue.assume(third.email, carla.id);
+        // O encerrado mantém o responsável, mas libera a vaga de Ana.
+        await queue.assume(closed.email, ana.id);
+        await queue.close(closed.email, {
+          sub: ana.id,
+          id_level: LEVELS.PROFISSIONAL_NAPNE,
+        });
+        await prisma.user.update({
+          where: { id: waitingOld.id },
+          data: { queued_at: OLDEST },
+        });
+        // O encerrado entrou na fila antes de todos: sem o filtro de WAITING,
+        // a data mais antiga seria a dele.
+        await prisma.user.update({
+          where: { id: closed.id },
+          data: { queued_at: new Date('1999-01-01T00:00:00.000Z') },
+        });
+        // Capacidade reduzida abaixo da ocupação: as vagas ficam em zero.
+        await prisma.user.update({
+          where: { id: carla.id },
+          data: { service_capacity: 0 },
+        });
+
+        const result = await stats.getStats();
+
+        expect(result.totals.WAITING).toBeGreaterThanOrEqual(2);
+        expect(result.totals.IN_SERVICE).toBeGreaterThanOrEqual(3);
+        expect(result.totals.CLOSED).toBeGreaterThanOrEqual(1);
+        expect(result.queue.oldest_queued_at).toEqual(OLDEST);
+
+        const ours = result.professionals.filter(({ id }) =>
+          [ana.id, bruno.id, carla.id].includes(id),
+        );
+        expect(ours).toEqual([
+          {
+            id: ana.id,
+            full_name: ana.full_name,
+            in_service: 2,
+            capacity: 3,
+            free: 1,
+          },
+          {
+            id: bruno.id,
+            full_name: bruno.full_name,
+            in_service: 0,
+            capacity: null,
+            free: null,
+          },
+          {
+            id: carla.id,
+            full_name: carla.full_name,
+            in_service: 1,
+            capacity: 0,
+            free: 0,
+          },
+        ]);
       });
     });
 
