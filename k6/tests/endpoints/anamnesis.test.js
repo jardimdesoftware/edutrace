@@ -11,6 +11,10 @@
  * ATENÇÃO: A API de anamnesis atualiza a fase do usuário (id_current_phase = 2).
  * Por isso, o titular precisa existir no banco como estudante (id_level 2); o
  * script o cadastra no passo 0 e o remove no passo 6.
+ *
+ * Só o Profissional NAPNE (id_level 5) acessa as rotas de anamnese; o
+ * administrador recebe 403. As chamadas de anamnese usam a conta NAPNE, e o
+ * cadastro e a remoção do estudante continuam com a conta de administrador.
  */
 
 import http from 'k6/http';
@@ -23,12 +27,15 @@ import { randomEnrollmentNumber } from '../../helpers/enrollment.js';
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
+const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
+const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
 export const options = endpointOptions;
 
 export function setup() {
   const token = getToken(BASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
-  return { token };
+  const napneToken = getToken(BASE_URL, NAPNE_EMAIL, NAPNE_PASSWORD);
+  return { token, napneToken };
 }
 
 // Payload completo da anamnese baseado no CreateAnamnesisDto
@@ -174,6 +181,7 @@ function buildAnamnesisPayload(email) {
 
 export default function (data) {
   const headers = authHeaders(data.token);
+  const napneHeaders = authHeaders(data.napneToken);
   const testEmail = `k6.anamnesis.${Date.now()}.${Math.floor(Math.random() * 10000)}@test.com`;
 
   // ─── 0. POST /users — cria o usuário exigido pela pré-condição acima ──────
@@ -199,7 +207,7 @@ export default function (data) {
   const createRes = http.post(
     `${BASE_URL}/anamnesis`,
     buildAnamnesisPayload(testEmail),
-    { headers },
+    { headers: napneHeaders },
   );
   check(createRes, {
     '[anamnesis] POST /anamnesis retorna 201': (r) => r.status === 201,
@@ -214,7 +222,7 @@ export default function (data) {
   });
 
   // ─── 2. GET /anamnesis ────────────────────────────────────────────────────
-  const listRes = http.get(`${BASE_URL}/anamnesis`, { headers });
+  const listRes = http.get(`${BASE_URL}/anamnesis`, { headers: napneHeaders });
   check(listRes, {
     '[anamnesis] GET /anamnesis retorna 200': (r) => r.status === 200,
     '[anamnesis] GET /anamnesis retorna array': (r) => {
@@ -227,7 +235,7 @@ export default function (data) {
   });
 
   // ─── 3. GET /anamnesis/:email ─────────────────────────────────────────────
-  const getOneRes = http.get(`${BASE_URL}/anamnesis/${testEmail}`, { headers });
+  const getOneRes = http.get(`${BASE_URL}/anamnesis/${testEmail}`, { headers: napneHeaders });
   check(getOneRes, {
     '[anamnesis] GET /anamnesis/:email retorna 200': (r) => r.status === 200,
   });
@@ -245,14 +253,14 @@ export default function (data) {
         bem_aceito_pelos_amigous: 'Sim',
       },
     }),
-    { headers },
+    { headers: napneHeaders },
   );
   check(updateRes, {
     '[anamnesis] PATCH /anamnesis/:email retorna 200': (r) => r.status === 200,
   });
 
   // ─── 5. DELETE /anamnesis/:email ──────────────────────────────────────────
-  const deleteRes = http.del(`${BASE_URL}/anamnesis/${testEmail}`, null, { headers });
+  const deleteRes = http.del(`${BASE_URL}/anamnesis/${testEmail}`, null, { headers: napneHeaders });
   check(deleteRes, {
     '[anamnesis] DELETE /anamnesis/:email retorna 200': (r) => r.status === 200,
   });
