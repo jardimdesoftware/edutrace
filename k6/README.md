@@ -80,10 +80,13 @@ sudo apt-get update && sudo apt-get install k6
 
 3. As rotas públicas de `/auth` têm limite de requisições por IP, com teto padrão
    de 8 por minuto, e as demais rotas têm limite por usuário, com teto padrão de
-   300 por minuto em cada rota. O teste de carga usa um único token de
-   administrador para todos os VUs e passa dos dois volumes, então a API do
+   300 por minuto em cada rota. O `POST /users` tem limite próprio por usuário,
+   com teto padrão de 60 cadastros por hora. O teste de carga usa um único token
+   de administrador para todos os VUs e passa dos três volumes, então a API do
    ambiente de teste precisa subir com tetos maiores, por exemplo
-   `AUTH_RATE_LIMIT=10000` e `API_RATE_LIMIT=100000`. Em produção os valores
+   `AUTH_RATE_LIMIT=10000`, `API_RATE_LIMIT=100000` e
+   `USER_CREATE_RATE_LIMIT=10000`. `USER_CREATE_RATE_LIMIT_TTL_MS` substitui a
+   janela de 1 hora do cadastro, em milissegundos. Em produção os valores
    padrão são os que valem.
 
 4. Certifique-se que a API está rodando:
