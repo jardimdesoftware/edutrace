@@ -651,6 +651,30 @@ describe('CommentsService', () => {
       );
       expect(prisma.comments.findMany).not.toHaveBeenCalled();
     });
+
+    it('should return the comments of another user to the NAPNE professional', async () => {
+      const request = {
+        user: { sub: 99, id_level: LEVELS.PROFISSIONAL_NAPNE },
+      } as any;
+      jest
+        .spyOn(prisma.comments, 'findMany')
+        .mockResolvedValue([mockComment] as any);
+      jest
+        .spyOn(prisma.user, 'findMany')
+        .mockResolvedValue([
+          { id: 5, id_level: LEVELS.PROFISSIONAL_SAUDE },
+        ] as any);
+
+      const result = await service.findAllByIdUser(10, request);
+
+      expect(prisma.comments.findMany).toHaveBeenCalledWith({
+        where: { id_user: 10 },
+        include: editsInclude,
+      });
+      expect(result).toEqual([
+        { ...mockComment, author_level: LEVELS.PROFISSIONAL_SAUDE },
+      ]);
+    });
   });
 
   describe('titular estudante', () => {
