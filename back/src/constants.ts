@@ -18,11 +18,7 @@ export const STUDENT_RECORD_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_NAPNE,
 ];
 
-export const ANAMNESIS_READERS: readonly number[] = [
-  LEVELS.ADMIN,
-  LEVELS.PROFISSIONAL_EDUCACAO,
-  LEVELS.PROFISSIONAL_SAUDE,
-];
+export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
 
 export const COMMENT_EDIT_LIMIT = 10;
 
