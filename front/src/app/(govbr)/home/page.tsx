@@ -9,11 +9,13 @@ import {
   BookOpenCheck,
 } from 'lucide-react';
 import HomeCard from "@/components/HomeCard";
+import PainelAtendimento from "@/components/PainelAtendimento";
 import TabelaEstudantes from "@/components/TabelaEstudantes";
 import Loading from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
+import { podeVerEstatisticas } from "@/utils/estatisticasAtendimento";
 import { conteudoDaHome } from "@/utils/pageAccess";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
 export default function HomePageWrapper() {
   return (
@@ -25,12 +27,14 @@ export default function HomePageWrapper() {
 
 function HomePage() {
   const { user, loading } = useAuth();
+  const [versao, setVersao] = useState(0);
 
   if (loading || !user) {
     return <Loading />;
   }
 
   const conteudo = conteudoDaHome(user.id_level);
+  const comPainel = podeVerEstatisticas(user.id_level);
 
   return (
     <AppLayout showBack={false}>
@@ -46,7 +50,14 @@ function HomePage() {
             </div>
           </>
         )}
-        {conteudo === "profissional" && <TabelaEstudantes />}
+        {conteudo === "profissional" && (
+          <>
+            {comPainel && <PainelAtendimento versao={versao} />}
+            <TabelaEstudantes
+              onAlteracao={comPainel ? () => setVersao((v) => v + 1) : undefined}
+            />
+          </>
+        )}
         {conteudo === "sem-perfil" && (
           <>
             <h1 className="text-3xl font-light mb-6">Página inicial</h1>
