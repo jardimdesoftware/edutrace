@@ -12,6 +12,7 @@ export class StudentsController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get()
   async findAll() {
@@ -22,6 +23,7 @@ export class StudentsController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get(':email')
   async findOne(@Param('email') email: string) {
