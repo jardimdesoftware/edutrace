@@ -28,4 +28,30 @@ describe('PUBLIC_USER_SELECT', () => {
   it.each(['enrollment_number', 'course'])('should select %s', (field) => {
     expect(PUBLIC_USER_SELECT).toHaveProperty(field, true);
   });
+
+  it.each([
+    'service_status',
+    'queued_at',
+    'service_started_at',
+    'service_closed_at',
+    'service_capacity',
+  ])('should select %s', (field) => {
+    expect(PUBLIC_USER_SELECT).toHaveProperty(field, true);
+  });
+
+  // A relação com `true` ou `include` devolveria o registro inteiro do NAPNE,
+  // com o hash da senha e os campos de recuperação.
+  it('should select only the id and the name of the NAPNE responsible', () => {
+    expect(PUBLIC_USER_SELECT.napne_responsible).toEqual({
+      select: { id: true, full_name: true },
+    });
+  });
+
+  it('should not select the raw foreign key of the responsible', () => {
+    expect(PUBLIC_USER_SELECT).not.toHaveProperty('napne_responsible_id');
+  });
+
+  it('should not select the students of a NAPNE', () => {
+    expect(PUBLIC_USER_SELECT).not.toHaveProperty('napne_students');
+  });
 });
