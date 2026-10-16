@@ -147,6 +147,25 @@ describe('POST e PATCH /users, matrícula e curso', () => {
       expect(usersService.create).not.toHaveBeenCalled();
     });
 
+    // Os campos da fila só mudam pelos endpoints próprios. O corpo do cadastro
+    // não os aceita, nem o limite de atendimentos.
+    it.each([
+      ['service_status', 'IN_SERVICE'],
+      ['napne_responsible_id', 9],
+      ['queued_at', '2026-10-16T12:00:00.000Z'],
+      ['service_started_at', '2026-10-16T12:00:00.000Z'],
+      ['service_closed_at', '2026-10-16T12:00:00.000Z'],
+      ['service_capacity', 5],
+    ])('should answer 400 for %s in the body', async (field, value) => {
+      const response = await post({ ...student, [field]: value });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain(
+        `property ${field} should not exist`,
+      );
+      expect(usersService.create).not.toHaveBeenCalled();
+    });
+
     it('should still register a professional without matrícula and course', async () => {
       const { enrollment_number, course, ...body } = student;
 
@@ -187,6 +206,22 @@ describe('POST e PATCH /users, matrícula e curso', () => {
       const response = await patch(body);
 
       expect(response.status).toBe(400);
+      expect(usersService.update).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['service_status', 'IN_SERVICE'],
+      ['napne_responsible_id', 9],
+      ['queued_at', '2026-10-16T12:00:00.000Z'],
+      ['service_started_at', '2026-10-16T12:00:00.000Z'],
+      ['service_closed_at', '2026-10-16T12:00:00.000Z'],
+    ])('should answer 400 for %s in the body', async (field, value) => {
+      const response = await patch({ [field]: value });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain(
+        `property ${field} should not exist`,
+      );
       expect(usersService.update).not.toHaveBeenCalled();
     });
   });
