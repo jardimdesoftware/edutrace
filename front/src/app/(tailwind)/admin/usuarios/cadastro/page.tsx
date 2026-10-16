@@ -15,7 +15,13 @@ import {
   fieldInputClass,
   fieldLabelClass,
 } from "@/components/auth/AuthFields";
-import { buildRegisterData } from "@/utils/registerForm";
+import {
+  CURSO_MAX_LENGTH,
+  MATRICULA_MAX_LENGTH,
+  MATRICULA_PATTERN,
+  buildRegisterData,
+  cadastraEstudante,
+} from "@/utils/registerForm";
 import { EMAIL_PATTERN } from "@/utils/emailPattern";
 import { niveisDoCadastro } from "@/utils/niveisDoCadastro";
 import { canAccessPage } from "@/utils/pageAccess";
@@ -36,6 +42,8 @@ function AdminUserCreatePage() {
     email: "",
     cpf: "",
     id_level: "2",
+    matricula: "",
+    curso: "",
   });
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -229,6 +237,31 @@ function AdminUserCreatePage() {
                       )}
                     </span>
                   </label>
+
+                  {cadastraEstudante(formData.id_level) && (
+                    <>
+                      <TextField
+                        label="Matrícula"
+                        icon="/cpf.svg"
+                        required
+                        pattern={MATRICULA_PATTERN}
+                        maxLength={MATRICULA_MAX_LENGTH}
+                        autoComplete="off"
+                        value={formData.matricula}
+                        onChange={setCampo("matricula")}
+                      />
+
+                      <TextField
+                        label="Curso"
+                        icon="/file.svg"
+                        required
+                        maxLength={CURSO_MAX_LENGTH}
+                        autoComplete="off"
+                        value={formData.curso}
+                        onChange={setCampo("curso")}
+                      />
+                    </>
+                  )}
                 </div>
 
                 <div className="mt-4 flex items-start gap-2 sm:mt-5">
