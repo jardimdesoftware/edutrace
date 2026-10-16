@@ -76,7 +76,8 @@ describe('UsersService', () => {
   };
 
   let tx: {
-    user: { update: jest.Mock };
+    $queryRaw: jest.Mock;
+    user: { update: jest.Mock; count: jest.Mock; delete: jest.Mock };
     screening: { updateMany: jest.Mock };
     anamnesis: { updateMany: jest.Mock };
     plansEducation: { updateMany: jest.Mock };
@@ -84,7 +85,16 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     tx = {
-      user: { update: jest.fn().mockResolvedValue(mockUser) },
+      $queryRaw: jest
+        .fn()
+        .mockResolvedValue([
+          { id: mockUser.id, id_level: LEVELS.ALUNO_ESTUDANTE },
+        ]),
+      user: {
+        update: jest.fn().mockResolvedValue(mockUser),
+        count: jest.fn().mockResolvedValue(0),
+        delete: jest.fn().mockResolvedValue(mockUser),
+      },
       screening: { updateMany: jest.fn() },
       anamnesis: { updateMany: jest.fn() },
       plansEducation: { updateMany: jest.fn() },
@@ -395,9 +405,14 @@ describe('UsersService', () => {
     };
 
     it('should create the student account already linked to the Google sub', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-10-16T12:00:00.000Z'));
       jest.spyOn(prisma.user, 'create').mockResolvedValue(mockUser);
 
-      await service.createGoogleStudentUser(googleData);
+      try {
+        await service.createGoogleStudentUser(googleData);
+      } finally {
+        jest.useRealTimers();
+      }
 
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: {
@@ -409,6 +424,8 @@ describe('UsersService', () => {
           id_level: LEVELS.ALUNO_ESTUDANTE,
           id_current_phase: PHASES.TRIAGEM,
           must_change_password: false,
+          service_status: ServiceStatus.WAITING,
+          queued_at: new Date('2026-10-16T12:00:00.000Z'),
         },
       });
     });
@@ -612,26 +629,20 @@ describe('UsersService', () => {
       course: 'Análise e Desenvolvimento de Sistemas',
     };
 
+    // O nível atual da conta vem da leitura que trava a linha dentro da
+    // transação; conta inexistente devolve nenhuma linha.
     function currentLevel(id_level: number | null) {
-      jest
-        .spyOn(prisma.user, 'findUnique')
-        .mockResolvedValue(id_level === null ? null : ({ id_level } as any));
+      tx.$queryRaw.mockResolvedValue(
+        id_level === null ? [] : [{ id: mockUser.id, id_level }],
+      );
     }
-
-    beforeEach(() => {
-      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
-    });
 
     it('should store the matrícula and the course of a student account', async () => {
       currentLevel(LEVELS.ALUNO_ESTUDANTE);
 
       await service.update('test@test.com', fields);
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@test.com' },
-        select: { id_level: true },
-      });
-      expect(prisma.user.update).toHaveBeenCalledWith({
+      expect(tx.user.update).toHaveBeenCalledWith({
         select: PUBLIC_USER_SELECT,
         where: { email: 'test@test.com' },
         data: expect.objectContaining(fields),
@@ -643,7 +654,7 @@ describe('UsersService', () => {
 
       await service.update('test@test.com', { course: 'ADS' });
 
-      const { data } = (prisma.user.update as jest.Mock).mock.calls[0][0];
+      const { data } = tx.user.update.mock.calls[0][0];
       expect(data.course).toBe('ADS');
       expect(data.enrollment_number).toBeUndefined();
     });
@@ -660,10 +671,12 @@ describe('UsersService', () => {
         service.update('test@test.com', fields),
       ).rejects.toBeInstanceOf(BadRequestException);
 
-      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(tx.user.update).not.toHaveBeenCalled();
     });
 
     it('should answer 400 when the same request moves the account to another level', async () => {
+      currentLevel(LEVELS.ALUNO_ESTUDANTE);
+
       await expect(
         service.update('test@test.com', {
           ...fields,
@@ -671,18 +684,18 @@ describe('UsersService', () => {
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
 
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
-      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(tx.user.update).not.toHaveBeenCalled();
     });
 
     it('should accept the fields when the same request makes the account a student', async () => {
+      currentLevel(LEVELS.PROFISSIONAL_EDUCACAO);
+
       await service.update('test@test.com', {
         ...fields,
         id_level: LEVELS.ALUNO_ESTUDANTE,
       });
 
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
-      expect(prisma.user.update).toHaveBeenCalledWith(
+      expect(tx.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             ...fields,
@@ -692,25 +705,19 @@ describe('UsersService', () => {
       );
     });
 
-    it('should not look the level up when the request has no matrícula nor course', async () => {
-      await service.update('test@test.com', { full_name: 'Novo Nome' });
-
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    });
-
     it('should leave a missing account to the update itself', async () => {
       currentLevel(null);
 
       await service.update('ninguem@test.com', fields);
 
-      expect(prisma.user.update).toHaveBeenCalledTimes(1);
+      expect(tx.user.update).toHaveBeenCalledTimes(1);
     });
 
     it('should answer 409 when the matrícula belongs to another student', async () => {
       currentLevel(LEVELS.ALUNO_ESTUDANTE);
-      jest
-        .spyOn(prisma.user, 'update')
-        .mockRejectedValue(uniqueViolation('User_enrollment_number_key'));
+      tx.user.update.mockRejectedValue(
+        uniqueViolation('User_enrollment_number_key'),
+      );
 
       await expect(service.update('test@test.com', fields)).rejects.toThrow(
         new ConflictException('Esta matrícula já está cadastrada.'),
@@ -720,7 +727,7 @@ describe('UsersService', () => {
     it('should propagate errors that are not a unique violation', async () => {
       const erroQualquer = new Error('conexão perdida');
       currentLevel(LEVELS.ALUNO_ESTUDANTE);
-      jest.spyOn(prisma.user, 'update').mockRejectedValue(erroQualquer);
+      tx.user.update.mockRejectedValue(erroQualquer);
 
       await expect(service.update('test@test.com', fields)).rejects.toThrow(
         erroQualquer,
@@ -735,14 +742,17 @@ describe('UsersService', () => {
         id_level: LEVELS.PROFISSIONAL_EDUCACAO,
       };
       const updatedUser = { ...mockUser, ...updateDto };
-      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser);
+      tx.user.update.mockResolvedValue(updatedUser);
 
       const result = await service.update('test@test.com', updateDto as any);
 
-      expect(prisma.user.update).toHaveBeenCalledWith({
+      expect(tx.user.update).toHaveBeenCalledWith({
         select: PUBLIC_USER_SELECT,
         where: { email: 'test@test.com' },
-        data: { full_name: updateDto.full_name, id_level: updateDto.id_level },
+        data: expect.objectContaining({
+          full_name: updateDto.full_name,
+          id_level: updateDto.id_level,
+        }),
       });
       expect(result).toEqual(updatedUser);
     });
@@ -833,8 +843,6 @@ describe('UsersService', () => {
 
   describe('update', () => {
     it('should revoke the sessions of the account when the level changes', async () => {
-      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
-
       await service.update('test@test.com', {
         full_name: 'Nome',
         id_level: 3,
@@ -846,8 +854,6 @@ describe('UsersService', () => {
     });
 
     it('should keep the sessions when the level is not part of the change', async () => {
-      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
-
       // O DTO declara os campos como obrigatórios no tipo, mas ambos são
       // @IsOptional, então o corpo pode chegar sem id_level.
       await service.update('test@test.com', {
@@ -997,11 +1003,9 @@ describe('UsersService', () => {
 
   describe('remove', () => {
     it('should delete a user by id', async () => {
-      jest.spyOn(prisma.user, 'delete').mockResolvedValue(mockUser);
-
       const result = await service.remove(1);
 
-      expect(prisma.user.delete).toHaveBeenCalledWith({
+      expect(tx.user.delete).toHaveBeenCalledWith({
         select: PUBLIC_USER_SELECT,
         where: { id: 1 },
       });
