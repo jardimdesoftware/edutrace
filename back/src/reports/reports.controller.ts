@@ -11,6 +11,7 @@ export class ReportsController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get(':email')
   findOne(@Param('email') email: string) {
