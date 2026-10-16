@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getAllStudents, getStudentByEmail } from './students';
+import {
+  assumirAtendimento,
+  encerrarAtendimento,
+  getAllStudents,
+  getStudentByEmail,
+} from './students';
 
 const API_URL = 'http://api.test';
 
@@ -67,3 +72,53 @@ describe('getStudentByEmail', () => {
     );
   });
 });
+
+for (const [nome, chamar, rota] of [
+  ['assumirAtendimento', assumirAtendimento, 'assume'],
+  ['encerrarAtendimento', encerrarAtendimento, 'close'],
+] as const) {
+  describe(nome, () => {
+    it(`sends a POST without body to /students/:email/service/${rota} and returns the updated student`, async () => {
+      const atualizado = { id: 3, email: 'estudante@edutrace.com', service_status: 'IN_SERVICE' };
+      respondWith(200, atualizado);
+
+      const result = await chamar('estudante@edutrace.com');
+
+      assert.deepEqual(result, atualizado);
+      assert.equal(calls.length, 1);
+      assert.equal(
+        calls[0].url,
+        `${API_URL}/students/estudante%40edutrace.com/service/${rota}`,
+      );
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, undefined);
+    });
+
+    it('encodes characters of the email that would change the path', async () => {
+      respondWith(200, {});
+
+      await chamar('nome/sobrenome?x#y@edutrace.com');
+
+      assert.equal(
+        calls[0].url,
+        `${API_URL}/students/nome%2Fsobrenome%3Fx%23y%40edutrace.com/service/${rota}`,
+      );
+    });
+
+    it('rejects with the API message when the back refuses the transition', async () => {
+      respondWith(409, { message: 'Limite de atendimento atingido' });
+
+      await assert.rejects(chamar('estudante@edutrace.com'), {
+        message: 'Limite de atendimento atingido',
+      });
+    });
+
+    it('rejects with the API message when the user is not the responsible', async () => {
+      respondWith(403, { message: 'Apenas o responsável pode encerrar o atendimento' });
+
+      await assert.rejects(chamar('estudante@edutrace.com'), {
+        message: 'Apenas o responsável pode encerrar o atendimento',
+      });
+    });
+  });
+}
