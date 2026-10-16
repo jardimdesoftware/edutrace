@@ -310,6 +310,62 @@ jobs:
 
           echo "OK: $aprovados teste(s) de integração passaram contra o PostgreSQL e nenhum ficou pulado."
 
+      # A migration da fila de atendimento coloca os estudantes que já existem
+      # na fila (WAITING, com queued_at igual ao created_at) antes de criar os
+      # CHECKs. O banco do job nasce vazio, então no migrate deploy esse UPDATE
+      # não afeta nenhuma linha e um backfill errado ou ausente passaria
+      # despercebido. Este passo monta o caso real num edutrace_bf à parte:
+      # aplica as migrations anteriores a ela, insere um estudante com created_at
+      # fixo no passado e um profissional, e só então aplica a migration. Com o
+      # CHECK criado antes do backfill, a própria migration falharia nesse banco.
+      - name: Verificar o backfill da fila de atendimento pela migration
+        working-directory: ./back
+        run: |
+          fila=20261016140000_add_user_service_queue
+          bf_url=postgresql://test:test@localhost:5432/edutrace_bf
+
+          campo() {
+            psql "$bf_url" -tA -c "SELECT $1 FROM \"User\" WHERE email = '$2'"
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_bf'
+
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$fila" ]; then
+              break
+            fi
+            if ! psql "$bf_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou ao ser aplicada antes do backfill."
+              exit 1
+            fi
+          done
+
+          psql "$bf_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"Level\" (id, name, updated_at) VALUES (2, 'Estudante/Família', now()), (3, 'Profissional da Educação', now()); INSERT INTO \"CurrentPhases\" (id, name, updated_at) VALUES (1, 'Triagem', now()); INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, created_at, updated_at) VALUES ('Estudante antigo', '11111111111', 'estudante.antigo@example.test', 'x', 2, 1, '2026-03-15 10:20:30.123', now()), ('Profissional antigo', '22222222222', 'profissional.antigo@example.test', 'x', 3, 1, '2026-03-16 09:00:00', now())"
+
+          if ! psql "$bf_url" -q -v ON_ERROR_STOP=1 -f "prisma/migrations/$fila/migration.sql" > /dev/null; then
+            echo "ERRO: a migration $fila falhou num banco que já tem estudantes."
+            exit 1
+          fi
+
+          estudante=estudante.antigo@example.test
+          profissional=profissional.antigo@example.test
+
+          if [ "$(campo service_status "$estudante")" != "WAITING" ]; then
+            echo "ERRO: o estudante existente terminou com service_status='$(campo service_status "$estudante")'; o esperado é WAITING."
+            exit 1
+          fi
+          if [ "$(campo "to_char(queued_at, 'YYYY-MM-DD HH24:MI:SS.MS')" "$estudante")" != "2026-03-15 10:20:30.123" ]; then
+            echo "ERRO: o queued_at do estudante existente é '$(campo queued_at "$estudante")'; o esperado é o created_at dele, 2026-03-15 10:20:30.123."
+            exit 1
+          fi
+          if [ "$(campo "service_status IS NULL AND queued_at IS NULL" "$profissional")" != "t" ]; then
+            echo "ERRO: o profissional recebeu status de atendimento ('$(campo service_status "$profissional")'); só o nível Estudante/Família entra na fila."
+            exit 1
+          fi
+
+          echo "OK: a migration coloca o estudante existente na fila como WAITING com queued_at igual ao created_at e não toca no profissional."
+
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
 # --------------------------------------------------------------------
