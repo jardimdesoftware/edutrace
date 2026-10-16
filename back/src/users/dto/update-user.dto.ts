@@ -7,10 +7,13 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateIf,
 } from 'class-validator';
 import { LEVELS } from 'src/constants';
+import { SERVICE_CAPACITY_MAX, SERVICE_CAPACITY_MIN } from '../service-queue';
 import {
   COURSE_MAX_LENGTH,
   COURSE_PATTERN,
@@ -20,9 +23,10 @@ import {
   trimText,
 } from './student-fields';
 
-// UsersService.update grava só o nome, o nível, a matrícula e o curso. O DTO
-// declara só esses campos, para que e-mail, CPF e os demais campos do cadastro
-// sejam recusados com 400, e não aceitos com 200 sem alterar nada.
+// UsersService.update grava só o nome, o nível, a matrícula, o curso e o limite
+// de atendimentos. O DTO declara só esses campos, para que e-mail, CPF e os
+// demais campos do cadastro sejam recusados com 400, e não aceitos com 200 sem
+// alterar nada.
 export class UpdateUserDto {
   @ApiProperty({
     description: 'Nome do usuário',
@@ -79,4 +83,22 @@ export class UpdateUserDto {
     message: 'O campo course não deve ter caracteres de controle.',
   })
   course?: string;
+
+  @ApiProperty({
+    description:
+      'Limite de estudantes que o Profissional NAPNE atende ao mesmo tempo. Só para conta de nível Profissional NAPNE. Reduzir abaixo da quantidade em atendimento vale para as novas atribuições, e ninguém é desatribuído.',
+    example: 5,
+    required: false,
+    minimum: SERVICE_CAPACITY_MIN,
+    maximum: SERVICE_CAPACITY_MAX,
+  })
+  @ValidateIf((dto: UpdateUserDto) => dto.service_capacity !== undefined)
+  @IsInt({ message: 'O campo service_capacity deve ser um inteiro.' })
+  @Min(SERVICE_CAPACITY_MIN, {
+    message: `O campo service_capacity deve ser no mínimo ${SERVICE_CAPACITY_MIN}.`,
+  })
+  @Max(SERVICE_CAPACITY_MAX, {
+    message: `O campo service_capacity deve ser no máximo ${SERVICE_CAPACITY_MAX}.`,
+  })
+  service_capacity?: number;
 }

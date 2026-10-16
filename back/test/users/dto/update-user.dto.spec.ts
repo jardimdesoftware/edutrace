@@ -110,3 +110,28 @@ describe('UpdateUserDto, matrícula e curso', () => {
     await expect(validate({ course })).resolves.toEqual({ course });
   });
 });
+
+// O Administrador define o limite de atendimentos do Profissional NAPNE. O DTO
+// confere o formato; saber se a conta é de nível 5 fica no UsersService.
+describe('UpdateUserDto, service_capacity', () => {
+  it.each([0, 1, 3, 200])('should accept %s', async (service_capacity) => {
+    await expect(validate({ service_capacity })).resolves.toEqual({
+      service_capacity,
+    });
+  });
+
+  it('should accept a body without service_capacity', async () => {
+    await expect(validate({ full_name: 'Nome' })).resolves.toEqual({
+      full_name: 'Nome',
+    });
+  });
+
+  it.each([-1, 201, 1000, 1.5, '3', null, true, 'abc'])(
+    'should refuse %p with 400',
+    async (service_capacity) => {
+      await expect(validate({ service_capacity })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    },
+  );
+});
