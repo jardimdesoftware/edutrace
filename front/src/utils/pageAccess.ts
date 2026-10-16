@@ -2,11 +2,18 @@ import {
   ADMIN,
   ESTUDANTE,
   PROFISSIONAL_EDUCACAO,
+  PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
 } from "@/consts";
 
 const ANY_LEVEL = "any";
-const TODOS = [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE];
+const TODOS = [
+  ADMIN,
+  ESTUDANTE,
+  PROFISSIONAL_EDUCACAO,
+  PROFISSIONAL_SAUDE,
+  PROFISSIONAL_NAPNE,
+];
 
 // Níveis que atendem estudantes: listam e visualizam qualquer estudante e
 // escrevem anotações, como GET /students e POST /comments no back.
@@ -14,6 +21,7 @@ export const NIVEIS_PROFISSIONAIS: readonly number[] = [
   ADMIN,
   PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_SAUDE,
+  PROFISSIONAL_NAPNE,
 ];
 
 // Níveis que podem abrir cada página autenticada, com as mesmas regras do
@@ -25,11 +33,11 @@ const PAGE_LEVELS: Record<string, readonly number[] | typeof ANY_LEVEL> = {
   "/alterar-dados": ANY_LEVEL,
   "/completar-cadastro": ANY_LEVEL,
   "/triagem": TODOS,
-  "/anamnese": TODOS,
+  "/anamnese": [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE],
   "/pei": TODOS,
   "/comentarios": TODOS,
   "/estudantes/visualizar": NIVEIS_PROFISSIONAIS,
-  "/editar-triagem": [ADMIN, PROFISSIONAL_SAUDE],
+  "/editar-triagem": [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
   "/editar-anamnese": [ADMIN, PROFISSIONAL_SAUDE],
   "/editar-pei": [ADMIN, PROFISSIONAL_EDUCACAO],
   "/admin": [ADMIN],
