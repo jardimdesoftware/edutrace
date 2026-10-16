@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { createUserByAdmin } from "@/services/auth/login";
 import { useAuth } from "@/contexts/AuthContext";
-import { ADMIN } from "@/consts";
 import TermoConsentimento from "@/components/TermoConsentimento";
 import Loading from "@/components/Loading";
 import {
@@ -18,14 +17,10 @@ import {
 } from "@/components/auth/AuthFields";
 import { buildRegisterData } from "@/utils/registerForm";
 import { EMAIL_PATTERN } from "@/utils/emailPattern";
+import { niveisDoCadastro } from "@/utils/niveisDoCadastro";
+import { canAccessPage } from "@/utils/pageAccess";
 
-const NIVEIS = [
-  { value: "1", label: "Administrador" },
-  { value: "2", label: "Pais/Responsáveis e Estudante" },
-  { value: "3", label: "Profissional da Educação" },
-  { value: "4", label: "Profissional da Saúde" },
-  { value: "5", label: "Profissional NAPNE" },
-];
+const ROTA_CADASTRO = "/admin/usuarios/cadastro";
 
 export default function AdminUserCreatePageWrapper() {
   return (
@@ -44,15 +39,17 @@ function AdminUserCreatePage() {
   });
   const router = useRouter();
   const { user, loading } = useAuth();
+  const podeCadastrar = !!user && canAccessPage(ROTA_CADASTRO, user.id_level);
+  const niveis = niveisDoCadastro(user?.id_level);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [mostrarTermos, setMostrarTermos] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (!loading && user?.id_level !== ADMIN) {
+    if (!loading && !podeCadastrar) {
       router.push("/home");
     }
-  }, [loading, router, user]);
+  }, [loading, podeCadastrar, router]);
 
   const setCampo = (campo: keyof typeof formData) => (valor: string) =>
     setFormData((atual) => ({ ...atual, [campo]: valor }));
@@ -113,7 +110,7 @@ function AdminUserCreatePage() {
     }
   };
 
-  if (loading || !user || user.id_level !== ADMIN) {
+  if (loading || !podeCadastrar) {
     return <Loading />;
   }
 
@@ -163,8 +160,9 @@ function AdminUserCreatePage() {
                   Cadastrar pessoas
                 </h1>
                 <p className="mt-2.5 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
-                  Crie a conta e defina o nível de acesso. A pessoa recebe por
-                  e-mail um link para definir a própria senha.
+                  {niveis.length > 1
+                    ? "Crie a conta e defina o nível de acesso. A pessoa recebe por e-mail um link para definir a própria senha."
+                    : "Crie a conta do estudante. A pessoa recebe por e-mail um link para definir a própria senha."}
                 </p>
 
                 <div className="mt-4 space-y-2.5 sm:mt-7 sm:space-y-4">
@@ -210,19 +208,25 @@ function AdminUserCreatePage() {
                         alt=""
                         className="mr-3 h-[20px] w-[20px] opacity-80"
                       />
-                      <select
-                        name="id_level"
-                        required
-                        value={formData.id_level}
-                        onChange={(e) => setCampo("id_level")(e.target.value)}
-                        className={fieldInputClass}
-                      >
-                        {NIVEIS.map((nivel) => (
-                          <option key={nivel.value} value={nivel.value}>
-                            {nivel.label}
-                          </option>
-                        ))}
-                      </select>
+                      {niveis.length === 1 ? (
+                        <output className={`${fieldInputClass} flex items-center`}>
+                          <span className="min-w-0 truncate">{niveis[0].label}</span>
+                        </output>
+                      ) : (
+                        <select
+                          name="id_level"
+                          required
+                          value={formData.id_level}
+                          onChange={(e) => setCampo("id_level")(e.target.value)}
+                          className={fieldInputClass}
+                        >
+                          {niveis.map((nivel) => (
+                            <option key={nivel.value} value={nivel.value}>
+                              {nivel.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </span>
                   </label>
                 </div>
