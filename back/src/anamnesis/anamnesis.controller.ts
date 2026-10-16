@@ -19,28 +19,19 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 export class AnamnesisController {
   constructor(private readonly anamnesisService: AnamnesisService) {}
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Post()
   create(@Body() createAnamnesisDto: CreateAnamnesisDto) {
     return this.anamnesisService.create(createAnamnesisDto);
   }
 
-  @AllowLevels(
-    LEVELS.ADMIN,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Get()
   findAll() {
     return this.anamnesisService.findAll();
   }
 
-  @AllowLevels(
-    LEVELS.ADMIN,
-    LEVELS.ALUNO_ESTUDANTE,
-    LEVELS.PROFISSIONAL_EDUCACAO,
-    LEVELS.PROFISSIONAL_SAUDE,
-  )
+  @AllowLevels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_NAPNE)
   @Get(':email')
   findOne(
     @Param('email') email: string,
@@ -49,7 +40,7 @@ export class AnamnesisController {
     return this.anamnesisService.findOne(email, request);
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Patch(':email')
   update(
     @Param('email') email: string,
@@ -58,7 +49,7 @@ export class AnamnesisController {
     return this.anamnesisService.update(email, updateAnamnesisDto);
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Delete(':email')
   remove(@Param('email') email: string) {
     return this.anamnesisService.remove(email);
