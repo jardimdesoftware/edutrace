@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { createHash } from 'node:crypto';
 import { PrismaService } from 'src/database/prisma.service';
-import { ConflictException, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { MailService } from 'src/mail/mail.service';
@@ -262,6 +262,49 @@ describe('UsersService', () => {
         }),
       );
     });
+
+    describe('matrícula e curso', () => {
+      const studentFields = {
+        enrollment_number: '20261TADS0012',
+        course: 'Análise e Desenvolvimento de Sistemas',
+      };
+
+      it('should store the matrícula and the course of the student', async () => {
+        await service.create({ ...createDto, ...studentFields } as any);
+
+        expect(createdData()).toMatchObject(studentFields);
+      });
+
+      it.each([
+        [{ enrollment_number: studentFields.enrollment_number }],
+        [{ course: studentFields.course }],
+        [studentFields],
+      ])(
+        'should answer 400 and create nothing when a level other than student sends %p',
+        async (fields) => {
+          await expect(
+            service.create({
+              ...createDto,
+              id_level: LEVELS.PROFISSIONAL_SAUDE,
+              ...fields,
+            } as any),
+          ).rejects.toBeInstanceOf(BadRequestException);
+
+          expect(prisma.user.create).not.toHaveBeenCalled();
+          expect(mailService.sendAccountActivationLink).not.toHaveBeenCalled();
+        },
+      );
+
+      it('should answer 400 for the administrator level too', async () => {
+        await expect(
+          service.create({
+            ...createDto,
+            id_level: LEVELS.ADMIN,
+            ...studentFields,
+          } as any),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+    });
   });
 
   describe('findByActivationToken', () => {
@@ -484,6 +527,16 @@ describe('UsersService', () => {
       );
     });
 
+    it('should answer 409 when the matrícula is already taken', async () => {
+      jest
+        .spyOn(prisma.user, 'create')
+        .mockRejectedValue(uniqueViolation('User_enrollment_number_key'));
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        new ConflictException('Esta matrícula já está cadastrada.'),
+      );
+    });
+
     // Sem o nome do índice (o adapter só preenche fields quando o driver não
     // devolve a constraint) e no formato antigo do Prisma, com meta.target.
     it.each([
@@ -491,10 +544,10 @@ describe('UsersService', () => {
         'fields do driver adapter',
         {
           driverAdapterError: {
-            cause: { constraint: { fields: ['cpf'] } },
+            cause: { constraint: { fields: ['enrollment_number'] } },
           },
         },
-        'Este CPF já está cadastrado.',
+        'Esta matrícula já está cadastrada.',
       ],
       [
         'meta.target do Prisma sem adapter',
@@ -542,6 +595,128 @@ describe('UsersService', () => {
       jest.spyOn(prisma.user, 'create').mockRejectedValue(erroQualquer);
 
       await expect(service.create(createDto as any)).rejects.toThrow(
+        erroQualquer,
+      );
+    });
+  });
+
+  describe('update, matrícula e curso', () => {
+    const fields = {
+      enrollment_number: '20261TADS0012',
+      course: 'Análise e Desenvolvimento de Sistemas',
+    };
+
+    function currentLevel(id_level: number | null) {
+      jest
+        .spyOn(prisma.user, 'findUnique')
+        .mockResolvedValue(id_level === null ? null : ({ id_level } as any));
+    }
+
+    beforeEach(() => {
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(mockUser);
+    });
+
+    it('should store the matrícula and the course of a student account', async () => {
+      currentLevel(LEVELS.ALUNO_ESTUDANTE);
+
+      await service.update('test@test.com', fields);
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        select: { id_level: true },
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        select: PUBLIC_USER_SELECT,
+        where: { email: 'test@test.com' },
+        data: expect.objectContaining(fields),
+      });
+    });
+
+    it('should accept one of the fields alone', async () => {
+      currentLevel(LEVELS.ALUNO_ESTUDANTE);
+
+      await service.update('test@test.com', { course: 'ADS' });
+
+      const { data } = (prisma.user.update as jest.Mock).mock.calls[0][0];
+      expect(data.course).toBe('ADS');
+      expect(data.enrollment_number).toBeUndefined();
+    });
+
+    it.each([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ])('should answer 400 for an account of the level %s', async (level) => {
+      currentLevel(level);
+
+      await expect(
+        service.update('test@test.com', fields),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 400 when the same request moves the account to another level', async () => {
+      await expect(
+        service.update('test@test.com', {
+          ...fields,
+          id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should accept the fields when the same request makes the account a student', async () => {
+      await service.update('test@test.com', {
+        ...fields,
+        id_level: LEVELS.ALUNO_ESTUDANTE,
+      });
+
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            ...fields,
+            id_level: LEVELS.ALUNO_ESTUDANTE,
+          }),
+        }),
+      );
+    });
+
+    it('should not look the level up when the request has no matrícula nor course', async () => {
+      await service.update('test@test.com', { full_name: 'Novo Nome' });
+
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should leave a missing account to the update itself', async () => {
+      currentLevel(null);
+
+      await service.update('ninguem@test.com', fields);
+
+      expect(prisma.user.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('should answer 409 when the matrícula belongs to another student', async () => {
+      currentLevel(LEVELS.ALUNO_ESTUDANTE);
+      jest
+        .spyOn(prisma.user, 'update')
+        .mockRejectedValue(uniqueViolation('User_enrollment_number_key'));
+
+      await expect(service.update('test@test.com', fields)).rejects.toThrow(
+        new ConflictException('Esta matrícula já está cadastrada.'),
+      );
+    });
+
+    it('should propagate errors that are not a unique violation', async () => {
+      const erroQualquer = new Error('conexão perdida');
+      currentLevel(LEVELS.ALUNO_ESTUDANTE);
+      jest.spyOn(prisma.user, 'update').mockRejectedValue(erroQualquer);
+
+      await expect(service.update('test@test.com', fields)).rejects.toThrow(
         erroQualquer,
       );
     });
