@@ -51,6 +51,8 @@ describe('AuthService', () => {
     locked_until: null,
     login_lock_count: 0,
     google_sub: null,
+    enrollment_number: null,
+    course: null,
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
