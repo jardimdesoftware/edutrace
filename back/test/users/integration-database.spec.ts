@@ -1,8 +1,10 @@
 import { requireIntegrationDatabaseUrl } from './integration-database';
 
-// O spec de integração apaga a tabela User inteira. Esta guarda é a única
-// coisa entre um INTEGRATION_DATABASE_URL apontado para o banco errado e a
-// perda dos usuários dele.
+// Os specs de integração gravam e apagam dados no banco do
+// INTEGRATION_DATABASE_URL (cada um apaga as contas do próprio domínio de
+// e-mail). O banco precisa ser descartável, e esta guarda é a única coisa
+// entre um INTEGRATION_DATABASE_URL apontado para o banco errado e a gravação
+// e a exclusão de dados nele.
 describe('requireIntegrationDatabaseUrl', () => {
   it.each([
     'postgresql://test:test@localhost:5432/edutrace_it',
@@ -42,7 +44,7 @@ describe('requireIntegrationDatabaseUrl', () => {
         'postgresql://test:test@localhost:5432/testdb',
       ),
     ).toThrow(
-      'O nome do banco precisa terminar em "_it", porque o spec apaga todos os usuários dele.',
+      'O nome do banco precisa terminar em "_it", porque os specs de integração gravam e apagam dados nele.',
     );
   });
 
