@@ -24,7 +24,7 @@ const NIVEL_CRIADO_PELO_ADMIN = 7;
 // Página e níveis que podem abri-la, na regra atual de perfis.
 const MATRIZ: [string, number[]][] = [
   ["/triagem", TODOS],
-  ["/anamnese", [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]],
+  ["/anamnese", [ESTUDANTE, PROFISSIONAL_NAPNE]],
   ["/pei", TODOS],
   ["/comentarios", TODOS],
   [
@@ -32,7 +32,7 @@ const MATRIZ: [string, number[]][] = [
     [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
   ],
   ["/editar-triagem", [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
-  ["/editar-anamnese", [ADMIN, PROFISSIONAL_SAUDE]],
+  ["/editar-anamnese", [PROFISSIONAL_NAPNE]],
   ["/editar-pei", [ADMIN, PROFISSIONAL_EDUCACAO]],
   ["/admin/usuarios/cadastro", [ADMIN, PROFISSIONAL_NAPNE]],
 ];

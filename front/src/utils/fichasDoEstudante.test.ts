@@ -9,6 +9,7 @@ import {
 } from "../consts";
 
 const ROTULOS = ["Triagem", "Anamnese", "Anotações Multiprofissionais", "PEI"];
+const ROTULOS_SEM_ANAMNESE = ["Triagem", "Anotações Multiprofissionais", "PEI"];
 const NIVEL_CRIADO_PELO_ADMIN = 7;
 
 describe("fichasDoEstudante", () => {
@@ -17,24 +18,24 @@ describe("fichasDoEstudante", () => {
     ["education professional", PROFISSIONAL_EDUCACAO],
     ["health professional", PROFISSIONAL_SAUDE],
   ] as const) {
-    it(`gives the ${nome} the four cards`, () => {
+    it(`does not give the ${nome} the anamnesis card, whose page the middleware denies`, () => {
       assert.deepEqual(
         fichasDoEstudante(nivel).map((ficha) => ficha.label),
-        ROTULOS,
+        ROTULOS_SEM_ANAMNESE,
       );
     });
   }
 
-  it("does not give the NAPNE professional the anamnesis card, whose page the middleware denies", () => {
+  it("gives the NAPNE professional the four cards", () => {
     assert.deepEqual(
       fichasDoEstudante(PROFISSIONAL_NAPNE).map((ficha) => ficha.label),
-      ["Triagem", "Anotações Multiprofissionais", "PEI"],
+      ROTULOS,
     );
   });
 
   it("keeps the route of each card", () => {
     assert.deepEqual(
-      fichasDoEstudante(ADMIN).map((ficha) => ficha.rota),
+      fichasDoEstudante(PROFISSIONAL_NAPNE).map((ficha) => ficha.rota),
       ["/triagem", "/anamnese", "/comentarios", "/pei"],
     );
   });
