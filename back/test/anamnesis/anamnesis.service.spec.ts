@@ -840,23 +840,24 @@ describe('AnamnesisService', () => {
       expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
     });
 
-    it("should throw ForbiddenException if the NAPNE level views another student's anamnesis", async () => {
+    it("should allow the NAPNE level to read any student's anamnesis", async () => {
+      const email = 'other@example.com';
       const request = {
         user: {
           email: 'napne@example.com',
           id_level: LEVELS.PROFISSIONAL_NAPNE,
         },
       } as any;
+      const anamnesis = { id: 1, email } as any;
+      jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(anamnesis);
 
-      await expect(
-        service.findOne('other@example.com', request),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Você não tem permissão para visualizar esta anamnese',
-        ),
-      );
-      expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
-      expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
+      const result = await service.findOne(email, request);
+
+      expect(studentsService.findOneOrFail).toHaveBeenCalledWith({ email });
+      expect(prisma.anamnesis.findUnique).toHaveBeenCalledWith({
+        where: { email },
+      });
+      expect(result).toEqual(anamnesis);
     });
 
     it.each([
@@ -864,21 +865,21 @@ describe('AnamnesisService', () => {
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
     ])(
-      'should allow level %s to read any student anamnesis',
+      "should throw ForbiddenException if level %s views another student's anamnesis",
       async (id_level) => {
-        const email = 'other@example.com';
         const request = {
           user: { email: 'professional@example.com', id_level },
         } as any;
-        const anamnesis = { id: 1, email } as any;
-        jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(anamnesis);
 
-        const result = await service.findOne(email, request);
-
-        expect(prisma.anamnesis.findUnique).toHaveBeenCalledWith({
-          where: { email },
-        });
-        expect(result).toEqual(anamnesis);
+        await expect(
+          service.findOne('other@example.com', request),
+        ).rejects.toThrow(
+          new ForbiddenException(
+            'Você não tem permissão para visualizar esta anamnese',
+          ),
+        );
+        expect(prisma.anamnesis.findUnique).not.toHaveBeenCalled();
+        expect(studentsService.findOneOrFail).not.toHaveBeenCalled();
       },
     );
   });
@@ -990,9 +991,9 @@ describe('AnamnesisService', () => {
       const request = {
         user: {
           sub: 3,
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
-          email: 'saude@example.com',
-          name: 'Saúde',
+          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          email: 'napne@example.com',
+          name: 'NAPNE',
         },
       } as unknown as AuthenticatedRequest;
 
