@@ -24,6 +24,7 @@ export class CommentsController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @ApiBody({
     type: CreateCommentDto,
@@ -50,6 +51,7 @@ export class CommentsController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @ApiBody({
     type: UpdateCommentDto,
@@ -69,6 +71,7 @@ export class CommentsController {
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get(':id_user')
   findAllByIdUser(

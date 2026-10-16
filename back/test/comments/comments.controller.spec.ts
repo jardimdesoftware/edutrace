@@ -163,11 +163,12 @@ describe('CommentsController', () => {
           LEVELS.ADMIN,
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
+          LEVELS.PROFISSIONAL_NAPNE,
         ]);
       },
     );
 
-    it('should open findAllByIdUser to the four levels, relying on the ownership check', () => {
+    it('should open findAllByIdUser to every level, relying on the ownership check', () => {
       const levels = Reflect.getMetadata(
         ALLOW_LEVELS_KEY,
         controller.findAllByIdUser,
@@ -178,6 +179,7 @@ describe('CommentsController', () => {
         LEVELS.ALUNO_ESTUDANTE,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
     });
   });
