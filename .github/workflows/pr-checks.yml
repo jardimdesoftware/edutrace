@@ -269,6 +269,47 @@ jobs:
 
           echo "OK: a migration move para um id livre o nível que já estava no id 5, mesmo chamado Profissional NAPNE, com seus usuários, e o seed grava o Profissional NAPNE no id 5."
 
+      # Os testes unitários mockam o Prisma e só provam o que o mock devolve. Os
+      # specs *.integration.spec.ts rodam contra um PostgreSQL de verdade, e só
+      # quando INTEGRATION_DATABASE_URL existe: o passo "Rodar testes" roda
+      # antes, sem a variável, e pula todos. O banco é um edutrace_it à parte,
+      # só com as migrations, para que as linhas dos specs não se misturem com o
+      # seed e as fixtures que os passos acima deixaram no testdb. O primeiro
+      # caso coberto é o erro P2002 do @prisma/adapter-pg, que não traz
+      # meta.target e decide as mensagens de CPF, e-mail e matrícula repetidos.
+      # O jest sai com 0 quando pula os specs, e um passo que pula tudo passaria
+      # sem provar nada: por isso o resultado vai para um JSON, e o passo falha
+      # se algum teste ficou pulado ou se nenhum passou. O padrão do jest termina
+      # em .integration.spec.ts para não pegar integration-database.spec.ts, o
+      # teste unitário da guarda que recusa bancos cujo nome não termina em _it.
+      - name: Testes de integração com o PostgreSQL
+        working-directory: ./back
+        run: |
+          integration_url=postgresql://test:test@localhost:5432/edutrace_it
+          resultado="${RUNNER_TEMP:-/tmp}/integration-result.json"
+
+          contagem() {
+            node -e 'console.log(require(process.argv[1])[process.argv[2]])' "$resultado" "$1"
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_it'
+          DATABASE_URL="$integration_url" npx prisma migrate deploy
+          INTEGRATION_DATABASE_URL="$integration_url" npx jest --ci --json --outputFile="$resultado" '\.integration\.spec\.ts$'
+
+          pulados=$(contagem numPendingTests)
+          aprovados=$(contagem numPassedTests)
+
+          if [ "$pulados" != "0" ]; then
+            echo "ERRO: $pulados teste(s) de integração ficaram pulados; o jest saiu com 0 sem rodar o spec contra o PostgreSQL."
+            exit 1
+          fi
+          if [ "$aprovados" = "0" ] || [ "$aprovados" = "undefined" ]; then
+            echo "ERRO: nenhum teste de integração passou; o padrão do jest não achou o spec ou ele não executou."
+            exit 1
+          fi
+
+          echo "OK: $aprovados teste(s) de integração passaram contra o PostgreSQL e nenhum ficou pulado."
+
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
 # --------------------------------------------------------------------
