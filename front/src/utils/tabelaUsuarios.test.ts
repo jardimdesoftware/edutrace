@@ -5,6 +5,7 @@ import {
   ADMIN,
   ESTUDANTE,
   PROFISSIONAL_EDUCACAO,
+  PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
 } from '../consts';
 
@@ -40,6 +41,7 @@ describe('listarUsuariosDaTabela', () => {
   for (const [nome, nivel] of [
     ['education professional', PROFISSIONAL_EDUCACAO],
     ['health professional', PROFISSIONAL_SAUDE],
+    ['NAPNE professional', PROFISSIONAL_NAPNE],
     ['student', ESTUDANTE],
   ] as const) {
     it(`lists only the students for the ${nome}`, async () => {
@@ -65,6 +67,7 @@ describe('podeExportarRelatorio', () => {
     ['administrator', ADMIN],
     ['education professional', PROFISSIONAL_EDUCACAO],
     ['health professional', PROFISSIONAL_SAUDE],
+    ['NAPNE professional', PROFISSIONAL_NAPNE],
   ] as const) {
     it(`denies the report for the ${nome}, who has no report`, () => {
       assert.equal(podeExportarRelatorio({ id_level: nivel }), false);
