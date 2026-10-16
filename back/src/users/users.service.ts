@@ -19,6 +19,11 @@ import {
 import { Prisma } from '@prisma/client';
 import { PUBLIC_USER_SELECT } from './users.select';
 
+const UNIQUE_FIELD_MESSAGES = [
+  { field: 'cpf', message: 'Este CPF já está cadastrado.' },
+  { field: 'email', message: 'Este e-mail já está cadastrado.' },
+] as const;
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -101,23 +106,42 @@ export class UsersService {
     );
   }
 
+  // Com o @prisma/adapter-pg (Prisma 7) o P2002 não traz meta.target: a
+  // constraint violada vem pelo nome do índice (User_cpf_key) em
+  // meta.driverAdapterError.cause.constraint.index, ou pelas colunas em
+  // constraint.fields quando o driver não informa o índice. O meta.target do
+  // Prisma sem adapter continua sendo lido. Sem esta leitura, CPF e e-mail
+  // repetidos caíam na mensagem genérica.
+  private violatedConstraints(
+    error: Prisma.PrismaClientKnownRequestError,
+  ): unknown[] {
+    const meta = error.meta as
+      | {
+          target?: unknown;
+          driverAdapterError?: {
+            cause?: { constraint?: { index?: unknown; fields?: unknown } };
+          };
+        }
+      | undefined;
+    const constraint = meta?.driverAdapterError?.cause?.constraint;
+
+    return [meta?.target, constraint?.fields, constraint?.index].flat();
+  }
+
   private duplicateFieldError(error: unknown): ConflictException | null {
     if (!this.isUniqueViolation(error)) {
       return null;
     }
 
-    const target = error.meta?.target;
-    const fields = Array.isArray(target) ? target : [target];
+    const violated = this.violatedConstraints(error);
+    const duplicate = UNIQUE_FIELD_MESSAGES.find(
+      ({ field }) =>
+        violated.includes(field) || violated.includes(`User_${field}_key`),
+    );
 
-    if (fields.includes('cpf')) {
-      return new ConflictException('Este CPF já está cadastrado.');
-    }
-
-    if (fields.includes('email')) {
-      return new ConflictException('Este e-mail já está cadastrado.');
-    }
-
-    return new ConflictException('Registro já cadastrado.');
+    return new ConflictException(
+      duplicate?.message ?? 'Registro já cadastrado.',
+    );
   }
 
   async findAll() {
