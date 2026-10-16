@@ -29,17 +29,21 @@ import { stressOptions } from '../../config/options.js';
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
+const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
+const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
 // Mais permissivo — queremos ver onde a API começa a falhar
 export const options = stressOptions;
 
 export function setup() {
   const token = getToken(BASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
-  return { token };
+  const napneToken = getToken(BASE_URL, NAPNE_EMAIL, NAPNE_PASSWORD);
+  return { token, napneToken };
 }
 
 export default function (data) {
   const headers = authHeaders(data.token);
+  const napneHeaders = authHeaders(data.napneToken);
 
   // ─── Endpoints de leitura (maior impacto sob stress) ──────────────────────
   group('Stress - Screenings List', () => {
@@ -53,7 +57,7 @@ export default function (data) {
   sleep(0.2);
 
   group('Stress - Anamnesis List', () => {
-    const res = http.get(`${BASE_URL}/anamnesis`, { headers });
+    const res = http.get(`${BASE_URL}/anamnesis`, { headers: napneHeaders });
     check(res, {
       '[stress][anamnesis] status 200': (r) => r.status === 200,
       '[stress][anamnesis] < 1000ms': (r) => r.timings.duration < 1000,
