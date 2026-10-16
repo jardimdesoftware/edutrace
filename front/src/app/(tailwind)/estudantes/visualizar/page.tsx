@@ -11,6 +11,8 @@ import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { fichasDoEstudante } from "@/utils/fichasDoEstudante";
 import { useAuth } from "@/contexts/AuthContext";
 
+const NAO_INFORMADO = "Não informado";
+
 function Card({ label, url }: { label: string, url: string }) {
   const router = useRouter();
 
@@ -39,6 +41,8 @@ function VisualizarEstudante() {
   const cpf = registro?.cpf;
   const email = registro?.email;
   const responsavel = registro?.pedagogical_manager;
+  const matricula = registro?.enrollment_number || NAO_INFORMADO;
+  const curso = registro?.course || NAO_INFORMADO;
   const nivelAcesso = registro?.id_level;
 
   function getLevelName(id_level?: number) {
@@ -70,6 +74,8 @@ function VisualizarEstudante() {
             <p><span className="font-semibold">Nome:</span> {nome}</p>
             <p><span className="font-semibold">CPF:</span> {cpf}</p>
             <p className="break-all"><span className="font-semibold">E-mail:</span> {email}</p>
+            <p><span className="font-semibold">Matrícula:</span> {matricula}</p>
+            <p><span className="font-semibold">Curso:</span> {curso}</p>
             <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavel || "Responsável não atribuído"}</p>
             <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(nivelAcesso)}</p>
           </div>
@@ -81,6 +87,8 @@ function VisualizarEstudante() {
                   <th className="p-3 text-left">Nome</th>
                   <th className="p-3 text-left">CPF</th>
                   <th className="p-3 text-left">E-mail</th>
+                  <th className="p-3 text-left">Matrícula</th>
+                  <th className="p-3 text-left">Curso</th>
                   <th className="p-3 text-left">Responsável Pedagógico</th>
                   <th className="p-3 text-left">Nível de Acesso</th>
                 </tr>
@@ -90,6 +98,8 @@ function VisualizarEstudante() {
                   <td className="p-3">{nome}</td>
                   <td className="p-3">{cpf}</td>
                   <td className="p-3">{email}</td>
+                  <td className="p-3">{matricula}</td>
+                  <td className="p-3">{curso}</td>
                   <td className="p-3">{responsavel || "Responsável não atribuído"}</td>
                   <td className="p-3">{getLevelName(nivelAcesso)}</td>
                 </tr>
