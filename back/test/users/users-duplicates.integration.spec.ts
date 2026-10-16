@@ -12,8 +12,10 @@ import { requireIntegrationDatabaseUrl } from './integration-database';
 // então o npm test comum pula este arquivo. Os testes unitários mockam o
 // Prisma e só provam o que o mock devolve: o formato do erro P2002 que o
 // @prisma/adapter-pg produz de verdade só aparece com um banco de verdade.
-// O spec apaga a tabela User inteira, então o beforeAll recusa rodar num banco
-// cujo nome não termine em "_it".
+// O spec apaga as contas do domínio de e-mail dele, e nunca a tabela inteira:
+// os specs de integração rodam em paralelo no mesmo banco, e apagar tudo
+// removeria as contas de um spec que está no meio do teste. O beforeAll recusa
+// rodar num banco cujo nome não termine em "_it".
 const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
 
 (integrationDatabaseUrl ? describe : describe.skip)(
@@ -63,8 +65,15 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
       service = module.get(UsersService);
     });
 
+    const deleteFixtures = () =>
+      prisma.user.deleteMany({
+        where: { email: { endsWith: '@edutrace.test' } },
+      });
+
     afterAll(async () => {
-      await prisma?.user.deleteMany();
+      if (prisma) {
+        await deleteFixtures();
+      }
       await prisma?.$disconnect();
 
       if (originalDatabaseUrl === undefined) {
@@ -80,26 +89,25 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
     });
 
     // O banco do job nasce só com as migrations, sem o seed: o nível e a fase
-    // que a criação de usuário referencia precisam existir.
+    // que a criação de usuário referencia precisam existir. Os specs de
+    // integração rodam em paralelo num banco novo, e dois upserts do mesmo nível
+    // disputariam a inserção (Level_pkey). O createMany com skipDuplicates é um
+    // INSERT ... ON CONFLICT DO NOTHING, que não falha para quem perde.
     beforeEach(async () => {
-      await prisma.user.deleteMany();
-      await prisma.level.upsert({
-        where: { id: LEVELS.ALUNO_ESTUDANTE },
-        update: {},
-        create: { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
+      await deleteFixtures();
+      await prisma.level.createMany({
+        data: [
+          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
+          {
+            id: LEVELS.PROFISSIONAL_EDUCACAO,
+            name: 'Profissional da Educação',
+          },
+        ],
+        skipDuplicates: true,
       });
-      await prisma.level.upsert({
-        where: { id: LEVELS.PROFISSIONAL_EDUCACAO },
-        update: {},
-        create: {
-          id: LEVELS.PROFISSIONAL_EDUCACAO,
-          name: 'Profissional da Educação',
-        },
-      });
-      await prisma.currentPhases.upsert({
-        where: { id: PHASES.TRIAGEM },
-        update: {},
-        create: { id: PHASES.TRIAGEM, name: 'Triagem' },
+      await prisma.currentPhases.createMany({
+        data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
+        skipDuplicates: true,
       });
     });
 
