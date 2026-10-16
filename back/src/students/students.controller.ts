@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { ServiceQueueService } from './service-queue.service';
+import { ServiceStatsService } from './service-stats.service';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
@@ -19,6 +20,7 @@ export class StudentsController {
   constructor(
     private readonly studentsService: StudentsService,
     private readonly serviceQueueService: ServiceQueueService,
+    private readonly serviceStatsService: ServiceStatsService,
   ) {}
 
   @AllowLevels(
@@ -30,6 +32,14 @@ export class StudentsController {
   @Get()
   async findAll() {
     return maskUsersCpf(await this.studentsService.findAll());
+  }
+
+  // Declarada antes de GET :email: o parâmetro casa com qualquer texto, e a
+  // rota que viesse depois dele seria tratada como o e-mail "service-stats".
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @Get('service-stats')
+  serviceStats() {
+    return this.serviceStatsService.getStats();
   }
 
   @AllowLevels(
