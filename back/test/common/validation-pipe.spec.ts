@@ -76,6 +76,8 @@ describe('createValidationPipe', () => {
       full_name: 'Usuário de Teste',
       email: 'usuario@edutrace.com',
       cpf: '012.345.678-90',
+      enrollment_number: '20261TADS0012',
+      course: 'Análise e Desenvolvimento de Sistemas',
     });
 
     expect(result).toHaveProperty('cpf', '01234567890');
@@ -89,6 +91,8 @@ describe('createValidationPipe', () => {
         email: 'usuario@edutrace.com',
         password: 'senhaDoAdministrador',
         cpf: '012.345.678-90',
+        enrollment_number: '20261TADS0012',
+        course: 'Análise e Desenvolvimento de Sistemas',
       }),
     ).toEqual(['property password should not exist']);
   });

@@ -2,10 +2,13 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 
+// Sem id_level o cadastro cria estudante, que precisa de matrícula e curso.
 const base = {
   full_name: 'Usuário de Teste',
   email: 'usuario@edutrace.com',
   password: 'senhaSegura123',
+  enrollment_number: '20261TADS0012',
+  course: 'Análise e Desenvolvimento de Sistemas',
 };
 
 function instance(cpf: unknown) {
@@ -103,4 +106,141 @@ describe('CreateUserDto, campo email', () => {
       });
     },
   );
+});
+
+// Matrícula e curso identificam o estudante nos documentos da Resolução
+// CONSUP/IFPE nº 315/2025. A recusa de quem não é estudante e envia os campos
+// fica no UsersService (users.service.spec.ts), que também decide o nível final.
+describe('CreateUserDto, matrícula e curso do estudante', () => {
+  const student = { ...base, cpf: '01234567890' };
+
+  function invalidFields(data: object) {
+    return validateSync(plainToInstance(CreateUserDto, data)).map(
+      (error) => error.property,
+    );
+  }
+
+  it.each([undefined, null, 2])(
+    'should accept the student with id_level %p',
+    (id_level) => {
+      expect(invalidFields({ ...student, id_level })).toEqual([]);
+    },
+  );
+
+  it.each(['enrollment_number', 'course'])(
+    'should require %s when the level is student',
+    (field) => {
+      const { [field]: _omitted, ...withoutField } = student as Record<
+        string,
+        unknown
+      >;
+
+      expect(invalidFields(withoutField)).toEqual([field]);
+      expect(invalidFields({ ...withoutField, id_level: 2 })).toEqual([field]);
+      expect(invalidFields({ ...withoutField, id_level: null })).toEqual([
+        field,
+      ]);
+    },
+  );
+
+  it.each([1, 3, 4, 5])(
+    'should not require matrícula and curso for the level %s',
+    (id_level) => {
+      const { enrollment_number, course, ...withoutFields } = student;
+
+      expect(invalidFields({ ...withoutFields, id_level })).toEqual([]);
+    },
+  );
+
+  it('should trim the matrícula and keep it in upper case', () => {
+    const dto = plainToInstance(CreateUserDto, {
+      ...student,
+      enrollment_number: '  2026.1-ab/01  ',
+    });
+
+    expect(validateSync(dto)).toHaveLength(0);
+    expect(dto.enrollment_number).toBe('2026.1-AB/01');
+  });
+
+  it('should accept a matrícula with the maximum of 30 characters', () => {
+    expect(
+      invalidFields({ ...student, enrollment_number: 'A'.repeat(30) }),
+    ).toEqual([]);
+  });
+
+  it.each([
+    '',
+    '   ',
+    'AB 12',
+    'AB_12',
+    'AB@12',
+    "AB';--",
+    'MATRÍCULA1',
+    'A'.repeat(31),
+    123456,
+    ['2026'],
+  ])('should refuse the matrícula %p', (enrollment_number) => {
+    expect(invalidFields({ ...student, enrollment_number })).toEqual([
+      'enrollment_number',
+    ]);
+  });
+
+  it('should trim the course', () => {
+    const dto = plainToInstance(CreateUserDto, {
+      ...student,
+      course: '  Licenciatura em Matemática  ',
+    });
+
+    expect(validateSync(dto)).toHaveLength(0);
+    expect(dto.course).toBe('Licenciatura em Matemática');
+  });
+
+  it('should accept a course with the maximum of 150 characters', () => {
+    expect(invalidFields({ ...student, course: 'C'.repeat(150) })).toEqual([]);
+  });
+
+  it.each(['', '   ', 'C'.repeat(151), 42, ['TADS']])(
+    'should refuse the course %p',
+    (course) => {
+      expect(invalidFields({ ...student, course })).toEqual(['course']);
+    },
+  );
+
+  it('should accept a course with accents, digits and punctuation', () => {
+    expect(
+      invalidFields({
+        ...student,
+        course: 'Técnico em Informática (Integrado) - 2º ano, turno A/B',
+      }),
+    ).toEqual([]);
+  });
+
+  // Quebra de linha, tabulação, NUL, DEL e controles C1 entram na linha da
+  // tabela e na célula do CSV, e quebram o log e o documento que repetem o
+  // valor. As pontas já saem aparadas pelo trim; o que sobra é o meio.
+  it.each([
+    'Análise\nSistemas',
+    'Análise\r\nSistemas',
+    'Análise\tSistemas',
+    'Análise\u0000Sistemas',
+    'Análise\u0007',
+    'Análise\u007fSistemas',
+    'Análise\u0085Sistemas',
+  ])('should refuse the course %j with control characters', (course) => {
+    expect(invalidFields({ ...student, course })).toEqual(['course']);
+  });
+
+  it('should tell in Portuguese that the course cannot have control characters', () => {
+    const errors = validateSync(
+      plainToInstance(CreateUserDto, {
+        ...student,
+        course: 'Análise\nSistemas',
+      }),
+    );
+
+    expect(errors).toHaveLength(1);
+    expect(Object.values(errors[0].constraints ?? {})).toEqual([
+      'O campo course não deve ter caracteres de controle.',
+    ]);
+  });
 });
