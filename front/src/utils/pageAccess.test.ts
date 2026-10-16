@@ -34,7 +34,7 @@ const MATRIZ: [string, number[]][] = [
   ["/editar-triagem", [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
   ["/editar-anamnese", [ADMIN, PROFISSIONAL_SAUDE]],
   ["/editar-pei", [ADMIN, PROFISSIONAL_EDUCACAO]],
-  ["/admin/usuarios/cadastro", [ADMIN]],
+  ["/admin/usuarios/cadastro", [ADMIN, PROFISSIONAL_NAPNE]],
 ];
 
 describe("canAccessPage", () => {
@@ -57,6 +57,13 @@ describe("canAccessPage", () => {
 
   it("denies the student pages to a level created by the administrator", () => {
     assert.equal(canAccessPage("/triagem", NIVEL_CRIADO_PELO_ADMIN), false);
+  });
+
+  it("opens to the NAPNE professional only the registration page of /admin, as POST /users in the back", () => {
+    for (const pagina of ["/admin", "/admin/usuarios", "/admin/outra-pagina"]) {
+      assert.equal(canAccessPage(pagina, PROFISSIONAL_NAPNE), false, pagina);
+      assert.equal(canAccessPage(pagina, ADMIN), true, pagina);
+    }
   });
 
   it("denies a page that is not in the list to every level", () => {
