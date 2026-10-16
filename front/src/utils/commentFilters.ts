@@ -1,5 +1,10 @@
 import type { CommentData } from '../interfaces/CommentData';
-import { ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE } from '../consts';
+import {
+  ADMIN,
+  PROFISSIONAL_EDUCACAO,
+  PROFISSIONAL_NAPNE,
+  PROFISSIONAL_SAUDE,
+} from '../consts';
 
 export interface CommentFilters {
   busca: string;
@@ -22,6 +27,7 @@ export const FILTROS_VAZIOS: CommentFilters = {
 export const AREAS: { nivel: number; nome: string }[] = [
   { nivel: PROFISSIONAL_SAUDE, nome: 'Saúde' },
   { nivel: PROFISSIONAL_EDUCACAO, nome: 'Educação' },
+  { nivel: PROFISSIONAL_NAPNE, nome: 'NAPNE' },
   { nivel: ADMIN, nome: 'Administração' },
 ];
 
