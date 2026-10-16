@@ -5,6 +5,8 @@ export interface StudentData {
   email: string;
   affliation: string | null;
   pedagogical_manager: string | null;
+  enrollment_number?: string | null;
+  course?: string | null;
   created_at: string; 
   updated_at: string; 
   deleted_at: string | null;
