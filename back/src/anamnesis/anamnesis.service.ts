@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { PHASES, STUDENT_RECORD_READERS } from 'src/constants';
+import { ANAMNESIS_READERS, PHASES } from 'src/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { StudentsService } from 'src/students/students.service';
 
@@ -43,9 +43,7 @@ export class AnamnesisService {
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
-    const readsAnyStudent = STUDENT_RECORD_READERS.includes(
-      request.user.id_level,
-    );
+    const readsAnyStudent = ANAMNESIS_READERS.includes(request.user.id_level);
     const isOwnRecord = request.user.email === email;
 
     if (!readsAnyStudent && !isOwnRecord) {
