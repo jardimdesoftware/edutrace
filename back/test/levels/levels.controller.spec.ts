@@ -1,6 +1,6 @@
+import { RequestMethod } from '@nestjs/common';
+import { METHOD_METADATA } from '@nestjs/common/constants';
 import { Test, TestingModule } from '@nestjs/testing';
-import { CreateLevelDto } from 'src/levels/dto/create-level.dto';
-import { UpdateLevelDto } from 'src/levels/dto/update-level.dto';
 import { LevelsController } from 'src/levels/levels.controller';
 import { LevelsService } from 'src/levels/levels.service';
 import { LEVELS } from 'src/constants';
@@ -17,11 +17,8 @@ describe('LevelsController', () => {
         {
           provide: LevelsService,
           useValue: {
-            create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
-            update: jest.fn(),
-            remove: jest.fn(),
           },
         },
       ],
@@ -33,23 +30,6 @@ describe('LevelsController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
-  });
-
-  describe('create', () => {
-    it('should create a level', async () => {
-      const createLevelDto: CreateLevelDto = { name: 'Test Level' };
-      const result = {
-        id: 1,
-        created_at: new Date(),
-        updated_at: new Date(),
-        deleted_at: null,
-        ...createLevelDto,
-      };
-      jest.spyOn(service, 'create').mockResolvedValue(result);
-
-      expect(await controller.create(createLevelDto)).toEqual(result);
-      expect(service.create).toHaveBeenCalledWith(createLevelDto);
-    });
   });
 
   describe('findAll', () => {
@@ -94,51 +74,25 @@ describe('LevelsController', () => {
     });
   });
 
-  describe('update', () => {
-    it('should update a level', async () => {
-      const id = '1';
-      const updateLevelDto: UpdateLevelDto = { name: 'Updated Level' };
-      const result = {
-        id: 1,
-        created_at: new Date(),
-        updated_at: new Date(),
-        deleted_at: null,
-        ...updateLevelDto,
-      };
-      jest.spyOn(service, 'update').mockResolvedValue(result);
+  describe('routes', () => {
+    it('should expose only GET routes, with no write route', () => {
+      const prototype = LevelsController.prototype;
+      const methods = Object.getOwnPropertyNames(prototype)
+        .filter((name) => name !== 'constructor')
+        .map(
+          (name) =>
+            Reflect.getMetadata(METHOD_METADATA, prototype[name]) as
+              RequestMethod | undefined,
+        );
 
-      expect(await controller.update(id, updateLevelDto)).toEqual(result);
-      expect(service.update).toHaveBeenCalledWith(+id, updateLevelDto);
-    });
-  });
-
-  describe('remove', () => {
-    it('should remove a level', async () => {
-      const id = '1';
-      const result = {
-        id: 1,
-        name: 'Removed Level',
-        created_at: new Date(),
-        updated_at: new Date(),
-        deleted_at: null,
-      };
-      jest.spyOn(service, 'remove').mockResolvedValue(result);
-
-      expect(await controller.remove(id)).toEqual(result);
-      expect(service.remove).toHaveBeenCalledWith(+id);
+      expect(methods).toHaveLength(2);
+      expect(methods.every((method) => method === RequestMethod.GET)).toBe(
+        true,
+      );
     });
   });
 
   describe('access levels', () => {
-    it.each(['create', 'update', 'remove'] as const)(
-      'should restrict %s to the administrator',
-      (route) => {
-        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
-
-        expect(levels).toEqual([LEVELS.ADMIN]);
-      },
-    );
-
     it.each(['findAll', 'findOne'] as const)(
       'should open %s to the four levels',
       (route) => {
