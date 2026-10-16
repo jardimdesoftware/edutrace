@@ -181,7 +181,7 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 
 ## ⚠️ Observações Importantes
 
-1. **Triagem, anamnese e PEI**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail único por iteração e o removem no fim. O `POST /anamnesis` também atualiza `id_current_phase` do estudante.
+1. **Triagem, anamnese e PEI**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail e matrícula (`enrollment_number`) únicos por iteração, mais o curso (`course`), e o removem no fim. O cadastro de estudante exige os dois campos e responde 400 sem eles; a matrícula vem de `helpers/enrollment.js`, só com letras maiúsculas e dígitos e no máximo 30 caracteres, e o CPF de `helpers/cpf.js`. O `POST /anamnesis` também atualiza `id_current_phase` do estudante.
 
 2. **Users - Criação**: Apenas admins (`id_level: 1`) podem criar usuários. O teste `users.test.js` usa as credenciais de admin.
 
