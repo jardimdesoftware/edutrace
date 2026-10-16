@@ -155,6 +155,15 @@ describe('UsersController', () => {
         expect(levels).toEqual([LEVELS.ADMIN]);
       },
     );
+
+    it.each(['findAll', 'findOne', 'update', 'remove'] as const)(
+      'should deny %s to the NAPNE professional',
+      (route) => {
+        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
+
+        expect(levels).not.toContain(LEVELS.PROFISSIONAL_NAPNE);
+      },
+    );
   });
 
   describe('update', () => {
