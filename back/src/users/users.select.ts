@@ -20,5 +20,7 @@ export const PUBLIC_USER_SELECT = {
   id_current_phase: true,
   id_level: true,
   level: true,
+  enrollment_number: true,
+  course: true,
   updated_at: true,
 } satisfies Prisma.UserSelect;
