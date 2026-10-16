@@ -132,7 +132,7 @@ jobs:
       # Também cobre os ids fixos dos níveis (LEVELS em src/constants.ts): a
       # sequence da tabela Level é avançada antes do seed, como num banco em
       # que o autoincrement não começa em 1, e os níveis precisam terminar com
-      # os ids 1 a 4. O seed antigo, que gravava por nome, os criaria a partir
+      # os ids 1 a 5. O seed antigo, que gravava por nome, os criaria a partir
       # do 11 e reprovaria a checagem. Junto com a troca do e-mail, o nível 2 é
       # renomeado, e a execução seguinte precisa devolver o nome do código.
       - name: Smoke test do seed
@@ -184,7 +184,7 @@ jobs:
             exit 1
           fi
 
-          esperado="1:Administrador,2:Estudante/Família,3:Profissional da Educação,4:Profissional da Saúde"
+          esperado="1:Administrador,2:Estudante/Família,3:Profissional da Educação,4:Profissional da Saúde,5:Profissional NAPNE"
           if [ "$(niveis)" != "$esperado" ]; then
             echo "ERRO: os níveis terminaram como '$(niveis)'; o esperado é '$esperado'."
             exit 1
@@ -212,6 +212,62 @@ jobs:
           fi
 
           echo "OK: a migration copia o sub do CPF provisório para google_sub."
+
+      # A migration de reserva do id 5 (LEVELS.PROFISSIONAL_NAPNE) só age num
+      # banco que já tem um nível nesse id, e o banco do job nasce vazio: no
+      # migrate deploy ela não faz nada. Este passo monta, sobre o banco que já
+      # passou pelo seed, o caso mais difícil: um nível 5 anterior à mudança que
+      # já se chama Profissional NAPNE (a antiga rota PATCH /levels permitia
+      # esse nome) e tem um usuário. A migration é lida do próprio arquivo. Todo
+      # nível que já esteja no id 5 sai dele com os usuários, mesmo com esse
+      # nome, porque a autorização decide pelo id e daria a eles o acesso do
+      # NAPNE sem que ninguém o tenha concedido. O nível realocado recebe o
+      # sufixo com o próprio id, e o seed seguinte precisa gravar o NAPNE no id
+      # 5 sem colidir com o nome único e sem devolver o usuário.
+      - name: Verificar a reserva do nível 5 pela migration
+        working-directory: ./back
+        run: |
+          migration=prisma/migrations/20261016120000_reserve_level_napne/migration.sql
+          email=professor.nivel5@example.test
+
+          nivel_do_usuario() {
+            psql "$DATABASE_URL" -tA -c "SELECT l.id || '|' || l.name FROM \"User\" u JOIN \"Level\" l ON l.id = u.id_level WHERE u.email = '$email'"
+          }
+          nome_do_nivel() {
+            psql "$DATABASE_URL" -tA -c "SELECT name FROM \"Level\" WHERE id = $1"
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM \"Level\" WHERE id = 5; INSERT INTO \"Level\" (id, name, updated_at) VALUES (5, 'Profissional NAPNE', now()); INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, updated_at) VALUES ('Professor do nível 5', '98765432100', '$email', 'x', 5, (SELECT min(id) FROM \"CurrentPhases\"), now())"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+
+          if [ "$(psql "$DATABASE_URL" -tA -c 'SELECT count(*) FROM "Level" WHERE id = 5')" != "0" ]; then
+            echo "ERRO: a migration deixou um nível no id 5, reservado ao Profissional NAPNE."
+            exit 1
+          fi
+
+          nivel=$(nivel_do_usuario)
+          id_realocado="${nivel%%|*}"
+          if [ -z "$nivel" ] || [ "$id_realocado" -lt 100 ] || [ "${nivel#*|}" != "Profissional NAPNE (nível $id_realocado)" ]; then
+            echo "ERRO: o usuário do nível 5 terminou no nível '$nivel'; o esperado é um id a partir de 100 chamado 'Profissional NAPNE (nível <id>)'."
+            exit 1
+          fi
+
+          if ! npm run seed > seed-output.log 2>&1 || ! grep -q "Seed concluída" seed-output.log; then
+            cat seed-output.log
+            echo "ERRO: o seed falhou no banco que a migration de reserva do nível 5 acabou de ajustar."
+            exit 1
+          fi
+
+          if [ "$(nome_do_nivel 5)" != "Profissional NAPNE" ]; then
+            echo "ERRO: o nível 5 terminou como '$(nome_do_nivel 5)'; o esperado é 'Profissional NAPNE'."
+            exit 1
+          fi
+          if [ "$(nivel_do_usuario)" != "$nivel" ]; then
+            echo "ERRO: o usuário mudou de nível depois do seed: era '$nivel' e ficou '$(nivel_do_usuario)'."
+            exit 1
+          fi
+
+          echo "OK: a migration move para um id livre o nível que já estava no id 5, mesmo chamado Profissional NAPNE, com seus usuários, e o seed grava o Profissional NAPNE no id 5."
 
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
