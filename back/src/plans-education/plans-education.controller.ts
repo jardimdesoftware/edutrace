@@ -35,6 +35,7 @@ export class PlansEducationController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get()
   findAll() {
@@ -46,6 +47,7 @@ export class PlansEducationController {
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get(':email')
   findOne(

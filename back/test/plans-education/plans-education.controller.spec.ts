@@ -494,10 +494,11 @@ describe('PlansEducationController', () => {
         LEVELS.ADMIN,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
     });
 
-    it('should open findOne to the four levels, relying on the ownership check', () => {
+    it('should open findOne to every level, relying on the ownership check', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
 
       expect(levels).toEqual([
@@ -505,6 +506,7 @@ describe('PlansEducationController', () => {
         LEVELS.ALUNO_ESTUDANTE,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
     });
 
@@ -514,6 +516,15 @@ describe('PlansEducationController', () => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
         expect(levels).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO]);
+      },
+    );
+
+    it.each(['create', 'update', 'remove'] as const)(
+      'should deny %s to the NAPNE professional, who only reads the PEI',
+      (route) => {
+        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
+
+        expect(levels).not.toContain(LEVELS.PROFISSIONAL_NAPNE);
       },
     );
   });
