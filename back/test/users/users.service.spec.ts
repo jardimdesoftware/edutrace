@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { createHash } from 'node:crypto';
 import { PrismaService } from 'src/database/prisma.service';
 import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, ServiceStatus } from '@prisma/client';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { MailService } from 'src/mail/mail.service';
 import { PUBLIC_USER_SELECT } from 'src/users/users.select';
@@ -62,6 +62,12 @@ describe('UsersService', () => {
     google_sub: null,
     enrollment_number: null,
     course: null,
+    service_status: ServiceStatus.WAITING,
+    queued_at: new Date(),
+    service_started_at: null,
+    service_closed_at: null,
+    service_capacity: null,
+    napne_responsible_id: null,
     id_level: LEVELS.ALUNO_ESTUDANTE,
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),

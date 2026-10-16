@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ServiceStatus } from '@prisma/client';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
@@ -53,6 +54,12 @@ describe('AuthService', () => {
     google_sub: null,
     enrollment_number: null,
     course: null,
+    service_status: ServiceStatus.WAITING,
+    queued_at: new Date(),
+    service_started_at: null,
+    service_closed_at: null,
+    service_capacity: null,
+    napne_responsible_id: null,
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
