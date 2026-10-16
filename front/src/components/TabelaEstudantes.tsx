@@ -117,6 +117,8 @@ export default function TabelaEstudantes() {
         return "Profissional da Educação";
       case 4:
         return "Profissional da Saúde";
+      case 5:
+        return "Profissional NAPNE";
       default:
         return "Nível desconhecido";
     }
@@ -166,6 +168,7 @@ export default function TabelaEstudantes() {
                     <option value="2">Estudante/Família</option>
                     <option value="3">Profissional da Educação</option>
                     <option value="4">Profissional da Saúde</option>
+                    <option value="5">Profissional NAPNE</option>
                   </select>
                 </div>
               ) : (
@@ -226,6 +229,7 @@ export default function TabelaEstudantes() {
                       <option value="2">Estudante/Família</option>
                       <option value="3">Profissional da Educação</option>
                       <option value="4">Profissional da Saúde</option>
+                      <option value="5">Profissional NAPNE</option>
                     </select>
                   ) : (
                     getLevelName(estudante.id_level)
