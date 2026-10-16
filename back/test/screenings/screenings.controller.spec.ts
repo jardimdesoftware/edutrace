@@ -195,10 +195,11 @@ describe('ScreeningsController', () => {
         LEVELS.ADMIN,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
     });
 
-    it('should open findOne to the four levels, relying on the ownership check', () => {
+    it('should open findOne to every level, relying on the ownership check', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
 
       expect(levels).toEqual([
@@ -206,15 +207,20 @@ describe('ScreeningsController', () => {
         LEVELS.ALUNO_ESTUDANTE,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
     });
 
     it.each(['create', 'update', 'remove'] as const)(
-      'should allow %s only to the administrator and the health professional',
+      'should allow %s only to the administrator, the health and the NAPNE professionals',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
-        expect(levels).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE]);
+        expect(levels).toEqual([
+          LEVELS.ADMIN,
+          LEVELS.PROFISSIONAL_SAUDE,
+          LEVELS.PROFISSIONAL_NAPNE,
+        ]);
       },
     );
   });
