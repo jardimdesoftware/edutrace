@@ -69,7 +69,11 @@ const ENCERRAR: AcaoAtendimento = {
 
 const NENHUM_ESTUDANTE = "Nenhum estudante encontrado.";
 
-export default function TabelaEstudantes() {
+interface TabelaEstudantesProps {
+  onAlteracao?: () => void;
+}
+
+export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps) {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
   const [acaoEmAndamento, setAcaoEmAndamento] = useState(false);
@@ -131,6 +135,7 @@ export default function TabelaEstudantes() {
     try {
       const atualizado = await updateUser(estudante.email, novoNivel);
       setStudents((prev) => prev && substituirUsuario(prev, atualizado));
+      onAlteracao?.();
       Swal.fire({
         icon: "success",
         title: "Nível de acesso atualizado com sucesso!",
@@ -155,6 +160,7 @@ export default function TabelaEstudantes() {
     try {
       const atualizado = await updateServiceCapacity(estudante.email, limite);
       setStudents((prev) => prev && substituirUsuario(prev, atualizado));
+      onAlteracao?.();
       Swal.fire({
         icon: "success",
         title: "Limite de atendimento atualizado com sucesso!",
@@ -212,6 +218,7 @@ export default function TabelaEstudantes() {
     try {
       const atualizado = await acao.chamar(estudante.email);
       setStudents((prev) => prev && substituirUsuario(prev, atualizado));
+      onAlteracao?.();
       Swal.fire({
         icon: "success",
         title: acao.sucesso,
@@ -226,6 +233,7 @@ export default function TabelaEstudantes() {
         confirmButtonText: "Entendi",
       });
       await recarregarLinha(estudante.email);
+      onAlteracao?.();
     } finally {
       setAcaoEmAndamento(false);
     }
