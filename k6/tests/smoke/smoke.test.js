@@ -13,12 +13,14 @@
 
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
-import { login, authHeaders, sessionTokenFrom, forgetSessionCookie } from '../../helpers/auth.js';
+import { login, getToken, authHeaders, sessionTokenFrom, forgetSessionCookie } from '../../helpers/auth.js';
 import { smokeOptions } from '../../config/options.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
+const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
+const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
 export const options = smokeOptions;
 
@@ -28,11 +30,13 @@ export function setup() {
   if (!auth) {
     throw new Error('Smoke test ABORTADO: falha no login. Verifique as credenciais e se a API está rodando.');
   }
-  return { token: auth.token };
+  const napneToken = getToken(BASE_URL, NAPNE_EMAIL, NAPNE_PASSWORD);
+  return { token: auth.token, napneToken };
 }
 
 export default function (data) {
   const headers = authHeaders(data.token);
+  const napneHeaders = authHeaders(data.napneToken);
   const jsonHeaders = { 'Content-Type': 'application/json' };
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
@@ -105,7 +109,7 @@ export default function (data) {
 
   // ─── Anamnesis ────────────────────────────────────────────────────────────
   group('Anamnesis', () => {
-    const res = http.get(`${BASE_URL}/anamnesis`, { headers });
+    const res = http.get(`${BASE_URL}/anamnesis`, { headers: napneHeaders });
     check(res, {
       '[smoke][anamnesis] GET /anamnesis → 200': (r) => r.status === 200,
       '[smoke][anamnesis] resposta é array': (r) => {
