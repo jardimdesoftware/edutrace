@@ -24,6 +24,7 @@ const NIVEIS = [
   { value: "2", label: "Pais/Responsáveis e Estudante" },
   { value: "3", label: "Profissional da Educação" },
   { value: "4", label: "Profissional da Saúde" },
+  { value: "5", label: "Profissional NAPNE" },
 ];
 
 export default function AdminUserCreatePageWrapper() {
