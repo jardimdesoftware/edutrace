@@ -21,14 +21,18 @@ import {
   GOOGLE_ACCOUNT_IN_USE_MESSAGE,
   GOOGLE_CPF_PREFIX,
 } from './google-account';
-import { Prisma } from '@prisma/client';
-import { PUBLIC_USER_SELECT } from './users.select';
+import { Prisma, ServiceStatus } from '@prisma/client';
+import { PUBLIC_USER_SELECT, PublicUser } from './users.select';
+import { LEAVE_QUEUE, enterQueue } from './service-queue';
 
 const UNIQUE_FIELD_MESSAGES = [
   { field: 'cpf', message: 'Este CPF já está cadastrado.' },
   { field: 'email', message: 'Este e-mail já está cadastrado.' },
   { field: 'enrollment_number', message: 'Esta matrícula já está cadastrada.' },
 ] as const;
+
+const NAPNE_IN_SERVICE_MESSAGE =
+  'Encerre os atendimentos do Profissional NAPNE antes de trocar o nível ou excluir a conta.';
 
 @Injectable()
 export class UsersService {
@@ -64,6 +68,7 @@ export class UsersService {
           must_change_password: false,
           activation_token: activation.hash,
           activation_expires: activationExpires,
+          ...(level === LEVELS.ALUNO_ESTUDANTE ? enterQueue() : {}),
         },
       });
     } catch (error) {
@@ -226,6 +231,7 @@ export class UsersService {
           id_level: LEVELS.ALUNO_ESTUDANTE,
           id_current_phase: PHASES.TRIAGEM,
           must_change_password: false,
+          ...enterQueue(),
         },
       });
     } catch (error) {
@@ -254,42 +260,120 @@ export class UsersService {
     }
   }
 
+  // A decisão sobre a fila depende do nível que a conta tem agora, e o NAPNE
+  // com estudantes em atendimento não pode sair do nível. Por isso a linha é
+  // travada com FOR UPDATE antes de qualquer leitura: o "assumir" do mesmo NAPNE
+  // trava a mesma linha, então nenhum atendimento novo entra entre a conferência
+  // e a troca de nível, e duas trocas simultâneas da mesma conta se enfileiram.
+  // A transação usa o isolamento padrão (READ COMMITTED), em que cada comando
+  // enxerga o que a transação anterior confirmou.
   async update(email: string, updateUserDto: UpdateUserDto) {
-    const { full_name, id_level, enrollment_number, course } = updateUserDto;
-
-    if (enrollment_number !== undefined || course !== undefined) {
-      const level = id_level ?? (await this.findLevelId(email));
-      this.assertStudentOnlyFields(level, updateUserDto);
-    }
-
-    let updated: Prisma.UserGetPayload<{ select: typeof PUBLIC_USER_SELECT }>;
+    let result: { user: PublicUser; levelChanged: boolean };
 
     try {
-      updated = await this.prisma.user.update({
-        select: PUBLIC_USER_SELECT,
-        where: { email: email },
-        data: { full_name, id_level, enrollment_number, course },
-      });
+      result = await this.prisma.$transaction((tx) =>
+        this.applyUpdate(tx, email, updateUserDto),
+      );
     } catch (error) {
       throw this.duplicateFieldError(error) ?? error;
     }
 
     // O nível de acesso viaja dentro do token. Sem encerrar as sessões, quem foi
-    // rebaixado continua com o nível antigo até o token vencer.
-    if (updateUserDto.id_level !== undefined) {
-      await this.sessionsService.revokeAllFromUser(updated.id);
+    // rebaixado continua com o nível antigo até o token vencer. A revogação vem
+    // depois do commit: com a transação aberta, a sessão cairia por uma troca
+    // que ainda pode ser desfeita.
+    if (result.levelChanged) {
+      await this.sessionsService.revokeAllFromUser(result.user.id);
     }
 
-    return updated;
+    return result.user;
   }
 
-  private async findLevelId(email: string): Promise<number | undefined> {
-    const user = await this.prisma.user.findUnique({
+  private async applyUpdate(
+    tx: Prisma.TransactionClient,
+    email: string,
+    updateUserDto: UpdateUserDto,
+  ) {
+    const { full_name, id_level, enrollment_number, course, service_capacity } =
+      updateUserDto;
+
+    const [current] = await tx.$queryRaw<{ id: number; id_level: number }[]>`
+      SELECT "id", "id_level" FROM "User" WHERE "email" = ${email} FOR UPDATE`;
+
+    // Conta inexistente (current indefinido) fica para o update, que falha.
+    const finalLevel = id_level ?? current?.id_level;
+    this.assertStudentOnlyFields(finalLevel, updateUserDto);
+    this.assertCapacityOnlyForNapne(finalLevel, service_capacity);
+
+    // O DTO aceita o nível que a conta já tem: nesse caso nada muda.
+    const levelChange =
+      current && id_level !== undefined && id_level !== current.id_level
+        ? { from: current.id_level, to: id_level }
+        : null;
+
+    if (levelChange?.from === LEVELS.PROFISSIONAL_NAPNE) {
+      await this.assertNoServiceInProgress(tx, current.id);
+    }
+
+    const user = await tx.user.update({
+      select: PUBLIC_USER_SELECT,
       where: { email: email },
-      select: { id_level: true },
+      data: {
+        full_name,
+        id_level,
+        enrollment_number,
+        course,
+        service_capacity,
+        ...(levelChange
+          ? this.queueFieldsOnLevelChange(levelChange.from, levelChange.to)
+          : {}),
+      },
     });
 
-    return user?.id_level;
+    return { user, levelChanged: levelChange !== null };
+  }
+
+  // Quem passa a ser estudante entra no fim da fila. Quem deixa de ser tem o
+  // atendimento limpo, e o NAPNE que deixa o nível perde o limite, que só faz
+  // sentido no nível 5 (CHECK User_service_capacity_chk).
+  private queueFieldsOnLevelChange(from: number, to: number) {
+    return {
+      ...(to === LEVELS.ALUNO_ESTUDANTE ? enterQueue() : {}),
+      ...(from === LEVELS.ALUNO_ESTUDANTE ? LEAVE_QUEUE : {}),
+      ...(from === LEVELS.PROFISSIONAL_NAPNE ? { service_capacity: null } : {}),
+    };
+  }
+
+  private assertCapacityOnlyForNapne(
+    level: number | undefined,
+    serviceCapacity: number | undefined,
+  ) {
+    if (
+      serviceCapacity !== undefined &&
+      level !== undefined &&
+      level !== LEVELS.PROFISSIONAL_NAPNE
+    ) {
+      throw new BadRequestException(
+        'O limite de atendimentos só pode ser informado para o nível Profissional NAPNE.',
+      );
+    }
+  }
+
+  // Chamado com a linha do NAPNE já travada (FOR UPDATE).
+  private async assertNoServiceInProgress(
+    tx: Prisma.TransactionClient,
+    napneId: number,
+  ) {
+    const inService = await tx.user.count({
+      where: {
+        napne_responsible_id: napneId,
+        service_status: ServiceStatus.IN_SERVICE,
+      },
+    });
+
+    if (inService > 0) {
+      throw new ConflictException(NAPNE_IN_SERVICE_MESSAGE);
+    }
   }
 
   // Atualização self-service dos próprios dados (e-mail e/ou senha).
@@ -480,12 +564,23 @@ export class UsersService {
     });
   }
 
+  // Mesma trava e mesma recusa do update: o NAPNE com estudantes em
+  // atendimento não é excluído até encerrar os atendimentos.
   async remove(id: number) {
-    return this.prisma.user.delete({
-      select: PUBLIC_USER_SELECT,
-      where: {
-        id: id,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const [target] = await tx.$queryRaw<{ id_level: number }[]>`
+        SELECT "id_level" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
+
+      if (target?.id_level === LEVELS.PROFISSIONAL_NAPNE) {
+        await this.assertNoServiceInProgress(tx, id);
+      }
+
+      return tx.user.delete({
+        select: PUBLIC_USER_SELECT,
+        where: {
+          id: id,
+        },
+      });
     });
   }
 }
