@@ -17,10 +17,13 @@ describe('POST /users, validação do cpf', () => {
     email: 'usuario@edutrace.com',
   };
 
+  // Sem id_level o cadastro cria estudante, que precisa de matrícula e curso.
   const payload = {
     full_name: 'Usuário de Teste',
     email: 'usuario@edutrace.com',
     password: 'senhaSegura123',
+    enrollment_number: '20261TADS0012',
+    course: 'Análise e Desenvolvimento de Sistemas',
   };
 
   beforeEach(async () => {
