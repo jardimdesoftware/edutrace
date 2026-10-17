@@ -9,7 +9,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { hash } from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
-import { LEVELS, PHASES } from 'src/constants';
+import { LEVELS, PEDAGOGICAL_MANAGER_LEVELS, PHASES } from 'src/constants';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { MailService } from 'src/mail/mail.service';
 import {
@@ -22,8 +22,15 @@ import {
   GOOGLE_CPF_PREFIX,
 } from './google-account';
 import { Prisma, ServiceStatus } from '@prisma/client';
-import { PUBLIC_USER_SELECT, PublicUser } from './users.select';
-import { LEAVE_QUEUE, enterQueue } from './service-queue';
+import {
+  USER_WITH_MANAGER_CONTACT_SELECT,
+  UserWithManagerContact,
+} from './users.select';
+import {
+  LEAVE_PEDAGOGICAL_MANAGER,
+  LEAVE_QUEUE,
+  enterQueue,
+} from './service-queue';
 
 const UNIQUE_FIELD_MESSAGES = [
   { field: 'cpf', message: 'Este CPF já está cadastrado.' },
@@ -34,6 +41,10 @@ const UNIQUE_FIELD_MESSAGES = [
 const NAPNE_IN_SERVICE_MESSAGE =
   'Encerre os atendimentos do Profissional NAPNE antes de trocar o nível ou excluir a conta.';
 
+// As rotas que chegam a este serviço são do Administrador (o cadastro, também
+// do NAPNE), que leem o telefone e o CPF do responsável pedagógico externo, e
+// por isso as respostas usam USER_WITH_MANAGER_CONTACT_SELECT. Uma rota nova
+// para outro nível escolhe o select por userSelectFor.
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -55,11 +66,11 @@ export class UsersService {
     const activation = generateActivationToken();
     const activationExpires = new Date(Date.now() + ACTIVATION_TOKEN_TTL_MS);
 
-    let user: Prisma.UserGetPayload<{ select: typeof PUBLIC_USER_SELECT }>;
+    let user: UserWithManagerContact;
 
     try {
       user = await this.prisma.user.create({
-        select: PUBLIC_USER_SELECT,
+        select: USER_WITH_MANAGER_CONTACT_SELECT,
         data: {
           ...userData,
           password: await hash(randomUUID(), 10),
@@ -177,7 +188,7 @@ export class UsersService {
 
   async findAll() {
     return this.prisma.user.findMany({
-      select: PUBLIC_USER_SELECT,
+      select: USER_WITH_MANAGER_CONTACT_SELECT,
     });
   }
 
@@ -206,7 +217,7 @@ export class UsersService {
       where: {
         email: email,
       },
-      select: PUBLIC_USER_SELECT,
+      select: USER_WITH_MANAGER_CONTACT_SELECT,
     });
   }
 
@@ -268,7 +279,7 @@ export class UsersService {
   // A transação usa o isolamento padrão (READ COMMITTED), em que cada comando
   // enxerga o que a transação anterior confirmou.
   async update(email: string, updateUserDto: UpdateUserDto) {
-    let result: { user: PublicUser; levelChanged: boolean };
+    let result: { user: UserWithManagerContact; levelChanged: boolean };
 
     try {
       result = await this.prisma.$transaction((tx) =>
@@ -315,8 +326,18 @@ export class UsersService {
       await this.assertNoServiceInProgress(tx, current.id);
     }
 
+    // Quem deixa os níveis 3 e 5 deixa de ser responsável pedagógico. Com a
+    // linha dele travada, o vínculo que o PATCH do estudante grava ao mesmo
+    // tempo termina antes desta limpeza ou recusa o nível novo depois dela.
+    if (levelChange && this.leavesPedagogicalManagerLevels(levelChange)) {
+      await tx.user.updateMany({
+        where: { pedagogical_manager_id: current.id },
+        data: { pedagogical_manager_id: null },
+      });
+    }
+
     const user = await tx.user.update({
-      select: PUBLIC_USER_SELECT,
+      select: USER_WITH_MANAGER_CONTACT_SELECT,
       where: { email: email },
       data: {
         full_name,
@@ -325,7 +346,7 @@ export class UsersService {
         course,
         service_capacity,
         ...(levelChange
-          ? this.queueFieldsOnLevelChange(levelChange.from, levelChange.to)
+          ? this.studentFieldsOnLevelChange(levelChange.from, levelChange.to)
           : {}),
       },
     });
@@ -333,13 +354,29 @@ export class UsersService {
     return { user, levelChanged: levelChange !== null };
   }
 
+  private leavesPedagogicalManagerLevels({
+    from,
+    to,
+  }: {
+    from: number;
+    to: number;
+  }) {
+    return (
+      PEDAGOGICAL_MANAGER_LEVELS.includes(from) &&
+      !PEDAGOGICAL_MANAGER_LEVELS.includes(to)
+    );
+  }
+
   // Quem passa a ser estudante entra no fim da fila. Quem deixa de ser tem o
-  // atendimento limpo, e o NAPNE que deixa o nível perde o limite, que só faz
-  // sentido no nível 5 (CHECK User_service_capacity_chk).
-  private queueFieldsOnLevelChange(from: number, to: number) {
+  // atendimento e o responsável pedagógico limpos, e o NAPNE que deixa o nível
+  // perde o limite, que só faz sentido no nível 5 (CHECK
+  // User_service_capacity_chk).
+  private studentFieldsOnLevelChange(from: number, to: number) {
     return {
       ...(to === LEVELS.ALUNO_ESTUDANTE ? enterQueue() : {}),
-      ...(from === LEVELS.ALUNO_ESTUDANTE ? LEAVE_QUEUE : {}),
+      ...(from === LEVELS.ALUNO_ESTUDANTE
+        ? { ...LEAVE_QUEUE, ...LEAVE_PEDAGOGICAL_MANAGER }
+        : {}),
       ...(from === LEVELS.PROFISSIONAL_NAPNE ? { service_capacity: null } : {}),
     };
   }
@@ -576,7 +613,7 @@ export class UsersService {
       }
 
       return tx.user.delete({
-        select: PUBLIC_USER_SELECT,
+        select: USER_WITH_MANAGER_CONTACT_SELECT,
         where: {
           id: id,
         },
