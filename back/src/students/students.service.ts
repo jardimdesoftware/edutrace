@@ -117,7 +117,11 @@ export class StudentsService {
     });
   }
 
-  private async lockStudent(tx: Prisma.TransactionClient, email: string) {
+  // Trava a linha do estudante (FOR UPDATE) e confere o nível sob a trava. Quem
+  // grava um registro que depende do estudante dentro da mesma transação (o teto
+  // de registros do PEI) se enfileira nela, e a troca de nível do administrador,
+  // que trava a mesma linha, espera a gravação ou deixa o estudante de fora (404).
+  async lockStudent(tx: Prisma.TransactionClient, email: string) {
     const [student] = await tx.$queryRaw<{ id: number }[]>`
       SELECT "id" FROM "User"
       WHERE "email" = ${email} AND "id_level" = ${LEVELS.ALUNO_ESTUDANTE}
