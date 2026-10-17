@@ -2,6 +2,7 @@ import { getAllStudents } from '@/api/students';
 import { getAllUsers } from '@/api/user';
 import { ADMIN, ESTUDANTE } from '@/consts';
 import type { StudentData } from '@/interfaces/StudentData';
+import { nomeDoResponsavel } from '@/utils/responsavelPedagogico';
 
 // Só o administrador lista todos os usuários. Qualquer outro nível, inclusive
 // sessão sem nível, recebe apenas os estudantes.
@@ -28,4 +29,17 @@ export function substituirUsuario(
 // botão de exportar depende do nível da linha.
 export function podeExportarRelatorio(usuario: Pick<StudentData, 'id_level'>): boolean {
   return usuario.id_level === ESTUDANTE;
+}
+
+// A coluna do responsável pedagógico só vale para estudante. A tabela do
+// administrador lista todos os usuários, e a linha de quem não é estudante fica
+// vazia, em vez de mostrar "Responsável não atribuído" para uma conta que nunca
+// terá responsável.
+export function responsavelDaLinha(
+  usuario: Pick<
+    StudentData,
+    'id_level' | 'pedagogical_manager' | 'external_manager_name'
+  >,
+): string {
+  return usuario.id_level === ESTUDANTE ? nomeDoResponsavel(usuario) : '';
 }
