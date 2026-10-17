@@ -1,4 +1,5 @@
-import { Flag, NOTES_MAX_LENGTH, Section, Text } from './case-study-fields';
+import { Flag, Section, Text } from 'src/common/dto-fields';
+import { NOTES_MAX_LENGTH } from './case-study-fields';
 
 export class CaseStudyLanguageDto {
   @Flag('Comunica-se verbalmente.')
