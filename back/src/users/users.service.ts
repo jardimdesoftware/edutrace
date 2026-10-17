@@ -446,11 +446,13 @@ export class UsersService {
           where: { email: currentEmail },
           data: { email: newEmail },
         });
-        await tx.plansEducation.updateMany({
+        // O PEI antigo ficou na tabela PlansEducation_legacy, fora da API, e
+        // guarda os e-mails em texto. O PeiEntry liga por id, sem e-mail.
+        await tx.plansEducationLegacy.updateMany({
           where: { student_email: currentEmail },
           data: { student_email: newEmail },
         });
-        await tx.plansEducation.updateMany({
+        await tx.plansEducationLegacy.updateMany({
           where: { professor_email: currentEmail },
           data: { professor_email: newEmail },
         });
