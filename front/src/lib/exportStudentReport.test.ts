@@ -51,6 +51,34 @@ describe('renderReportPdf', () => {
     assert.match(pdf, /Ru.do na sala de aula/);
   });
 
+  it('draws one section per period of the PAEE, with the course, the teacher and the checked supports', async () => {
+    const aeePlans = [
+      {
+        semester: '2026.1',
+        identification: { subject: 'Matemática', weekly_hours: 4, enrolled_subjects: 'Matemática' },
+        basis: 'Embasamento do atendimento',
+        has_diagnosis: true,
+        supports: { psychology: true, medical: false, medical_specialty: '', other: '' },
+        purpose: { systematic_follow_up: true, other: '' },
+        objectives: { general: 'Ampliar a autonomia', specific: '' },
+        evaluation_procedures: 'Registro semanal',
+        author: { full_name: 'Marina Duarte' },
+        student: { course: 'Informática' },
+      },
+    ] as unknown as NonNullable<ReportsData['aeePlans']>;
+
+    const doc = await renderReportPdf(estudante, { screening: null, plansEducation: null, aeePlans });
+    const pdf = doc.output();
+
+    assert.match(pdf, /PAEE - 2026\.1/);
+    assert.match(pdf, /Curso/);
+    assert.match(pdf, /Inform.tica/);
+    assert.match(pdf, /Marina Duarte/);
+    assert.match(pdf, /Psicologia/);
+    assert.match(pdf, /Ampliar a autonomia/);
+    assert.match(pdf, /Registro semanal/);
+  });
+
   it('breaks a long answer across pages and numbers them', async () => {
     const plansEducation = {
       objectives: 'Objetivo de aprendizagem. '.repeat(1500),
