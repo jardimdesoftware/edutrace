@@ -27,6 +27,28 @@ describe('ReportsService', () => {
     objectives: 'Objetivos',
   };
 
+  const mockCaseStudy = {
+    identification: { grade: '3º ano', age: 17, date: '2026-10-17' },
+    aee_opinion: { opinion: 'Parecer', date: '2026-10-17' },
+    author: { full_name: 'Profissional NAPNE' },
+    student: { course: 'Informática' },
+  };
+
+  const caseStudySelect = {
+    identification: true,
+    general_info: true,
+    school_history: true,
+    pedagogical_aspects: true,
+    behavioral_social: true,
+    potentialities_interests: true,
+    barriers: true,
+    resources_strategies: true,
+    pei_recommendations: true,
+    aee_opinion: true,
+    author: { select: { full_name: true } },
+    student: { select: { course: true } },
+  };
+
   const screeningSelect = {
     report: true,
     specific_need: true,
@@ -70,6 +92,7 @@ describe('ReportsService', () => {
           useValue: {
             screening: { findUnique: jest.fn() },
             plansEducation: { findUnique: jest.fn() },
+            caseStudy: { findUnique: jest.fn() },
             anamnesis: { findUnique: jest.fn() },
           },
         },
@@ -86,19 +109,23 @@ describe('ReportsService', () => {
   });
 
   describe('findOne', () => {
-    it('should return the screening and the PEI with only the report fields', async () => {
+    it('should return the screening, the PEI and the case study with only the report fields', async () => {
       jest
         .spyOn(prisma.screening, 'findUnique')
         .mockResolvedValue(mockScreening as never);
       jest
         .spyOn(prisma.plansEducation, 'findUnique')
         .mockResolvedValue(mockPlansEducation as never);
+      jest
+        .spyOn(prisma.caseStudy, 'findUnique')
+        .mockResolvedValue(mockCaseStudy as never);
 
       const result = await service.findOne(email);
 
       expect(result).toEqual({
         screening: mockScreening,
         plansEducation: mockPlansEducation,
+        caseStudy: mockCaseStudy,
       });
       expect(prisma.screening.findUnique).toHaveBeenCalledWith({
         where: { email },
@@ -108,26 +135,71 @@ describe('ReportsService', () => {
         where: { student_email: email },
         select: plansEducationSelect,
       });
+      expect(prisma.caseStudy.findUnique).toHaveBeenCalledWith({
+        where: { id_student: 2 },
+        select: caseStudySelect,
+      });
     });
 
-    it('should return the screening of a student without anamnesis or PEI', async () => {
+    it('should return the case study with the name of the author and the course of the student, and nothing else of them', async () => {
+      jest
+        .spyOn(prisma.caseStudy, 'findUnique')
+        .mockResolvedValue(mockCaseStudy as never);
+
+      await service.findOne(email);
+
+      const { select } = (prisma.caseStudy.findUnique as jest.Mock).mock
+        .calls[0][0] as { select: Record<string, unknown> };
+      expect(select.author).toEqual({ select: { full_name: true } });
+      expect(select.student).toEqual({ select: { course: true } });
+      expect(select).not.toHaveProperty('created_at');
+      expect(select).not.toHaveProperty('id');
+    });
+
+    it('should return the screening of a student without anamnesis, PEI or case study', async () => {
       jest
         .spyOn(prisma.screening, 'findUnique')
         .mockResolvedValue(mockScreening as never);
       jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.caseStudy, 'findUnique').mockResolvedValue(null);
 
       const result = await service.findOne(email);
 
-      expect(result).toEqual({ screening: mockScreening, plansEducation: null });
+      expect(result).toEqual({
+        screening: mockScreening,
+        plansEducation: null,
+        caseStudy: null,
+      });
     });
 
-    it('should return both sections as null when the student has no records', async () => {
+    it('should return the case study of a student without screening or PEI', async () => {
       jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.caseStudy, 'findUnique')
+        .mockResolvedValue(mockCaseStudy as never);
 
       const result = await service.findOne(email);
 
-      expect(result).toEqual({ screening: null, plansEducation: null });
+      expect(result).toEqual({
+        screening: null,
+        plansEducation: null,
+        caseStudy: mockCaseStudy,
+      });
+    });
+
+    it('should return the three sections as null when the student has no records', async () => {
+      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.plansEducation, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.caseStudy, 'findUnique').mockResolvedValue(null);
+
+      const result = await service.findOne(email);
+
+      expect(result).toEqual({
+        screening: null,
+        plansEducation: null,
+        caseStudy: null,
+      });
     });
 
     it('should not read the anamnesis', async () => {
@@ -151,6 +223,7 @@ describe('ReportsService', () => {
       });
       expect(prisma.screening.findUnique).not.toHaveBeenCalled();
       expect(prisma.plansEducation.findUnique).not.toHaveBeenCalled();
+      expect(prisma.caseStudy.findUnique).not.toHaveBeenCalled();
     });
   });
 });
