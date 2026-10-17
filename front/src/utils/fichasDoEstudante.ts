@@ -9,6 +9,7 @@ const FICHAS: readonly FichaDoEstudante[] = [
   { label: "Triagem", rota: "/triagem" },
   { label: "Anamnese", rota: "/anamnese" },
   { label: "Estudo de Caso", rota: "/estudo-de-caso" },
+  { label: "PAEE", rota: "/paee" },
   { label: "Anotações Multiprofissionais", rota: "/comentarios" },
   { label: "PEI", rota: "/pei" },
 ];
