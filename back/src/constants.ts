@@ -38,6 +38,19 @@ export const AEE_PLAN_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_NAPNE,
 ];
 
+// Quem lê os registros do PEI de qualquer estudante. O estudante lê só os
+// próprios, e quem escreve é só o Profissional da Educação (declarado nas rotas).
+export const PEI_ENTRY_READERS: readonly number[] = [
+  LEVELS.ADMIN,
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_SAUDE,
+  LEVELS.PROFISSIONAL_NAPNE,
+];
+
+// Teto de registros do PEI ativos (não excluídos) de um estudante. O POST
+// recusa o seguinte com 409, e excluir um registro libera a vaga.
+export const PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT = 300;
+
 // Servidores que podem ser o responsável pedagógico de um estudante.
 export const PEDAGOGICAL_MANAGER_LEVELS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,
