@@ -6,7 +6,10 @@ export interface StudentData {
   cpf: string;
   email: string;
   affliation: string | null;
-  pedagogical_manager: string | null;
+  pedagogical_manager?: { id: number; full_name: string } | null;
+  external_manager_name?: string | null;
+  external_manager_phone?: string | null;
+  external_manager_cpf?: string | null;
   enrollment_number?: string | null;
   course?: string | null;
   created_at: string; 

@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {
   listarUsuariosDaTabela,
   podeExportarRelatorio,
+  responsavelDaLinha,
   substituirUsuario,
 } from './tabelaUsuarios';
+import { SEM_RESPONSAVEL } from './responsavelPedagogico';
 import type { StudentData } from '../interfaces/StudentData';
 import {
   ADMIN,
@@ -78,6 +80,40 @@ describe('podeExportarRelatorio', () => {
       assert.equal(podeExportarRelatorio({ id_level: nivel }), false);
     });
   }
+});
+
+describe('responsavelDaLinha', () => {
+  it('shows the server, the external person or the placeholder for a student', () => {
+    const servidor = {
+      id_level: ESTUDANTE,
+      pedagogical_manager: { id: 4, full_name: 'Ana Souza' },
+    };
+    const externo = {
+      id_level: ESTUDANTE,
+      pedagogical_manager: null,
+      external_manager_name: 'Maria da Silva',
+    };
+    const nenhum = { id_level: ESTUDANTE, pedagogical_manager: null };
+
+    assert.equal(responsavelDaLinha(servidor), 'Ana Souza');
+    assert.equal(responsavelDaLinha(externo), 'Maria da Silva');
+    assert.equal(responsavelDaLinha(nenhum), SEM_RESPONSAVEL);
+  });
+
+  it('leaves the cell empty for the levels that are not students', () => {
+    const outrosNiveis = [
+      ADMIN,
+      PROFISSIONAL_EDUCACAO,
+      PROFISSIONAL_SAUDE,
+      PROFISSIONAL_NAPNE,
+    ];
+
+    for (const nivel of outrosNiveis) {
+      const linha = { id_level: nivel, pedagogical_manager: null };
+
+      assert.equal(responsavelDaLinha(linha), '', `nível ${nivel}`);
+    }
+  });
 });
 
 function usuario(id: number, extra: Partial<StudentData> = {}): StudentData {

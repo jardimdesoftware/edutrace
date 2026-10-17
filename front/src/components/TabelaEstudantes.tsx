@@ -27,6 +27,7 @@ import { canAccessPage } from "@/utils/pageAccess";
 import {
   listarUsuariosDaTabela,
   podeExportarRelatorio,
+  responsavelDaLinha,
   substituirUsuario,
 } from "@/utils/tabelaUsuarios";
 import { Eye, FileDown, UserPlus } from "lucide-react";
@@ -332,7 +333,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               <p><span className="font-semibold">Nome:</span> {estudante.full_name}</p>
               <p><span className="font-semibold">CPF:</span> {estudante.cpf}</p>
               <p className="break-all"><span className="font-semibold">E-mail:</span> {estudante.email}</p>
-              <p><span className="font-semibold">Responsável Pedagógico:</span> {estudante.pedagogical_manager}</p>
+              <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavelDaLinha(estudante)}</p>
               {isAdmin ? (
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Nível de Acesso:</span>
@@ -416,7 +417,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                 <td className="p-3">{estudante.full_name}</td>
                 <td className="p-3">{estudante.cpf}</td>
                 <td className="p-3">{estudante.email}</td>
-                <td className="p-3">{estudante.pedagogical_manager}</td>
+                <td className="p-3">{responsavelDaLinha(estudante)}</td>
                 <td className="p-3">
                   {isAdmin ? (
                     <select

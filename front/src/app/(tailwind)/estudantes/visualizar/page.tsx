@@ -10,6 +10,7 @@ import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { fichasDoEstudante } from "@/utils/fichasDoEstudante";
 import { useAuth } from "@/contexts/AuthContext";
+import { nomeDoResponsavel } from "@/utils/responsavelPedagogico";
 
 const NAO_INFORMADO = "Não informado";
 
@@ -40,7 +41,7 @@ function VisualizarEstudante() {
   const nome = registro?.full_name;
   const cpf = registro?.cpf;
   const email = registro?.email;
-  const responsavel = registro?.pedagogical_manager;
+  const responsavel = nomeDoResponsavel(registro);
   const matricula = registro?.enrollment_number || NAO_INFORMADO;
   const curso = registro?.course || NAO_INFORMADO;
   const nivelAcesso = registro?.id_level;
@@ -76,7 +77,7 @@ function VisualizarEstudante() {
             <p className="break-all"><span className="font-semibold">E-mail:</span> {email}</p>
             <p><span className="font-semibold">Matrícula:</span> {matricula}</p>
             <p><span className="font-semibold">Curso:</span> {curso}</p>
-            <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavel || "Responsável não atribuído"}</p>
+            <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavel}</p>
             <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(nivelAcesso)}</p>
           </div>
 
@@ -100,7 +101,7 @@ function VisualizarEstudante() {
                   <td className="p-3">{email}</td>
                   <td className="p-3">{matricula}</td>
                   <td className="p-3">{curso}</td>
-                  <td className="p-3">{responsavel || "Responsável não atribuído"}</td>
+                  <td className="p-3">{responsavel}</td>
                   <td className="p-3">{getLevelName(nivelAcesso)}</td>
                 </tr>
               </tbody>
