@@ -20,6 +20,15 @@ export const STUDENT_RECORD_READERS: readonly number[] = [
 
 export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
 
+// Quem lê o estudo de caso de qualquer estudante. O estudante lê só o próprio, e
+// quem escreve é só o Profissional NAPNE (declarado nas rotas).
+export const CASE_STUDY_READERS: readonly number[] = [
+  LEVELS.ADMIN,
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_SAUDE,
+  LEVELS.PROFISSIONAL_NAPNE,
+];
+
 // Servidores que podem ser o responsável pedagógico de um estudante.
 export const PEDAGOGICAL_MANAGER_LEVELS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,
