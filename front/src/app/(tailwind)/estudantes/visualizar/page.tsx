@@ -5,12 +5,17 @@
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
-import { Suspense } from "react";
+import ResponsavelPedagogico from "@/components/ResponsavelPedagogico";
+import { Suspense, useState } from "react";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
+import type { StudentData } from "@/interfaces/StudentData";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { fichasDoEstudante } from "@/utils/fichasDoEstudante";
 import { useAuth } from "@/contexts/AuthContext";
-import { nomeDoResponsavel } from "@/utils/responsavelPedagogico";
+import {
+  nomeDoResponsavel,
+  podeDefinirResponsavel,
+} from "@/utils/responsavelPedagogico";
 
 const NAO_INFORMADO = "Não informado";
 
@@ -38,13 +43,15 @@ export default function VisualizarPageWrapper() {
 function VisualizarEstudante() {
   const { id, registro, carregando } = useEstudanteDaUrl();
   const { user } = useAuth();
-  const nome = registro?.full_name;
-  const cpf = registro?.cpf;
-  const email = registro?.email;
-  const responsavel = nomeDoResponsavel(registro);
-  const matricula = registro?.enrollment_number || NAO_INFORMADO;
-  const curso = registro?.course || NAO_INFORMADO;
-  const nivelAcesso = registro?.id_level;
+  const [atualizado, setAtualizado] = useState<StudentData | null>(null);
+  const estudante = atualizado?.id === registro?.id ? atualizado : registro;
+  const nome = estudante?.full_name;
+  const cpf = estudante?.cpf;
+  const email = estudante?.email;
+  const responsavel = nomeDoResponsavel(estudante);
+  const matricula = estudante?.enrollment_number || NAO_INFORMADO;
+  const curso = estudante?.course || NAO_INFORMADO;
+  const nivelAcesso = estudante?.id_level;
 
   function getLevelName(id_level?: number) {
     switch(id_level) {
@@ -108,6 +115,14 @@ function VisualizarEstudante() {
             </table>
           </div>
         </div>
+
+        {estudante && podeDefinirResponsavel(user, estudante) && (
+          <ResponsavelPedagogico
+            key={estudante.id}
+            estudante={estudante}
+            onAtualizado={setAtualizado}
+          />
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 max-w-5xl mx-auto">
           {(user ? fichasDoEstudante(user.id_level) : []).map((ficha) => (
