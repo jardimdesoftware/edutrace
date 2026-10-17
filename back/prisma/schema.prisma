@@ -63,6 +63,9 @@ model User {
   case_study            CaseStudy?  @relation("CaseStudyStudent")
   authored_case_studies CaseStudy[] @relation("CaseStudyAuthor")
 
+  aee_plans          AeePlan[] @relation("AeePlanStudent")
+  authored_aee_plans AeePlan[] @relation("AeePlanAuthor")
+
   id_level Int
   level    Level @relation(fields: [id_level], references: [id])
 
@@ -213,5 +216,28 @@ model CaseStudy {
   id_author Int?
   author    User? @relation("CaseStudyAuthor", fields: [id_author], references: [id], onDelete: SetNull)
 
+  @@index([id_author])
+}
+
+model AeePlan {
+  id                    Int       @id @default(autoincrement())
+  semester              String
+  identification        Json
+  basis                 String
+  has_diagnosis         Boolean
+  supports              Json
+  purpose               Json
+  objectives            Json
+  evaluation_procedures String
+  created_at            DateTime  @default(now())
+  updated_at            DateTime? @updatedAt
+
+  id_student Int
+  student    User @relation("AeePlanStudent", fields: [id_student], references: [id], onDelete: Restrict)
+
+  id_author Int?
+  author    User? @relation("AeePlanAuthor", fields: [id_author], references: [id], onDelete: SetNull)
+
+  @@unique([id_student, semester])
   @@index([id_author])
 }
