@@ -40,6 +40,11 @@ describe('UpdateUserDto, campos do cadastro', () => {
     ['cpf', '01234567890'],
     ['affliation', 'Outra'],
     ['pedagogical_manager', 'Outro'],
+    ['pedagogical_manager_id', 3],
+    ['pedagogical_manager_legacy', 'Outro'],
+    ['external_manager_name', 'Maria da Silva'],
+    ['external_manager_phone', '81999998888'],
+    ['external_manager_cpf', '01234567890'],
   ])('should refuse %s with 400', async (field, value) => {
     await expect(validate({ [field]: value })).rejects.toBeInstanceOf(
       BadRequestException,
