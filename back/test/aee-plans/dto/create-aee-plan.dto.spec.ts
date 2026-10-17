@@ -302,6 +302,25 @@ describe('CreateAeePlanDto, textos', () => {
     },
   );
 
+  // O TEXT e o JSONB do PostgreSQL recusam o surrogate solto (um \uD800 sem o
+  // par), e o erro subiria como 500. O TEXT_PATTERN é o mesmo do PEI e do estudo
+  // de caso; o par de verdade (um emoji) continua valendo.
+  it.each(textPaths)(
+    'should refuse a lone surrogate in %s, with 400 and not 500',
+    async (path) => {
+      const messages = await messagesOf(setAt(validBody(), path, 'a\uD800b'));
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toContain(path.split('.').pop());
+    },
+  );
+
+  it('should accept a valid surrogate pair (an emoji) in a text', async () => {
+    const result = await validate(setAt(validBody(), 'basis', 'Gosta de 🎨'));
+
+    expect(result.basis).toBe('Gosta de 🎨');
+  });
+
   // São textos longos, que o professor escreve em mais de uma linha.
   it.each(textPaths)(
     'should accept line breaks and tabs in %s',
