@@ -8,6 +8,7 @@ export interface FichaDoEstudante {
 const FICHAS: readonly FichaDoEstudante[] = [
   { label: "Triagem", rota: "/triagem" },
   { label: "Anamnese", rota: "/anamnese" },
+  { label: "Estudo de Caso", rota: "/estudo-de-caso" },
   { label: "Anotações Multiprofissionais", rota: "/comentarios" },
   { label: "PEI", rota: "/pei" },
 ];

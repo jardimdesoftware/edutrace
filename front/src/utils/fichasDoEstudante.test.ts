@@ -8,8 +8,8 @@ import {
   PROFISSIONAL_SAUDE,
 } from "../consts";
 
-const ROTULOS = ["Triagem", "Anamnese", "Anotações Multiprofissionais", "PEI"];
-const ROTULOS_SEM_ANAMNESE = ["Triagem", "Anotações Multiprofissionais", "PEI"];
+const ROTULOS = ["Triagem", "Anamnese", "Estudo de Caso", "Anotações Multiprofissionais", "PEI"];
+const ROTULOS_SEM_ANAMNESE = ["Triagem", "Estudo de Caso", "Anotações Multiprofissionais", "PEI"];
 const NIVEL_CRIADO_PELO_ADMIN = 7;
 
 describe("fichasDoEstudante", () => {
@@ -26,7 +26,7 @@ describe("fichasDoEstudante", () => {
     });
   }
 
-  it("gives the NAPNE professional the four cards", () => {
+  it("gives the NAPNE professional the five cards", () => {
     assert.deepEqual(
       fichasDoEstudante(PROFISSIONAL_NAPNE).map((ficha) => ficha.label),
       ROTULOS,
@@ -36,7 +36,7 @@ describe("fichasDoEstudante", () => {
   it("keeps the route of each card", () => {
     assert.deepEqual(
       fichasDoEstudante(PROFISSIONAL_NAPNE).map((ficha) => ficha.rota),
-      ["/triagem", "/anamnese", "/comentarios", "/pei"],
+      ["/triagem", "/anamnese", "/estudo-de-caso", "/comentarios", "/pei"],
     );
   });
 
