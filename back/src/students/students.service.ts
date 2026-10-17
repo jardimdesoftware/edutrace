@@ -1,28 +1,30 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS } from 'src/constants';
-import { PUBLIC_USER_SELECT } from 'src/users/users.select';
+import { userSelectFor } from 'src/users/users.select';
 
 @Injectable()
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
+  // O nível de quem pede decide o select (userSelectFor): o telefone e o CPF do
+  // responsável externo só saem do banco para quem os administra.
+  findAll(requesterLevel: number) {
     return this.prisma.user.findMany({
       where: {
         id_level: LEVELS.ALUNO_ESTUDANTE,
       },
-      select: PUBLIC_USER_SELECT,
+      select: userSelectFor(requesterLevel),
     });
   }
 
-  findOne(email: string) {
+  findOne(email: string, requesterLevel: number) {
     return this.prisma.user.findFirst({
       where: {
         email,
         id_level: LEVELS.ALUNO_ESTUDANTE,
       },
-      select: PUBLIC_USER_SELECT,
+      select: userSelectFor(requesterLevel),
     });
   }
 
