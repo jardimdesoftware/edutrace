@@ -1,9 +1,11 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
 } from '@nestjs/common';
@@ -14,6 +16,7 @@ import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { SetPedagogicalManagerDto } from './dto/set-pedagogical-manager.dto';
 
 @Controller('students')
 export class StudentsController {
@@ -42,6 +45,13 @@ export class StudentsController {
     return this.serviceStatsService.getStats();
   }
 
+  // Pelo mesmo motivo de service-stats, vem antes de GET :email.
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @Get('pedagogical-manager-options')
+  pedagogicalManagerOptions() {
+    return this.studentsService.findPedagogicalManagerOptions();
+  }
+
   @AllowLevels(
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
@@ -58,6 +68,25 @@ export class StudentsController {
       req.user.id_level,
     );
     return student ? maskUserCpf(student) : student;
+  }
+
+  // Devolve o estudante já atualizado. Responde 200: a ação altera um estudante
+  // que já existe, e não cria um registro.
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @HttpCode(HttpStatus.OK)
+  @Patch(':email/pedagogical-manager')
+  async setPedagogicalManager(
+    @Param('email') email: string,
+    @Body() dto: SetPedagogicalManagerDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return maskUserCpf(
+      await this.studentsService.setPedagogicalManager(
+        email,
+        dto,
+        req.user.id_level,
+      ),
+    );
   }
 
   // As três transições devolvem o estudante já atualizado. Respondem 200: a
