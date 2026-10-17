@@ -14,6 +14,7 @@ import { PhasesModule } from './phases/phases.module';
 import { AnamnesisModule } from './anamnesis/anamnesis.module';
 import { CommentsModule } from './comments/comments.module';
 import { CaseStudiesModule } from './case-studies/case-studies.module';
+import { AeePlansModule } from './aee-plans/aee-plans.module';
 import { PlansEducationModule } from './plans-education/plans-education.module';
 import { ReportsModule } from './reports/reports.module';
 import { SessionsModule } from './sessions/sessions.module';
@@ -32,6 +33,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     AnamnesisModule,
     CommentsModule,
     CaseStudiesModule,
+    AeePlansModule,
     PlansEducationModule,
     ReportsModule,
     SessionsModule,
