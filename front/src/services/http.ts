@@ -19,6 +19,15 @@ async function readBody(res: Response) {
   return text ? JSON.parse(text) : null;
 }
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 function extractErrorMessage(data: { message?: string | string[] } | null, fallback: string) {
   const message = data?.message;
 
@@ -60,7 +69,7 @@ export async function apiRequest(path: string, options: ApiRequestOptions = {}) 
       endSession();
     }
 
-    throw new Error(extractErrorMessage(data, errorMessage));
+    throw new ApiError(extractErrorMessage(data, errorMessage), res.status);
   }
 
   return data;
