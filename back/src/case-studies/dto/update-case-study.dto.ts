@@ -1,9 +1,5 @@
-import {
-  OmittableField,
-  Section,
-  TEXT_MAX_LENGTH,
-  Text,
-} from './case-study-fields';
+import { OmittableField, Section, Text } from 'src/common/dto-fields';
+import { TEXT_MAX_LENGTH } from './case-study-fields';
 import { CaseStudyPedagogicalAspectsDto } from './case-study-pedagogical.dto';
 import {
   CaseStudyAeeOpinionDto,
