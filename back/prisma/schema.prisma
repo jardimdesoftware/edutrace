@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -65,6 +66,9 @@ model User {
 
   aee_plans          AeePlan[] @relation("AeePlanStudent")
   authored_aee_plans AeePlan[] @relation("AeePlanAuthor")
+
+  pei_entries          PeiEntry[] @relation("PeiEntryStudent")
+  authored_pei_entries PeiEntry[] @relation("PeiEntryAuthor")
 
   id_level Int
   level    Level @relation(fields: [id_level], references: [id])
@@ -195,6 +199,32 @@ model PlansEducation {
   deleted_at                 DateTime?
 }
 
+model PlansEducationLegacy {
+  id                         Int       @id @default(autoincrement())
+  professor_email            String
+  professor_name             String
+  student_email              String    @unique
+  student_name               String
+  academic_semester          Json
+  service_modality           Json
+  support_service            Json
+  skills                     Json
+  resource_equipment_used    Json
+  resource_equipment_needs   Json
+  curriculum_accessibility   Json
+  school_content             String
+  activities_to_be_developed Json
+  objectives                 String
+  work_methodology           Json
+  materials_used             Json
+  evaluation_criteria        Json
+  created_at                 DateTime  @default(now())
+  updated_at                 DateTime? @updatedAt
+  deleted_at                 DateTime?
+
+  @@map("PlansEducation_legacy")
+}
+
 model CaseStudy {
   id                       Int       @id @default(autoincrement())
   identification           Json
@@ -239,5 +269,32 @@ model AeePlan {
   author    User? @relation("AeePlanAuthor", fields: [id_author], references: [id], onDelete: SetNull)
 
   @@unique([id_student, semester])
+  @@index([id_author])
+}
+
+model PeiEntry {
+  id                    Int       @id @default(autoincrement())
+  semester              String
+  subject               String
+  adapted_objectives    String
+  prioritized_contents  String
+  syllabus_adaptations  Json
+  adapted_methodologies String
+  adapted_assessments   String
+  adapted_resources     String
+  general_notes         String
+  created_at            DateTime  @default(now())
+  updated_at            DateTime? @updatedAt
+  deleted_at            DateTime?
+
+  id_student Int
+  student    User @relation("PeiEntryStudent", fields: [id_student], references: [id], onDelete: Restrict)
+
+  id_author Int?
+  author    User? @relation("PeiEntryAuthor", fields: [id_author], references: [id], onDelete: SetNull)
+
+  @@unique([id_student, semester, subject], where: { deleted_at: null })
+
+  @@index([id_student])
   @@index([id_author])
 }
