@@ -4,6 +4,8 @@ import {
   CASE_STUDY_READERS,
   LEVELS,
   MANAGER_CONTACT_READERS,
+  PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT,
+  PEI_ENTRY_READERS,
   STUDENT_RECORD_READERS,
 } from 'src/constants';
 
@@ -74,6 +76,27 @@ describe('AEE_PLAN_READERS', () => {
 
   it('should not include the student level, which reads only his own', () => {
     expect(AEE_PLAN_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+  });
+});
+
+describe('PEI_ENTRY_READERS', () => {
+  it('should list the Administrator, Education, Health and NAPNE levels as readers of the PEI of any student', () => {
+    expect(PEI_ENTRY_READERS).toEqual([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ]);
+  });
+
+  it('should not include the student level, which reads only his own', () => {
+    expect(PEI_ENTRY_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+  });
+});
+
+describe('PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT', () => {
+  it('should cap at 300 the active entries of the PEI of a student', () => {
+    expect(PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT).toBe(300);
   });
 });
 
