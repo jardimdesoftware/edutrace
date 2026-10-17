@@ -1,5 +1,6 @@
 import type { ReportsData } from '@/interfaces/ReportsData';
 import { secoesParaLeitura } from './estudoDeCaso';
+import { secoesDoPlanoParaLeitura } from './paee';
 import { REPORT_SECTIONS, type ReportFieldDef } from './reportLabels';
 
 export interface ReportRow {
@@ -16,9 +17,12 @@ export interface ReportSection {
 const NAO_INFORMADO = 'Não informado';
 const CHAVES_OUTRO = ['outro', 'outros'];
 const TITULO_ESTUDO_DE_CASO = 'Estudo de Caso';
+const TITULO_PAEE = 'PAEE';
 
 export function relatorioVazio(report: ReportsData): boolean {
-  return !report.screening && !report.plansEducation && !report.caseStudy;
+  return (
+    !report.screening && !report.plansEducation && !report.caseStudy && !report.aeePlans?.length
+  );
 }
 
 // Mesmo texto que a tela do PEI exibe nas opções geradas a partir da chave.
@@ -70,6 +74,20 @@ function secoesDoEstudoDeCaso(estudo: ReportsData['caseStudy']): ReportSection[]
   }));
 }
 
+// O PAEE é refeito a cada período letivo, então sai uma seção do relatório por
+// período, na ordem da API (do mais recente para o mais antigo), com as seções
+// da ficha em sequência, com o curso do estudante primeiro. Sem nenhum PAEE
+// (lista vazia, ou ausente quando a API não a envia), sai uma seção sem linhas,
+// como nas outras fichas.
+function secoesDoPaee(planos: ReportsData['aeePlans']): ReportSection[] {
+  if (!planos?.length) return [{ title: TITULO_PAEE, rows: null }];
+
+  return planos.map((plano) => ({
+    title: `${TITULO_PAEE} - ${plano.semester}`,
+    rows: secoesDoPlanoParaLeitura(plano, plano.student?.course).flatMap((secao) => secao.linhas),
+  }));
+}
+
 export function buildReportSections(report: ReportsData): ReportSection[] {
   const fichas = REPORT_SECTIONS.map((section) => {
     const dados = report[section.key] as Record<string, unknown> | null;
@@ -85,7 +103,7 @@ export function buildReportSections(report: ReportsData): ReportSection[] {
     };
   });
 
-  return [...fichas, ...secoesDoEstudoDeCaso(report.caseStudy)];
+  return [...fichas, ...secoesDoEstudoDeCaso(report.caseStudy), ...secoesDoPaee(report.aeePlans)];
 }
 
 // Tira os caracteres que o Windows recusa em nome de arquivo.
