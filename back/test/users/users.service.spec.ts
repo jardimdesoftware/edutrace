@@ -88,7 +88,7 @@ describe('UsersService', () => {
     };
     screening: { updateMany: jest.Mock };
     anamnesis: { updateMany: jest.Mock };
-    plansEducation: { updateMany: jest.Mock };
+    plansEducationLegacy: { updateMany: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -106,7 +106,7 @@ describe('UsersService', () => {
       },
       screening: { updateMany: jest.fn() },
       anamnesis: { updateMany: jest.fn() },
-      plansEducation: { updateMany: jest.fn() },
+      plansEducationLegacy: { updateMany: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -1002,14 +1002,36 @@ describe('UsersService', () => {
         where: { email: 'test@test.com' },
         data: { email: 'novo@test.com' },
       });
-      expect(tx.plansEducation.updateMany).toHaveBeenCalledWith({
+      expect(tx.plansEducationLegacy.updateMany).toHaveBeenCalledWith({
         where: { student_email: 'test@test.com' },
         data: { student_email: 'novo@test.com' },
       });
-      expect(tx.plansEducation.updateMany).toHaveBeenCalledWith({
+      expect(tx.plansEducationLegacy.updateMany).toHaveBeenCalledWith({
         where: { professor_email: 'test@test.com' },
         data: { professor_email: 'novo@test.com' },
       });
+    });
+
+    // O PEI antigo (PlansEducation) virou PlansEducation_legacy, fora da API, e
+    // guarda os e-mails em texto: a troca do e-mail continua propagando para
+    // ele, uma vez por coluna de e-mail (do estudante e do professor). O
+    // PeiEntry liga ao estudante e ao autor por id, então não tem e-mail para
+    // propagar, e o mock do tx não tem esse model: uma chamada a ele quebraria
+    // este teste com um TypeError.
+    it('should propagate the new email to the legacy PEI table once per email column', async () => {
+      await service.updateProfile('test@test.com', {
+        newEmail: 'novo@test.com',
+      });
+
+      expect(tx.plansEducationLegacy.updateMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not touch the legacy PEI table when the email does not change', async () => {
+      await service.updateProfile('test@test.com', {
+        hashedPassword: 'newHashedPassword',
+      });
+
+      expect(tx.plansEducationLegacy.updateMany).not.toHaveBeenCalled();
     });
   });
 
