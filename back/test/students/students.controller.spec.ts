@@ -6,6 +6,7 @@ import {
   PATH_METADATA,
 } from '@nestjs/common/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { SetPedagogicalManagerDto } from 'src/students/dto/set-pedagogical-manager.dto';
 import { ServiceQueueService } from 'src/students/service-queue.service';
 import { ServiceStatsService } from 'src/students/service-stats.service';
 import { StudentsController } from 'src/students/students.controller';
@@ -35,6 +36,8 @@ describe('PlansEducationController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            findPedagogicalManagerOptions: jest.fn(),
+            setPedagogicalManager: jest.fn(),
           },
         },
         { provide: ServiceQueueService, useValue: serviceQueue },
@@ -338,6 +341,107 @@ describe('PlansEducationController', () => {
       );
 
       expect(JSON.stringify(found)).not.toContain('98765432100');
+    });
+  });
+
+  describe('pedagogicalManagerOptions', () => {
+    it('should return the options as they come from the service', async () => {
+      const options = [
+        { id: 4, full_name: 'Ana', id_level: LEVELS.PROFISSIONAL_NAPNE },
+      ];
+      jest
+        .spyOn(service, 'findPedagogicalManagerOptions')
+        .mockResolvedValue(options);
+
+      expect(await controller.pedagogicalManagerOptions()).toBe(options);
+    });
+
+    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+      expect(
+        Reflect.getMetadata(
+          ALLOW_LEVELS_KEY,
+          controller.pedagogicalManagerOptions,
+        ),
+      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+    });
+
+    it('should expose GET pedagogical-manager-options', () => {
+      expect(
+        Reflect.getMetadata(
+          METHOD_METADATA,
+          controller.pedagogicalManagerOptions,
+        ),
+      ).toBe(RequestMethod.GET);
+      expect(
+        Reflect.getMetadata(
+          PATH_METADATA,
+          controller.pedagogicalManagerOptions,
+        ),
+      ).toBe('pedagogical-manager-options');
+    });
+  });
+
+  describe('setPedagogicalManager', () => {
+    const dto = {
+      kind: 'EXTERNAL',
+      name: 'Maria da Silva',
+      phone: '81999998888',
+      cpf: '98765432100',
+    } as SetPedagogicalManagerDto;
+    const saved = {
+      id: 2,
+      full_name: 'Luizin',
+      cpf: '12345678910',
+      external_manager_name: 'Maria da Silva',
+      external_manager_phone: '81999998888',
+      external_manager_cpf: '98765432100',
+    };
+
+    it('should pass the e-mail and the body to the service and mask both cpfs', async () => {
+      jest
+        .spyOn(service, 'setPedagogicalManager')
+        .mockResolvedValue(saved as never);
+
+      const result = await controller.setPedagogicalManager(
+        'luizin@hotmail.com',
+        dto,
+        request(LEVELS.PROFISSIONAL_NAPNE),
+      );
+
+      expect(service.setPedagogicalManager).toHaveBeenCalledWith(
+        'luizin@hotmail.com',
+        dto,
+        LEVELS.PROFISSIONAL_NAPNE,
+      );
+      expect(result).toEqual({
+        ...saved,
+        cpf: '***.456.789-**',
+        external_manager_cpf: '***.654.321-**',
+      });
+    });
+
+    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+      expect(
+        Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.setPedagogicalManager),
+      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+    });
+
+    it('should expose PATCH :email/pedagogical-manager', () => {
+      expect(
+        Reflect.getMetadata(METHOD_METADATA, controller.setPedagogicalManager),
+      ).toBe(RequestMethod.PATCH);
+      expect(
+        Reflect.getMetadata(PATH_METADATA, controller.setPedagogicalManager),
+      ).toBe(':email/pedagogical-manager');
+    });
+
+    it('should answer 200, because it changes a student instead of creating one', () => {
+      expect(
+        Reflect.getMetadata(
+          HTTP_CODE_METADATA,
+          controller.setPedagogicalManager,
+        ),
+      ).toBe(200);
     });
   });
 });
