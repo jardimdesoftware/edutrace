@@ -22,3 +22,14 @@ export const LEAVE_QUEUE = {
   service_closed_at: null,
   napne_responsible_id: null,
 } as const;
+
+// O responsável pedagógico, de servidor ou de pessoa externa, é dado do
+// estudante. Quem deixa de ser estudante o perde junto com a fila, na mesma
+// escrita: o telefone e o CPF do externo são dados de terceiro, que não têm por
+// que ficar numa conta que deixou de ser estudante.
+export const LEAVE_PEDAGOGICAL_MANAGER = {
+  pedagogical_manager_id: null,
+  external_manager_name: null,
+  external_manager_phone: null,
+  external_manager_cpf: null,
+} as const;
