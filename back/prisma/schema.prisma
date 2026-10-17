@@ -175,30 +175,6 @@ model Anamnesis {
   deleted_at                  DateTime?
 }
 
-model PlansEducation {
-  id                         Int       @id @default(autoincrement())
-  professor_email            String
-  professor_name             String
-  student_email              String    @unique
-  student_name               String
-  academic_semester          Json
-  service_modality           Json
-  support_service            Json
-  skills                     Json
-  resource_equipment_used    Json
-  resource_equipment_needs   Json
-  curriculum_accessibility   Json
-  school_content             String
-  activities_to_be_developed Json
-  objectives                 String
-  work_methodology           Json
-  materials_used             Json
-  evaluation_criteria        Json
-  created_at                 DateTime  @default(now())
-  updated_at                 DateTime? @updatedAt
-  deleted_at                 DateTime?
-}
-
 model PlansEducationLegacy {
   id                         Int       @id @default(autoincrement())
   professor_email            String
