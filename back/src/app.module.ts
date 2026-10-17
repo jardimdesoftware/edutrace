@@ -15,7 +15,7 @@ import { AnamnesisModule } from './anamnesis/anamnesis.module';
 import { CommentsModule } from './comments/comments.module';
 import { CaseStudiesModule } from './case-studies/case-studies.module';
 import { AeePlansModule } from './aee-plans/aee-plans.module';
-import { PlansEducationModule } from './plans-education/plans-education.module';
+import { PeiEntriesModule } from './pei-entries/pei-entries.module';
 import { ReportsModule } from './reports/reports.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -34,7 +34,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     CommentsModule,
     CaseStudiesModule,
     AeePlansModule,
-    PlansEducationModule,
+    PeiEntriesModule,
     ReportsModule,
     SessionsModule,
     // Limite de requisições de cada usuário em cada rota, contra a repetição
