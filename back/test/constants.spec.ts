@@ -1,6 +1,7 @@
 import {
   ANAMNESIS_READERS,
   LEVELS,
+  MANAGER_CONTACT_READERS,
   STUDENT_RECORD_READERS,
 } from 'src/constants';
 
@@ -41,5 +42,20 @@ describe('ANAMNESIS_READERS', () => {
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.ADMIN);
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.PROFISSIONAL_SAUDE);
+  });
+});
+
+describe('MANAGER_CONTACT_READERS', () => {
+  it('should list only the Administrator and the NAPNE as readers of the phone and the cpf of the external manager', () => {
+    expect(MANAGER_CONTACT_READERS).toEqual([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ]);
+  });
+
+  it('should not include the student, the education nor the health level', () => {
+    expect(MANAGER_CONTACT_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+    expect(MANAGER_CONTACT_READERS).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
+    expect(MANAGER_CONTACT_READERS).not.toContain(LEVELS.PROFISSIONAL_SAUDE);
   });
 });
