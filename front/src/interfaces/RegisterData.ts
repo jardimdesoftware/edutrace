@@ -4,7 +4,6 @@ export interface RegisterData {
     email: string;
     id_level?: number;
     affliation?: string;
-    pedagogical_manager?: string;
     enrollment_number?: string;
     course?: string;
 }
