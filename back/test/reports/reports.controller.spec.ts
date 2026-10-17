@@ -10,7 +10,6 @@ describe('ReportsController', () => {
 
   const mockReport = {
     screening: null,
-    plansEducation: null,
     peiEntries: [],
     caseStudy: null,
     aeePlans: [],
