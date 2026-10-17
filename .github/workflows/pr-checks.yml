@@ -420,6 +420,64 @@ jobs:
 
           echo "OK: a migration preserva em pedagogical_manager_legacy o texto do responsável pedagógico que o estudante já tinha e remove a coluna antiga."
 
+      # A migration do PEI por semestre e disciplina RENOMEIA a tabela
+      # PlansEducation para PlansEducation_legacy, porque os registros do PEI
+      # antigo não têm correspondência campo a campo com o formato novo e um
+      # DROP TABLE os apagaria sem volta. O banco do job nasce vazio, então no
+      # migrate deploy não há linha para perder, e um DROP TABLE no lugar do
+      # RENAME passaria despercebido. Este passo monta o caso real num
+      # edutrace_pei à parte: aplica as migrations anteriores a ela, insere uma
+      # linha no PEI antigo, e só então aplica a migration. A linha precisa estar
+      # em PlansEducation_legacy, e a tabela PlansEducation não pode mais
+      # existir.
+      - name: Verificar que a migration do PEI preserva a tabela antiga
+        working-directory: ./back
+        run: |
+          pei=20261017140000_add_pei_entry
+          pei_url=postgresql://test:test@localhost:5432/edutrace_pei
+          email=estudante.pei.antigo@example.test
+
+          tabelas() {
+            psql "$pei_url" -tA -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = '$1'"
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_pei'
+
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$pei" ]; then
+              break
+            fi
+            if ! psql "$pei_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou ao ser aplicada antes da migration do PEI."
+              exit 1
+            fi
+          done
+
+          psql "$pei_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"PlansEducation\" (professor_email, professor_name, student_email, student_name, academic_semester, service_modality, support_service, skills, resource_equipment_used, resource_equipment_needs, curriculum_accessibility, school_content, activities_to_be_developed, objectives, work_methodology, materials_used, evaluation_criteria) VALUES ('professor.pei.antigo@example.test', 'Professor antigo', '$email', 'Estudante antigo', '{}', '{}', '{}', '{}', '{}', '{}', '{}', 'Conteúdo antigo', '{}', 'Objetivos antigos', '{}', '{}', '{}')"
+
+          if ! psql "$pei_url" -q -v ON_ERROR_STOP=1 -f "prisma/migrations/$pei/migration.sql" > /dev/null; then
+            echo "ERRO: a migration $pei falhou num banco que já tem registros no PEI antigo."
+            exit 1
+          fi
+
+          if [ "$(tabelas PlansEducation)" != "0" ]; then
+            echo "ERRO: a tabela PlansEducation continua no banco; a migration devia renomeá-la para PlansEducation_legacy."
+            exit 1
+          fi
+          if [ "$(tabelas PlansEducation_legacy)" != "1" ]; then
+            echo "ERRO: a tabela PlansEducation_legacy não existe depois da migration; ela devia ser o PlansEducation renomeado, com os registros do PEI antigo."
+            exit 1
+          fi
+
+          objetivos=$(psql "$pei_url" -tA -c "SELECT objectives FROM \"PlansEducation_legacy\" WHERE student_email = '$email'")
+          if [ "$objetivos" != "Objetivos antigos" ]; then
+            echo "ERRO: PlansEducation_legacy terminou com objectives='$objetivos'; o esperado é 'Objetivos antigos', o texto que o PEI antigo já tinha."
+            exit 1
+          fi
+
+          echo "OK: a migration preserva em PlansEducation_legacy os registros do PEI antigo e remove o nome PlansEducation."
+
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
 # --------------------------------------------------------------------
