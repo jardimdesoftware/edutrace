@@ -1,5 +1,6 @@
 import {
   ANAMNESIS_READERS,
+  CASE_STUDY_READERS,
   LEVELS,
   MANAGER_CONTACT_READERS,
   STUDENT_RECORD_READERS,
@@ -42,6 +43,21 @@ describe('ANAMNESIS_READERS', () => {
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.ADMIN);
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.PROFISSIONAL_SAUDE);
+  });
+});
+
+describe('CASE_STUDY_READERS', () => {
+  it('should list the Administrator, Education, Health and NAPNE levels as readers of the case study of any student', () => {
+    expect(CASE_STUDY_READERS).toEqual([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ]);
+  });
+
+  it('should not include the student level, which reads only his own', () => {
+    expect(CASE_STUDY_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
   });
 });
 
