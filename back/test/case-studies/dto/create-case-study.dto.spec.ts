@@ -268,6 +268,24 @@ describe('CreateCaseStudyDto, textos', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  // O TEXT e o JSONB do PostgreSQL recusam o surrogate solto (um \uD800 sem o
+  // par), e o erro subiria como 500; o par de verdade (um emoji) continua valendo.
+  it.each([
+    ['lone high surrogate', 'a\uD800b'],
+    ['lone low surrogate', 'a\uDC00b'],
+    ['high surrogate at the end', 'texto\uD83D'],
+  ])('should refuse the %s in a text', async (_name, value) => {
+    await expect(
+      validate(setAt(validBody(), 'barriers', value)),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('should accept a valid surrogate pair (an emoji) in a text', async () => {
+    await expect(
+      validate(setAt(validBody(), 'barriers', 'Barreira 🎨')),
+    ).resolves.toBeDefined();
+  });
+
   // São textos longos, que o professor escreve em mais de uma linha.
   it.each(textLimits)(
     'should accept line breaks and tabs in %s',
