@@ -49,7 +49,10 @@ describe('UsersService', () => {
     email: 'test@test.com',
     password: 'hashedPassword',
     affliation: 'Test',
-    pedagogical_manager: 'Manager',
+    pedagogical_manager_id: null,
+    external_manager_name: null,
+    external_manager_phone: null,
+    external_manager_cpf: null,
     password_reset_token: null,
     password_reset_expires: null,
     password_reset_attempts: 0,
@@ -151,7 +154,10 @@ describe('UsersService', () => {
       cpf: '12345678900',
       email: 'test@test.com',
       affliation: 'Test',
-      pedagogical_manager: 'Manager',
+      pedagogical_manager_id: null,
+      external_manager_name: null,
+      external_manager_phone: null,
+      external_manager_cpf: null,
     };
     let frontendUrl: string | undefined;
 
