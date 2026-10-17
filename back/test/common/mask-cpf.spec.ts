@@ -49,6 +49,37 @@ describe('maskUserCpf', () => {
 
     expect(user.cpf).toBe('12345678910');
   });
+
+  it('should mask the cpf of the external pedagogical manager too', () => {
+    const user = {
+      id: 1,
+      cpf: '12345678910',
+      external_manager_cpf: '98765432100',
+    };
+
+    expect(maskUserCpf(user)).toEqual({
+      id: 1,
+      cpf: '***.456.789-**',
+      external_manager_cpf: '***.654.321-**',
+    });
+    expect(user.external_manager_cpf).toBe('98765432100');
+  });
+
+  it('should keep the external cpf null when the student has none', () => {
+    const user = { id: 1, cpf: '12345678910', external_manager_cpf: null };
+
+    expect(maskUserCpf(user)).toEqual({
+      id: 1,
+      cpf: '***.456.789-**',
+      external_manager_cpf: null,
+    });
+  });
+
+  it('should not add the external cpf to an object that does not have it', () => {
+    expect(maskUserCpf({ id: 1, cpf: '12345678910' })).not.toHaveProperty(
+      'external_manager_cpf',
+    );
+  });
 });
 
 describe('maskUsersCpf', () => {
@@ -61,6 +92,18 @@ describe('maskUsersCpf', () => {
     expect(maskUsersCpf(users)).toEqual([
       { id: 1, cpf: '***.456.789-**' },
       { id: 2, cpf: '***.654.321-**' },
+    ]);
+  });
+
+  it('should mask the external cpf of every user in the list', () => {
+    expect(
+      maskUsersCpf([
+        { id: 1, cpf: '12345678910', external_manager_cpf: '98765432100' },
+        { id: 2, cpf: '98765432100', external_manager_cpf: null },
+      ]),
+    ).toEqual([
+      { id: 1, cpf: '***.456.789-**', external_manager_cpf: '***.654.321-**' },
+      { id: 2, cpf: '***.654.321-**', external_manager_cpf: null },
     ]);
   });
 
