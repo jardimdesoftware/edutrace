@@ -89,5 +89,3 @@ export interface CaseStudy extends CaseStudySections {
 }
 
 export type CaseStudyPayload = CaseStudySections;
-
-export type NewCaseStudyPayload = CaseStudySections & { student_email: string };
