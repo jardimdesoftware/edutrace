@@ -69,15 +69,6 @@ export class CreateUserDto {
   affliation?: string;
 
   @ApiProperty({
-    description: 'Responsável pedagógico',
-    example: 'Luizin',
-    required: false,
-  })
-  @IsOptional({ message: 'O campo pedagogical_manager é opcional.' })
-  @IsString({ message: 'O campo pedagogical_manager deve ser uma string.' })
-  pedagogical_manager?: string;
-
-  @ApiProperty({
     description: 'Nível de acesso do usuário criado pelo administrador.',
     default: 2,
     required: false,

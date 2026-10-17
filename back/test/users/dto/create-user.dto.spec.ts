@@ -1,5 +1,7 @@
+import { BadRequestException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
+import { createValidationPipe } from 'src/common/validation-pipe';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 
 // Sem id_level o cadastro cria estudante, que precisa de matrícula e curso.
@@ -242,5 +244,38 @@ describe('CreateUserDto, matrícula e curso do estudante', () => {
     expect(Object.values(errors[0].constraints ?? {})).toEqual([
       'O campo course não deve ter caracteres de controle.',
     ]);
+  });
+});
+
+// O responsável pedagógico deixou de ser um texto do cadastro e passou a ser um
+// vínculo, definido por PATCH /students/:email/pedagogical-manager. O corpo do
+// cadastro com o campo antigo ou com os novos é recusado, e não gravado.
+describe('CreateUserDto, responsável pedagógico', () => {
+  // O cadastro não recebe senha: o pipe recusaria o campo da base.
+  const { password, ...fields } = base;
+  const student = { ...fields, cpf: '01234567890' };
+
+  function validate(body: object) {
+    return createValidationPipe().transform(body, {
+      type: 'body',
+      metatype: CreateUserDto,
+    });
+  }
+
+  it('should accept a body without the pedagogical manager', async () => {
+    await expect(validate(student)).resolves.toBeInstanceOf(CreateUserDto);
+  });
+
+  it.each([
+    ['pedagogical_manager', 'Fulano'],
+    ['pedagogical_manager_id', 3],
+    ['pedagogical_manager_legacy', 'Fulano'],
+    ['external_manager_name', 'Maria da Silva'],
+    ['external_manager_phone', '81999998888'],
+    ['external_manager_cpf', '01234567890'],
+  ])('should refuse %s with 400', async (field, value) => {
+    await expect(
+      validate({ ...student, [field]: value }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
