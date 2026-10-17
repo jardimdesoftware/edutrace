@@ -77,8 +77,8 @@ export async function renderReportPdf(
   return doc;
 }
 
-// Gera e baixa o relatório do estudante em PDF, com a triagem e o PEI.
-// Retorna "empty" quando o estudante não tem nenhuma das duas fichas; lança em erros inesperados.
+// Gera e baixa o relatório do estudante em PDF, com a triagem, o PEI e o estudo de caso.
+// Retorna "empty" quando o estudante não tem nenhuma das três fichas; lança em erros inesperados.
 export async function exportStudentReportPdf(estudante: Estudante): Promise<"downloaded" | "empty"> {
   const report: ReportsData = await getReportByEmail(estudante.email);
 
