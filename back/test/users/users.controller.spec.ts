@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
 import { UsersController } from 'src/users/users.controller';
 import { UsersService } from 'src/users/users.service';
-import { LEVELS } from 'src/constants';
+import { LEVELS, MANAGER_CONTACT_READERS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 describe('UsersController', () => {
@@ -16,7 +16,10 @@ describe('UsersController', () => {
     email: 'test@test.com',
     password: 'hashedPassword',
     affliation: 'Test',
-    pedagogical_manager: 'Manager',
+    pedagogical_manager_id: null,
+    external_manager_name: null,
+    external_manager_phone: null,
+    external_manager_cpf: null,
     password_reset_token: null,
     password_reset_expires: null,
     password_reset_attempts: 0,
@@ -254,6 +257,60 @@ describe('UsersController', () => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
         expect(levels).not.toContain(LEVELS.PROFISSIONAL_NAPNE);
+      },
+    );
+  });
+
+  // UsersService sempre seleciona o telefone e o CPF do responsável externo
+  // (USER_WITH_MANAGER_CONTACT_SELECT), então toda rota que o chama tem de ser
+  // de nível que lê esse contato. Rota nova para outro nível precisa escolher o
+  // select por userSelectFor, e este teste avisa antes de o contato vazar.
+  describe('contato do responsável externo', () => {
+    const withContact = {
+      ...mockPublicUser,
+      external_manager_name: 'Maria da Silva',
+      external_manager_phone: '81999998888',
+      external_manager_cpf: '98765432100',
+    };
+    const masked = {
+      ...withContact,
+      cpf: '***.456.789-**',
+      external_manager_cpf: '***.654.321-**',
+    };
+
+    it('should mask both cpfs in every route and keep the phone', async () => {
+      const requester = { user: { id_level: LEVELS.ADMIN } } as any;
+      jest.spyOn(service, 'create').mockResolvedValue(withContact as never);
+      jest.spyOn(service, 'findAll').mockResolvedValue([withContact] as never);
+      jest
+        .spyOn(service, 'findOnePublic')
+        .mockResolvedValue(withContact as never);
+      jest.spyOn(service, 'update').mockResolvedValue(withContact as never);
+      jest.spyOn(service, 'remove').mockResolvedValue(withContact as never);
+
+      const results = [
+        await controller.create({ id_level: 2 } as any, requester),
+        await controller.findAll(),
+        await controller.findOne('test@test.com'),
+        await controller.update('test@test.com', {} as any),
+        await controller.remove('1'),
+      ];
+
+      expect(results).toEqual([masked, [masked], masked, masked, masked]);
+      expect(JSON.stringify(results)).not.toMatch(/98765432100|12345678900/);
+    });
+
+    it.each(['create', 'findAll', 'findOne', 'update', 'remove'] as const)(
+      'should open %s only to levels that read the contact of the external manager',
+      (route) => {
+        const levels: number[] = Reflect.getMetadata(
+          ALLOW_LEVELS_KEY,
+          controller[route],
+        );
+
+        for (const level of levels) {
+          expect(MANAGER_CONTACT_READERS).toContain(level);
+        }
       },
     );
   });
