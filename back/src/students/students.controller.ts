@@ -30,8 +30,8 @@ export class StudentsController {
     LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get()
-  async findAll() {
-    return maskUsersCpf(await this.studentsService.findAll());
+  async findAll(@Req() req: AuthenticatedRequest) {
+    return maskUsersCpf(await this.studentsService.findAll(req.user.id_level));
   }
 
   // Declarada antes de GET :email: o parâmetro casa com qualquer texto, e a
@@ -49,8 +49,14 @@ export class StudentsController {
     LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get(':email')
-  async findOne(@Param('email') email: string) {
-    const student = await this.studentsService.findOne(email);
+  async findOne(
+    @Param('email') email: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const student = await this.studentsService.findOne(
+      email,
+      req.user.id_level,
+    );
     return student ? maskUserCpf(student) : student;
   }
 
@@ -78,7 +84,12 @@ export class StudentsController {
   @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
   @HttpCode(HttpStatus.OK)
   @Post(':email/service/reopen')
-  async reopen(@Param('email') email: string) {
-    return maskUserCpf(await this.serviceQueueService.reopen(email));
+  async reopen(
+    @Param('email') email: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return maskUserCpf(
+      await this.serviceQueueService.reopen(email, req.user.id_level),
+    );
   }
 }

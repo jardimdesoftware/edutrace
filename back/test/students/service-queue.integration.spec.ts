@@ -352,7 +352,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         // O encerramento libera a vaga do NAPNE.
         await expect(inServiceOf(napne.id)).resolves.toBe(0);
 
-        await queue.reopen(student.email);
+        await queue.reopen(student.email, LEVELS.ADMIN);
         const reopened = await statusOf(student.email);
         expect(reopened).toMatchObject({
           service_status: ServiceStatus.WAITING,

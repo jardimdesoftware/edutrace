@@ -82,7 +82,7 @@ export class ServiceQueueService {
       throw new ConflictException('O estudante não está na fila de espera.');
     }
 
-    return this.readStudent(email);
+    return this.readStudent(email, LEVELS.PROFISSIONAL_NAPNE);
   }
 
   // O responsável continua gravado depois do encerramento, como histórico de
@@ -114,11 +114,11 @@ export class ServiceQueueService {
         : new ConflictException('O estudante não está em atendimento.');
     }
 
-    return this.readStudent(email);
+    return this.readStudent(email, requester.id_level);
   }
 
   // O estudante volta ao fim da fila: queued_at novo e sem responsável.
-  async reopen(email: string) {
+  async reopen(email: string, requesterLevel: number) {
     const { count } = await this.prisma.user.updateMany({
       where: {
         email,
@@ -139,7 +139,7 @@ export class ServiceQueueService {
       throw new ConflictException('O estudante não está encerrado.');
     }
 
-    return this.readStudent(email);
+    return this.readStudent(email, requesterLevel);
   }
 
   private async statusOf(email: string) {
@@ -156,9 +156,9 @@ export class ServiceQueueService {
   }
 
   // O estudante excluído entre a transição e a leitura vira 404, e não uma
-  // resposta 200 sem corpo.
-  private async readStudent(email: string) {
-    const student = await this.studentsService.findOne(email);
+  // resposta 200 sem corpo. O select vem do nível de quem fez a transição.
+  private async readStudent(email: string, requesterLevel: number) {
+    const student = await this.studentsService.findOne(email, requesterLevel);
 
     if (!student) {
       throw new NotFoundException('Estudante não encontrado');
