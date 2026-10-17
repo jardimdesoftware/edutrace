@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail } from 'class-validator';
-import { Section, TEXT_MAX_LENGTH, Text } from './case-study-fields';
+import { Section, Text } from 'src/common/dto-fields';
+import { TEXT_MAX_LENGTH } from './case-study-fields';
 import { CaseStudyPedagogicalAspectsDto } from './case-study-pedagogical.dto';
 import {
   CaseStudyAeeOpinionDto,
