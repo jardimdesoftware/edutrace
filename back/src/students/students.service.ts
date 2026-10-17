@@ -1,7 +1,31 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
-import { LEVELS } from 'src/constants';
+import { LEVELS, PEDAGOGICAL_MANAGER_LEVELS } from 'src/constants';
 import { userSelectFor } from 'src/users/users.select';
+import {
+  MANAGER_KINDS,
+  SetPedagogicalManagerDto,
+} from './dto/set-pedagogical-manager.dto';
+
+const NO_EXTERNAL_MANAGER = {
+  external_manager_name: null,
+  external_manager_phone: null,
+  external_manager_cpf: null,
+};
+
+const INVALID_SERVER_MESSAGE =
+  'O responsável pedagógico precisa ser um Profissional da Educação ou um Profissional NAPNE.';
+
+const INCOMPLETE_BODY_MESSAGE =
+  'O corpo não tem os campos que o kind informado exige.';
+
+const SELF_MANAGER_MESSAGE =
+  'O estudante não pode ser o próprio responsável pedagógico.';
 
 @Injectable()
 export class StudentsService {
@@ -42,6 +66,117 @@ export class StudentsService {
     }
 
     return student;
+  }
+
+  // Servidores que podem ser escolhidos como responsável pedagógico. Só o id, o
+  // nome e o nível saem: a lista alimenta um seletor, e o resto do cadastro do
+  // servidor não faz parte dela.
+  findPedagogicalManagerOptions() {
+    return this.prisma.user.findMany({
+      where: { id_level: { in: [...PEDAGOGICAL_MANAGER_LEVELS] } },
+      select: { id: true, full_name: true, id_level: true },
+      orderBy: { full_name: 'asc' },
+    });
+  }
+
+  // Cada tipo grava os dois lados, o do servidor e o do externo, e zera o que
+  // não é dele. O responsável nunca fica nos dois tipos, mesmo que o corpo traga
+  // campos dos dois (o DTO já os recusa), e os CHECKs do banco nunca são o
+  // primeiro a barrar a gravação.
+  //
+  // O nível do estudante é conferido na própria trava da linha, dentro da
+  // transação, e a gravação é pelo id dessa linha. Conferir antes, fora da
+  // transação, deixava a troca de nível do administrador passar entre a
+  // conferência e a gravação, e uma conta que deixou de ser estudante ficava com
+  // o vínculo. A troca de nível trava a mesma linha com FOR UPDATE: ela espera
+  // este vínculo gravar e depois limpa o responsável, ou este vínculo espera a
+  // troca terminar e não encontra mais o estudante (404).
+  //
+  // A ordem das travas é a da troca de nível do servidor (UsersService.update),
+  // que trava a linha do servidor e depois as dos estudantes dele: primeiro o
+  // servidor, depois o estudante. Na ordem inversa as duas transações esperariam
+  // uma pela outra (deadlock).
+  async setPedagogicalManager(
+    email: string,
+    dto: SetPedagogicalManagerDto,
+    requesterLevel: number,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const data = await this.pedagogicalManagerData(tx, dto);
+      const student = await this.lockStudent(tx, email);
+
+      if (data.pedagogical_manager_id === student.id) {
+        throw new BadRequestException(SELF_MANAGER_MESSAGE);
+      }
+
+      return tx.user.update({
+        where: { id: student.id },
+        data,
+        select: userSelectFor(requesterLevel),
+      });
+    });
+  }
+
+  private async lockStudent(tx: Prisma.TransactionClient, email: string) {
+    const [student] = await tx.$queryRaw<{ id: number }[]>`
+      SELECT "id" FROM "User"
+      WHERE "email" = ${email} AND "id_level" = ${LEVELS.ALUNO_ESTUDANTE}
+      FOR UPDATE`;
+
+    if (!student) {
+      throw new NotFoundException('Estudante não encontrado');
+    }
+
+    return student;
+  }
+
+  private async pedagogicalManagerData(
+    tx: Prisma.TransactionClient,
+    dto: SetPedagogicalManagerDto,
+  ): Promise<Prisma.UserUncheckedUpdateInput> {
+    if (dto.kind === MANAGER_KINDS.SERVER) {
+      if (dto.user_id === undefined) {
+        throw new BadRequestException(INCOMPLETE_BODY_MESSAGE);
+      }
+
+      await this.assertServerManager(tx, dto.user_id);
+
+      return { pedagogical_manager_id: dto.user_id, ...NO_EXTERNAL_MANAGER };
+    }
+
+    if (dto.kind === MANAGER_KINDS.EXTERNAL) {
+      const { name, phone, cpf } = dto;
+
+      if (name === undefined || phone === undefined || cpf === undefined) {
+        throw new BadRequestException(INCOMPLETE_BODY_MESSAGE);
+      }
+
+      return {
+        pedagogical_manager_id: null,
+        external_manager_name: name,
+        external_manager_phone: phone,
+        external_manager_cpf: cpf,
+      };
+    }
+
+    return { pedagogical_manager_id: null, ...NO_EXTERNAL_MANAGER };
+  }
+
+  // A linha do servidor é travada com FOR SHARE antes de ler o nível. A troca
+  // de nível dele trava a mesma linha com FOR UPDATE, então ela espera este
+  // vínculo gravar (e depois o desfaz), e o vínculo espera a troca terminar (e
+  // depois recusa o nível novo). Sem a trava, o estudante poderia ficar ligado a
+  // quem deixou os níveis 3 e 5 entre a conferência e a gravação.
+  private async assertServerManager(
+    tx: Prisma.TransactionClient,
+    userId: number,
+  ) {
+    const [server] = await tx.$queryRaw<{ id_level: number }[]>`
+      SELECT "id_level" FROM "User" WHERE "id" = ${userId} FOR SHARE`;
+
+    if (!server || !PEDAGOGICAL_MANAGER_LEVELS.includes(server.id_level)) {
+      throw new BadRequestException(INVALID_SERVER_MESSAGE);
+    }
   }
 
   async findAllEmails(): Promise<string[]> {
