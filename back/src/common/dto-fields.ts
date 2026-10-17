@@ -15,11 +15,14 @@ import {
 } from 'class-validator';
 import { trimText } from 'src/users/dto/student-fields';
 
-// Qualquer caractere fora da categoria Cc, mais a tabulação e as quebras de
-// linha, que os textos longos precisam. O PostgreSQL recusa o NUL em TEXT e o
-// \u0000 em JSONB, e o erro subiria como 500; os demais controles (escape,
-// DEL, os C1) forjam linhas em CSV, log e PDF.
-export const TEXT_PATTERN = /^(?:[^\p{Cc}]|[\t\n\r])*$/u;
+// Qualquer caractere fora das categorias Cc (controle) e Cs (surrogate solto),
+// mais a tabulação e as quebras de linha, que os textos longos precisam. O
+// PostgreSQL recusa o NUL em TEXT e o \u0000 em JSONB, e o erro subiria como
+// 500; os demais controles (escape, DEL, os C1) forjam linhas em CSV, log e PDF.
+// O surrogate solto (um \uD800 sem o par) também faz o JSONB recusar o texto,
+// e o par de verdade (um emoji) é um ponto de código só e não entra na
+// categoria Cs.
+export const TEXT_PATTERN = /^(?:[^\p{Cc}\p{Cs}]|[\t\n\r])*$/u;
 
 // Uma data ISO 8601 de verdade tem menos de 40 caracteres, e a fração de
 // segundos do formato não tem tamanho máximo: sem este limite, uma data válida
