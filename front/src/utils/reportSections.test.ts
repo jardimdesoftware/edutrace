@@ -10,8 +10,8 @@ type AeePlansReport = NonNullable<ReportsData['aeePlans']>;
 
 const screening = { report: 'Laudo' } as Screening;
 
-// O relatório traz o semestre, a disciplina, os campos de conteúdo e só o nome do
-// professor autor.
+// O relatório traz o semestre, a disciplina, os campos de conteúdo, os quatro do
+// parecer semestral e só o nome do professor autor.
 const peiEntries: PeiEntriesReport = [
   {
     semester: '2026.2',
@@ -26,6 +26,10 @@ const peiEntries: PeiEntriesReport = [
     adapted_assessments: 'Prova com tempo ampliado',
     adapted_resources: 'Calculadora e ábaco',
     general_notes: '',
+    semester_progress: 'Passou a resolver as operações sozinho',
+    semester_difficulties: 'Perde o foco em provas longas',
+    next_semester_notes: 'Manter o tempo ampliado nas provas',
+    individual_sessions: 'Terças, 14h, sala 3, convocado pela coordenação',
     author: { full_name: 'Professora Ana' },
   },
   {
@@ -38,6 +42,10 @@ const peiEntries: PeiEntriesReport = [
     adapted_assessments: '',
     adapted_resources: '',
     general_notes: 'Prefere atividades em dupla',
+    semester_progress: '',
+    semester_difficulties: '  ',
+    next_semester_notes: '',
+    individual_sessions: '',
     author: null,
   },
 ];
