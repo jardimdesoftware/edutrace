@@ -6,11 +6,13 @@ import {
   Body,
   Param,
   ParseIntPipe,
+  Query,
   Request,
 } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { ListCommentsQueryDto } from './dto/list-comments-query.dto';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { ApiBody } from '@nestjs/swagger';
@@ -76,8 +78,9 @@ export class CommentsController {
   @Get(':id_user')
   findAllByIdUser(
     @Param('id_user') id_user: string,
+    @Query() query: ListCommentsQueryDto,
     @Request() request: AuthenticatedRequest,
   ) {
-    return this.commentsService.findAllByIdUser(+id_user, request);
+    return this.commentsService.findAllByIdUser(+id_user, query, request);
   }
 }
