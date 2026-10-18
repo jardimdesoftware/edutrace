@@ -26,7 +26,6 @@ k6/
         ├── students.test.js           # GET /students
         ├── screenings.test.js         # CRUD /screenings
         ├── anamnesis.test.js          # CRUD /anamnesis
-        ├── plans-education.test.js    # CRUD /plans-education
         └── reports.test.js            # GET /reports/:email
 ```
 
@@ -144,9 +143,6 @@ k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=..
 # Anamnesis (o cadastro do estudante usa o admin; as rotas de anamnese usam o Profissional NAPNE)
 k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... -e NAPNE_EMAIL=... -e NAPNE_PASSWORD=... k6/tests/endpoints/anamnesis.test.js
 
-# Plans Education
-k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... k6/tests/endpoints/plans-education.test.js
-
 # Reports (requer estudante existente no banco)
 k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... -e TEST_STUDENT_EMAIL=... k6/tests/endpoints/reports.test.js
 ```
@@ -179,16 +175,16 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 | `NAPNE_PASSWORD`    | Senha do Profissional NAPNE                  | `senhaSegura123`          |
 | `USER_EMAIL`        | Email de usuário comum (não-admin)           | `usuario@edutrace.com`    |
 | `USER_PASSWORD`     | Senha do usuário comum                       | `senhaSegura123`          |
-| `TEST_STUDENT_EMAIL`| Email de estudante com dados no banco        | `estudante@edutrace.com`  |
+| `TEST_STUDENT_EMAIL`| Email de estudante cadastrado no banco       | `estudante@edutrace.com`  |
 
 ---
 
 ## ⚠️ Observações Importantes
 
-1. **Triagem, anamnese e PEI**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail e matrícula (`enrollment_number`) únicos por iteração, mais o curso (`course`), e o removem no fim. O cadastro de estudante exige os dois campos e responde 400 sem eles; a matrícula vem de `helpers/enrollment.js`, só com letras maiúsculas e dígitos e no máximo 30 caracteres, e o CPF de `helpers/cpf.js`. O `POST /anamnesis` também atualiza `id_current_phase` do estudante. Só o Profissional NAPNE (`id_level` 5) acessa as rotas de anamnese (o administrador recebe 403), então `anamnesis.test.js` faz login com `NAPNE_EMAIL` e `NAPNE_PASSWORD`, uma conta que precisa existir com a senha já definida, e usa o administrador só para cadastrar e remover o estudante.
+1. **Triagem e anamnese**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail e matrícula (`enrollment_number`) únicos por iteração, mais o curso (`course`), e o removem no fim. O cadastro de estudante exige os dois campos e responde 400 sem eles; a matrícula vem de `helpers/enrollment.js`, só com letras maiúsculas e dígitos e no máximo 30 caracteres, e o CPF de `helpers/cpf.js`. O `POST /anamnesis` também atualiza `id_current_phase` do estudante. Só o Profissional NAPNE (`id_level` 5) acessa as rotas de anamnese (o administrador recebe 403), então `anamnesis.test.js` faz login com `NAPNE_EMAIL` e `NAPNE_PASSWORD`, uma conta que precisa existir com a senha já definida, e usa o administrador só para cadastrar e remover o estudante.
 
 2. **Users - Criação**: Apenas admins (`id_level: 1`) podem criar usuários. O teste `users.test.js` usa as credenciais de admin.
 
-3. **Reports**: O endpoint `GET /reports/:email` busca dados existentes. O relatório traz a triagem e o PEI do estudante (a anamnese não entra). Configure `TEST_STUDENT_EMAIL` com um email que já possui triagem ou PEI no banco.
+3. **Reports e PEI**: O endpoint `GET /reports/:email` busca dados existentes. O relatório traz a triagem e os registros do PEI do estudante (a anamnese não entra). Configure `TEST_STUDENT_EMAIL` com um email que já possui triagem ou registros do PEI no banco. Os testes de fumaça, carga e estresse também leem `GET /pei-entries/:email` desse estudante com a conta de administrador, e a API responde 404 se o e-mail não for de um estudante cadastrado. Nenhum teste k6 cria registros do PEI: o `POST /pei-entries` é só do Profissional da Educação.
 
 4. **Dados de teste**: Os testes de CRUD criam e deletam dados em cada iteração (ciclo de vida completo). Certifique-se de rodar apenas contra um ambiente de desenvolvimento/staging.
