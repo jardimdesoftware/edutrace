@@ -63,11 +63,12 @@ export class PeiEntriesController {
     return this.peiEntriesService.findByStudent(email, request);
   }
 
-  // Só o autor do registro edita, e o service compara com a sessão.
+  // Só o autor do registro edita (conteúdo e parecer semestral), e o service
+  // compara com a sessão.
   @ApiOperation({
     summary: 'Edita o registro do PEI',
     description:
-      'Cada campo enviado substitui o valor inteiro (a lista de pares inclusive); os que não vão no corpo ficam como estão. O estudante, o semestre, a disciplina e o autor não mudam: para corrigir o semestre ou a disciplina, exclua o registro e crie outro.',
+      'Cada campo enviado, de conteúdo ou do parecer semestral, substitui o valor inteiro (a lista de pares inclusive); os que não vão no corpo ficam como estão. O estudante, o semestre, a disciplina e o autor não mudam: para corrigir o semestre ou a disciplina, exclua o registro e crie outro.',
   })
   @ApiParam({ name: 'id', type: Number })
   @AllowLevels(LEVELS.PROFISSIONAL_EDUCACAO)
