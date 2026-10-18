@@ -203,10 +203,13 @@ export function validarFormularioDe(secoes: readonly SecaoDef[], form: unknown):
   );
 }
 
-// Tira o erro do caminho: o campo que o usuário alterou deixa de mostrar o erro
-// que tinha.
+// Tira o erro do caminho e os dos campos dentro dele: trocar uma lista muda o
+// índice dos itens, e o erro de um item não vale mais para o item que ocupa o
+// lugar.
 export function semErroDoCaminho(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
-  return Object.fromEntries(Object.entries(erros).filter(([chave]) => chave !== caminho));
+  return Object.fromEntries(
+    Object.entries(erros).filter(([chave]) => chave !== caminho && !chave.startsWith(`${caminho}.`)),
+  );
 }
 
 export interface LinhaDeLeitura {
