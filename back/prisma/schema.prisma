@@ -259,6 +259,10 @@ model PeiEntry {
   adapted_assessments   String
   adapted_resources     String
   general_notes         String
+  semester_progress     String    @default("")
+  semester_difficulties String    @default("")
+  next_semester_notes   String    @default("")
+  individual_sessions   String    @default("")
   created_at            DateTime  @default(now())
   updated_at            DateTime? @updatedAt
   deleted_at            DateTime?
