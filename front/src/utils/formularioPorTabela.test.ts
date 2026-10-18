@@ -279,6 +279,14 @@ describe('semErroDoCaminho', () => {
     assert.deepEqual(semErroDoCaminho({ a: 'x', b: 'y' }, 'a'), { b: 'y' });
   });
 
+  it('removes the errors of the fields inside the path, at any depth', () => {
+    assert.deepEqual(Object.keys(semErroDoCaminho(ERROS, 'a')), ['ab', 'ab.0', 'b']);
+  });
+
+  it('does not remove "a.10.x" when the path is "a.1"', () => {
+    assert.deepEqual(Object.keys(semErroDoCaminho(ERROS, 'a.1')), ['a', 'a.0.x', 'a.10.x', 'ab', 'ab.0', 'b']);
+  });
+
   it('keeps the sibling key that shares the prefix without the dot', () => {
     const erros = semErroDoCaminho(ERROS, 'a');
 
