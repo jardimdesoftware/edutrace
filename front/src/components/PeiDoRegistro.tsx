@@ -1,9 +1,9 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { FileText, Pencil, Trash2 } from "lucide-react";
 import type { PeiEntry } from "@/interfaces/PeiEntry";
 import { NAO_INFORMADO } from "@/utils/formularioPorTabela";
 import { secoesDoPeiParaLeitura } from "@/utils/pei";
 import LeituraPorTabela from "./LeituraPorTabela";
-import { BOTAO_PERIGO, BOTAO_PRIMARIO } from "./form/botoes";
+import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from "./form/botoes";
 
 interface PeiDoRegistroProps {
   registro: PeiEntry;
@@ -11,20 +11,23 @@ interface PeiDoRegistroProps {
   podeEditar: boolean;
   podeExcluir: boolean;
   onEditar: () => void;
+  onEditarParecer: () => void;
   onExcluir: () => void;
 }
 
 // O registro do PEI de uma disciplina, recolhível: o estudante acumula vários
-// por semestre, e só os do semestre mais recente abrem de início. Editar é só do
-// professor autor; Excluir também aparece para qualquer professor quando o autor
-// foi excluído. A disciplina entra no nome dos botões porque a página repete
-// "Editar" e "Excluir" em cada registro.
+// por semestre, e só os do semestre mais recente abrem de início. Editar e Editar
+// parecer (o parecer semestral tem formulário próprio) são só do professor
+// autor; Excluir também aparece para qualquer professor quando o autor foi
+// excluído. A disciplina entra no nome dos botões porque a página repete
+// "Editar", "Editar parecer" e "Excluir" em cada registro.
 export default function PeiDoRegistro({
   registro,
   aberto,
   podeEditar,
   podeExcluir,
   onEditar,
+  onEditarParecer,
   onExcluir,
 }: PeiDoRegistroProps) {
   const identificacao = `${registro.subject}, semestre ${registro.semester}`;
@@ -41,15 +44,26 @@ export default function PeiDoRegistro({
         {(podeEditar || podeExcluir) && (
           <div className="flex flex-wrap gap-3">
             {podeEditar && (
-              <button
-                type="button"
-                className={BOTAO_PRIMARIO}
-                onClick={onEditar}
-                aria-label={`Editar o registro de ${identificacao}`}
-              >
-                <Pencil size={16} aria-hidden="true" />
-                Editar
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={BOTAO_PRIMARIO}
+                  onClick={onEditar}
+                  aria-label={`Editar o registro de ${identificacao}`}
+                >
+                  <Pencil size={16} aria-hidden="true" />
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  className={BOTAO_SECUNDARIO}
+                  onClick={onEditarParecer}
+                  aria-label={`Editar parecer de ${identificacao}`}
+                >
+                  <FileText size={16} aria-hidden="true" />
+                  Editar parecer
+                </button>
+              </>
             )}
             {podeExcluir && (
               <button

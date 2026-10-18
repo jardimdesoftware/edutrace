@@ -8,6 +8,7 @@ import AppLayout from '@/components/AppLayout';
 import Loading from '@/components/Loading';
 import PeiDoRegistro from '@/components/PeiDoRegistro';
 import PeiFormulario from '@/components/PeiFormulario';
+import PeiParecerFormulario from '@/components/PeiParecerFormulario';
 import {
   BOTAO_PRIMARIO,
   BOTAO_SECUNDARIO,
@@ -24,14 +25,17 @@ import type { PeiEntry } from '@/interfaces/PeiEntry';
 import { errorAlertOptions } from '@/utils/errorAlert';
 import {
   agruparPorSemestre,
+  formularioDoParecer,
   formularioDoPei,
   formularioVazioDoPei,
   montarCorpoDeAtualizacao,
   montarCorpoDeCriacao,
+  montarCorpoDoParecer,
   podeAlterarPei,
   podeCriarPei,
   podeExcluirPei,
   type PeiEntryForm,
+  type PeiOpinionForm,
 } from '@/utils/pei';
 
 // registro é null na criação de um registro novo.
@@ -53,6 +57,8 @@ function PeiPage() {
     usePeiEntries(email);
 
   const [edicao, setEdicao] = useState<Edicao | null>(null);
+  // O parecer semestral tem formulário e PATCH próprios, à parte do conteúdo.
+  const [parecerEmEdicao, setParecerEmEdicao] = useState<PeiEntry | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -65,7 +71,7 @@ function PeiPage() {
   // outra no fim da página volta ao topo.
   useEffect(() => {
     window.scrollTo({ top: 0 });
-  }, [edicao]);
+  }, [edicao, parecerEmEdicao]);
 
   const podeCriar = podeCriarPei(user?.id_level);
   const nomeDoEstudante = nome?.trim() || 'o estudante';
@@ -118,6 +124,21 @@ function PeiPage() {
         sucesso: 'Registro do PEI salvo com sucesso!',
       },
       () => setEdicao(null),
+    );
+  };
+
+  const handleSalvarParecer = async (form: PeiOpinionForm) => {
+    if (!parecerEmEdicao) return;
+
+    await gravar(
+      () => updatePeiEntry(parecerEmEdicao.id, montarCorpoDoParecer(form)),
+      {
+        log: 'Erro ao salvar o parecer semestral do PEI:',
+        titulo: 'Falha ao salvar o parecer semestral',
+        padrao: 'Não foi possível salvar o parecer semestral.',
+        sucesso: 'Parecer semestral salvo com sucesso!',
+      },
+      () => setParecerEmEdicao(null),
     );
   };
 
@@ -198,6 +219,17 @@ function PeiPage() {
               onSalvar={handleSalvar}
               onCancelar={() => setEdicao(null)}
             />
+          ) : parecerEmEdicao ? (
+            <PeiParecerFormulario
+              key={parecerEmEdicao.id}
+              inicial={formularioDoParecer(parecerEmEdicao)}
+              semestre={parecerEmEdicao.semester}
+              disciplina={parecerEmEdicao.subject}
+              autor={parecerEmEdicao.author?.full_name ?? null}
+              salvando={salvando}
+              onSalvar={handleSalvarParecer}
+              onCancelar={() => setParecerEmEdicao(null)}
+            />
           ) : grupos.length > 0 ? (
             <>
               {botaoNovo}
@@ -214,6 +246,7 @@ function PeiPage() {
                       podeEditar={podeAlterarPei(user, registro)}
                       podeExcluir={podeExcluirPei(user, registro)}
                       onEditar={() => setEdicao({ registro })}
+                      onEditarParecer={() => setParecerEmEdicao(registro)}
                       onExcluir={() => handleExcluir(registro)}
                     />
                   ))}
