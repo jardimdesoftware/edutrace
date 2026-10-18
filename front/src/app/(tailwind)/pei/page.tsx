@@ -71,24 +71,20 @@ function PeiPage() {
   const nomeDoEstudante = nome?.trim() || 'o estudante';
   const quemSemPei = user?.id_level === ESTUDANTE ? 'Você' : nomeDoEstudante;
 
-  const handleSalvar = async (form: PeiEntryForm) => {
-    if (!email || !edicao) return;
-
+  // Grava, recarrega a lista, fecha o formulário (aoConcluir) e avisa; se a
+  // gravação falha, o formulário continua aberto com o que foi digitado.
+  const gravar = async (
+    gravacao: () => Promise<unknown>,
+    textos: { log: string; titulo: string; padrao: string; sucesso: string },
+    aoConcluir: () => void,
+  ) => {
     setSalvando(true);
     try {
-      if (edicao.registro) {
-        await updatePeiEntry(edicao.registro.id, montarCorpoDeAtualizacao(form));
-      } else {
-        await createPeiEntry(montarCorpoDeCriacao(email, form));
-      }
+      await gravacao();
     } catch (error) {
-      console.error('Erro ao salvar o registro do PEI:', error);
+      console.error(textos.log, error);
       Swal.fire({
-        ...errorAlertOptions(
-          'Falha ao salvar o registro do PEI',
-          error,
-          'Não foi possível salvar o registro do PEI.',
-        ),
+        ...errorAlertOptions(textos.titulo, error, textos.padrao),
         confirmButtonColor: COR_CONFIRMAR,
         confirmButtonText: 'Entendi',
       });
@@ -97,14 +93,32 @@ function PeiPage() {
     }
 
     await recarregar();
-    setEdicao(null);
+    aoConcluir();
     setSalvando(false);
     Swal.fire({
       icon: 'success',
-      title: 'Registro do PEI salvo com sucesso!',
+      title: textos.sucesso,
       confirmButtonColor: COR_CONFIRMAR,
       confirmButtonText: 'Ok',
     });
+  };
+
+  const handleSalvar = async (form: PeiEntryForm) => {
+    if (!email || !edicao) return;
+
+    await gravar(
+      () =>
+        edicao.registro
+          ? updatePeiEntry(edicao.registro.id, montarCorpoDeAtualizacao(form))
+          : createPeiEntry(montarCorpoDeCriacao(email, form)),
+      {
+        log: 'Erro ao salvar o registro do PEI:',
+        titulo: 'Falha ao salvar o registro do PEI',
+        padrao: 'Não foi possível salvar o registro do PEI.',
+        sucesso: 'Registro do PEI salvo com sucesso!',
+      },
+      () => setEdicao(null),
+    );
   };
 
   const handleExcluir = async (registro: PeiEntry) => {
