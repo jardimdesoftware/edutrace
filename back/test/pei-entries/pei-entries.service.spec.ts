@@ -26,6 +26,7 @@ import {
   blankOpinion,
   validBody,
   validContent,
+  validOpinion,
 } from './pei-entry.fixtures';
 
 const STUDENT_ID = 2;
@@ -298,6 +299,24 @@ describe('PeiEntriesService', () => {
       expect(data.syllabus_adaptations).toEqual([
         { syllabus_content: 'A', adaptation: 'B' },
       ]);
+    });
+
+    // O registro nasce com o parecer em branco (o default do banco): o POST
+    // não grava nenhum dos quatro campos, mesmo que o objeto os carregue.
+    it('should not write the opinion fields on creation, even when the object carries them', async () => {
+      const forged = {
+        ...dto,
+        ...validOpinion(),
+      } as unknown as CreatePeiEntryDto;
+
+      await service.create(forged, AUTHOR_ID);
+
+      const { data } = tx.peiEntry.create.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      for (const key of OPINION_KEYS) {
+        expect(data).not.toHaveProperty(key);
+      }
     });
 
     it('should store an empty list of pairs', async () => {
@@ -574,6 +593,55 @@ describe('PeiEntriesService', () => {
       expect(result).toBe(entry);
     });
 
+    it('should write the four opinion fields of the entry, and only them, when the author sends them', async () => {
+      const result = await service.update(
+        ENTRY_ID,
+        validOpinion() as unknown as UpdatePeiEntryDto,
+        AUTHOR_ID,
+      );
+
+      expect(prisma.peiEntry.update).toHaveBeenCalledWith({
+        where: { id: ENTRY_ID, deleted_at: null },
+        data: validOpinion(),
+        select: PEI_ENTRY_SELECT,
+      });
+      expect(result).toBe(entry);
+    });
+
+    it('should write only the opinion fields that were sent, and the empty one too', async () => {
+      await service.update(
+        ENTRY_ID,
+        {
+          semester_progress: 'Avançou em frações',
+          individual_sessions: '',
+        } as UpdatePeiEntryDto,
+        AUTHOR_ID,
+      );
+
+      const { data } = prisma.peiEntry.update.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      expect(data).toEqual({
+        semester_progress: 'Avançou em frações',
+        individual_sessions: '',
+      });
+    });
+
+    it('should write the content and the opinion together when both come in the same call', async () => {
+      await service.update(
+        ENTRY_ID,
+        { ...dto, ...validOpinion() } as unknown as UpdatePeiEntryDto,
+        AUTHOR_ID,
+      );
+
+      const { data } = prisma.peiEntry.update.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      expect(Object.keys(data).sort()).toEqual(
+        ['general_notes', 'syllabus_adaptations', ...OPINION_KEYS].sort(),
+      );
+    });
+
     it('should look for the entry by id among the active ones before writing', async () => {
       await service.update(ENTRY_ID, dto, AUTHOR_ID);
 
@@ -654,6 +722,59 @@ describe('PeiEntriesService', () => {
         'Você só pode alterar os registros do PEI que você mesmo criou',
       );
       expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
+    // Só o autor escreve o parecer: a regra da edição vale para os quatro campos.
+    it('should answer 403 to another professor who sends the opinion, without writing', async () => {
+      const result = service.update(
+        ENTRY_ID,
+        validOpinion() as unknown as UpdatePeiEntryDto,
+        AUTHOR_ID + 1,
+      );
+
+      await expect(result).rejects.toThrow(ForbiddenException);
+      await expect(result).rejects.toThrow(
+        'Você só pode alterar os registros do PEI que você mesmo criou',
+      );
+      expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 403 to everyone who sends the opinion when the author account was deleted, without writing', async () => {
+      prisma.peiEntry.findFirst.mockResolvedValue({ id_author: null });
+
+      await expect(
+        service.update(
+          ENTRY_ID,
+          validOpinion() as unknown as UpdatePeiEntryDto,
+          AUTHOR_ID,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 404 to the opinion of an entry that does not exist or is deleted, before checking the author', async () => {
+      prisma.peiEntry.findFirst.mockResolvedValue(null);
+
+      const result = service.update(
+        ENTRY_ID,
+        validOpinion() as unknown as UpdatePeiEntryDto,
+        AUTHOR_ID + 1,
+      );
+
+      await expect(result).rejects.toThrow(NotFoundException);
+      expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 404 when the entry is deleted between the lookup and the write of the opinion', async () => {
+      prisma.peiEntry.update.mockRejectedValue(knownError('P2025'));
+
+      await expect(
+        service.update(
+          ENTRY_ID,
+          validOpinion() as unknown as UpdatePeiEntryDto,
+          AUTHOR_ID,
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should answer 403 to everyone when the author account was deleted', async () => {
