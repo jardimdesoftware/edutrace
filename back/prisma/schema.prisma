@@ -19,6 +19,11 @@ enum ServiceStatus {
   CLOSED
 }
 
+enum CommentType {
+  NOTE
+  CLASS_COUNCIL_REPORT
+}
+
 model User {
   id                      Int        @id @default(autoincrement())
   full_name               String
@@ -126,6 +131,7 @@ model Screening {
 model Comments {
   id          Int            @id @default(autoincrement())
   comment     String
+  type        CommentType    @default(NOTE)
   id_author   Int
   author_name String
   created_at  DateTime       @default(now())
@@ -135,6 +141,8 @@ model Comments {
 
   id_user Int
   user    User @relation(fields: [id_user], references: [id])
+
+  @@index([id_user, id])
 }
 
 model CommentEdits {
