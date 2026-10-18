@@ -12,6 +12,7 @@ function anotacao(id: number, nivelDoAutor: number): CommentData {
     author_name: `Autor ${id}`,
     author_level: nivelDoAutor,
     comment: `Anotação ${id}`,
+    type: 'NOTE',
     created_at: new Date('2026-10-01T12:00:00'),
   };
 }
