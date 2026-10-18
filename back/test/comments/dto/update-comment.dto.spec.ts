@@ -13,12 +13,12 @@ describe('UpdateCommentDto', () => {
     expect(errorsOf({ comment: 'a'.repeat(1000) }, 'comment')).toHaveLength(0);
   });
 
-  it('should reject a comment with 1001 characters', () => {
-    const errors = errorsOf({ comment: 'a'.repeat(1001) }, 'comment');
+  it('should reject a comment with 10001 characters', () => {
+    const errors = errorsOf({ comment: 'a'.repeat(10001) }, 'comment');
 
     expect(errors).toHaveLength(1);
     expect(errors[0].constraints?.maxLength).toBe(
-      'O campo comment deve ter no máximo 1000 caracteres.',
+      'O campo comment deve ter no máximo 10000 caracteres.',
     );
   });
 
