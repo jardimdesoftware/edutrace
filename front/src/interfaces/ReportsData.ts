@@ -1,7 +1,6 @@
 import { AeePlan, AeePlanAuthor, AeePlanStudent } from "./AeePlan";
 import { CaseStudy, CaseStudyAuthor, CaseStudyStudent } from "./CaseStudy";
 import { PeiEntry, PeiEntryContent } from "./PeiEntry";
-import { PlansEducationData } from "./PlansEducationData";
 import { ScreeningData } from "./ScreeningData";
 
 // O relatório traz do estudante só o curso, que o PDF imprime na Identificação,
@@ -24,7 +23,6 @@ type PeiEntryDoRelatorio = PeiEntryContent & Pick<PeiEntry, "semester" | "subjec
 
 export interface ReportsData {
     screening: Omit<ScreeningData, "full_name" | "email" | "special_service"> | null
-    plansEducation?: Omit<PlansEducationData, "student_email" | "student_name"> | null
     peiEntries?: PeiEntryDoRelatorio[]
     caseStudy?: CaseStudyDoRelatorio | null
     aeePlans?: AeePlanDoRelatorio[]
