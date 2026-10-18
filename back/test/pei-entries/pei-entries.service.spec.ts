@@ -10,6 +10,7 @@ import { LEVELS, PEI_ENTRY_READERS } from 'src/constants';
 import { PrismaService } from 'src/database/prisma.service';
 import {
   PEI_ENTRY_CONTENT_SELECT,
+  PEI_ENTRY_OPINION_SELECT,
   PEI_ENTRY_ORDER_BY,
   PEI_ENTRY_SELECT,
 } from 'src/pei-entries/pei-entry-select';
@@ -18,9 +19,11 @@ import { CreatePeiEntryDto } from 'src/pei-entries/dto/create-pei-entry.dto';
 import { UpdatePeiEntryDto } from 'src/pei-entries/dto/update-pei-entry.dto';
 import { StudentsService } from 'src/students/students.service';
 import {
+  OPINION_KEYS,
   SEMESTER,
   STUDENT_EMAIL,
   SUBJECT,
+  blankOpinion,
   validBody,
   validContent,
 } from './pei-entry.fixtures';
@@ -34,6 +37,7 @@ const entry = {
   semester: SEMESTER,
   subject: SUBJECT,
   ...validContent(),
+  ...blankOpinion(),
   created_at: new Date('2026-10-17T10:00:00Z'),
   updated_at: new Date('2026-10-17T10:00:00Z'),
   id_author: AUTHOR_ID,
@@ -102,8 +106,12 @@ describe('PeiEntriesService, select da resposta', () => {
         'general_notes',
         'id',
         'id_author',
+        'individual_sessions',
+        'next_semester_notes',
         'prioritized_contents',
         'semester',
+        'semester_difficulties',
+        'semester_progress',
         'subject',
         'syllabus_adaptations',
         'updated_at',
@@ -123,6 +131,15 @@ describe('PeiEntriesService, select da resposta', () => {
         'syllabus_adaptations',
       ].sort(),
     );
+  });
+
+  it('should list the four opinion fields, apart from the seven content fields', () => {
+    expect(Object.keys(PEI_ENTRY_OPINION_SELECT).sort()).toEqual(
+      [...OPINION_KEYS].sort(),
+    );
+    for (const key of OPINION_KEYS) {
+      expect(PEI_ENTRY_CONTENT_SELECT).not.toHaveProperty(key);
+    }
   });
 
   it('should order by semester from the newest and then by subject', () => {
