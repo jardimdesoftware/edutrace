@@ -128,6 +128,29 @@ describe('renderReportPdf', () => {
     assert.match(pdf, /Prova com tempo ampliado/);
   });
 
+  it('draws the semester opinion of the PEI entry, with the four labels and what the teacher wrote', async () => {
+    const doc = await renderReportPdf(estudante, { screening: null, peiEntries: [peiEntry] });
+    const pdf = doc.output();
+
+    assert.match(pdf, /Avan.os no semestre/);
+    assert.match(pdf, /Resolve as operacoes sozinho/);
+    assert.match(pdf, /Dificuldades no semestre/);
+    assert.match(pdf, /Perde o foco em provas longas/);
+    assert.match(pdf, /Apontamentos para o pr.ximo/);
+    assert.match(pdf, /Manter o tempo ampliado/);
+    assert.match(pdf, /Atendimentos individualizados/);
+    assert.match(pdf, /Tercas as 14h na sala 3/);
+  });
+
+  it('draws the four labels of the opinion also when it is blank, so the reader sees that it is missing', async () => {
+    const doc = await renderReportPdf(estudante, { screening: null, peiEntries: [peiEntries[1]] });
+    const pdf = doc.output();
+
+    assert.match(pdf, /Avan.os no semestre/);
+    assert.match(pdf, /Dificuldades no semestre/);
+    assert.match(pdf, /Atendimentos individualizados/);
+  });
+
   it('breaks a long answer across pages and numbers them', async () => {
     const peiEntries = [
       { ...peiEntry, adapted_objectives: 'Objetivo de aprendizagem. '.repeat(1500) },
