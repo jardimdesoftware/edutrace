@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import {
   NAO_INFORMADO,
   lerCaminho,
+  semErroDoCaminho,
   type CampoDef,
   type ErrosDoFormulario,
   type GrupoDef,
@@ -188,10 +189,6 @@ export function DadosDoCadastro({ curso, autor, periodo }: DadosDoCadastroProps)
   );
 }
 
-function semErro(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
-  return Object.fromEntries(Object.entries(erros).filter(([chave]) => chave !== caminho));
-}
-
 export default function FormularioPorTabela<F extends object>({
   secoes,
   prefixoDosIds,
@@ -220,7 +217,7 @@ export default function FormularioPorTabela<F extends object>({
 
   const alterar: AoAlterar = (caminho, valor) => {
     setValores((atuais) => setNestedField(atuais, caminho, valor));
-    setErros((atuais) => semErro(atuais, caminho));
+    setErros((atuais) => semErroDoCaminho(atuais, caminho));
   };
 
   const handleSubmit = (evento: FormEvent<HTMLFormElement>) => {
