@@ -15,16 +15,21 @@ import { StudentsService } from 'src/students/students.service';
 import {
   BODY_LIMIT_BYTES,
   CONTENT_KEYS,
+  OPINION_KEYS,
   SEMESTER,
   STUDENT_EMAIL,
   SUBJECT,
   blankContent,
+  blankOpinion,
   byteLengthOf,
   maxBody,
+  maxContent,
+  maxOpinion,
   maxPairs,
   setAt,
   validBody,
   validContent,
+  validOpinion,
   validPair,
 } from './pei-entry.fixtures';
 
@@ -37,6 +42,7 @@ const STORED = {
   semester: SEMESTER,
   subject: SUBJECT,
   ...validContent(),
+  ...blankOpinion(),
   created_at: '2026-10-17T10:00:00.000Z',
   updated_at: '2026-10-17T10:00:00.000Z',
   id_author: SUB,
@@ -403,6 +409,31 @@ describe('PEI, rotas de /pei-entries', () => {
       expect(tx.peiEntry.create).not.toHaveBeenCalled();
     });
 
+    // O registro nasce com o parecer em branco: o POST não aceita nenhum dos
+    // quatro campos do parecer, e só o PATCH do autor os escreve.
+    it.each(OPINION_KEYS.map((key) => [key]))(
+      'should answer 400 for the opinion field %s in the body, and not create',
+      async (key) => {
+        const response = await post({
+          ...validBody(),
+          [key]: validOpinion()[key],
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toEqual([
+          `property ${key} should not exist`,
+        ]);
+        expect(tx.peiEntry.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should answer 400 for the four opinion fields together, and not create', async () => {
+      const response = await post({ ...validBody(), ...validOpinion() });
+
+      expect(response.status).toBe(400);
+      expect(tx.peiEntry.create).not.toHaveBeenCalled();
+    });
+
     // O body parser do Express recusa acima de 100 kb. A soma dos limites dos
     // campos, com a lista cheia, precisa caber nele, ou o registro preenchido
     // até o limite nunca seria aceito.
@@ -530,6 +561,96 @@ describe('PEI, rotas de /pei-entries', () => {
       expect(response.status).toBe(200);
     });
 
+    // O formulário do parecer envia só os quatro campos do parecer.
+    it('should answer 200 to the author with the four opinion fields, as the opinion form sends them', async () => {
+      const response = await patch(validOpinion());
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(STORED);
+      expect(prisma.peiEntry.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: ENTRY_ID, deleted_at: null },
+          data: validOpinion(),
+        }),
+      );
+    });
+
+    it('should accept the four blank opinion fields, which clear the opinion', async () => {
+      const response = await patch(blankOpinion());
+
+      expect(response.status).toBe(200);
+      const { data } = prisma.peiEntry.update.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      expect(data).toEqual(blankOpinion());
+    });
+
+    // O body parser do Express recusa acima de 100 kb com 413. O formulário do
+    // conteúdo e o do parecer enviam cada um o seu corpo, no limite de todos os
+    // campos e com 2 bytes por caractere.
+    it('should accept, through the real body parser, the body of the opinion form with the four texts at their limit', async () => {
+      const body = maxOpinion();
+      expect(byteLengthOf(body)).toBeLessThan(BODY_LIMIT_BYTES);
+
+      const response = await patch(body);
+
+      expect(response.status).toBe(200);
+      expect(prisma.peiEntry.update).toHaveBeenCalled();
+    });
+
+    it('should accept, through the real body parser, the body of the content form with the seven fields at their limit', async () => {
+      const body = maxContent();
+      expect(byteLengthOf(body)).toBeLessThan(BODY_LIMIT_BYTES);
+
+      const response = await patch(body);
+
+      expect(response.status).toBe(200);
+      expect(prisma.peiEntry.update).toHaveBeenCalled();
+    });
+
+    it.each(NOT_EDUCATION)(
+      'should answer 403 to the %s who sends the opinion, without reading the entry',
+      async (_, level) => {
+        sessionLevel = level;
+
+        const response = await patch(validOpinion());
+
+        expect(response.status).toBe(403);
+        expect(prisma.peiEntry.findFirst).not.toHaveBeenCalled();
+        expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should answer 403 to another Education professional who sends the opinion, and not write', async () => {
+      authorOfEntry = SUB + 1;
+
+      const response = await patch(validOpinion());
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe(
+        'Você só pode alterar os registros do PEI que você mesmo criou',
+      );
+      expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 403 to every Education professional who sends the opinion of an entry without author, and not write', async () => {
+      authorOfEntry = null;
+
+      const response = await patch(validOpinion());
+
+      expect(response.status).toBe(403);
+      expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 404 to the opinion of an entry that does not exist or is deleted', async () => {
+      prisma.peiEntry.findFirst.mockResolvedValue(null);
+
+      const response = await patch(validOpinion(), 9999);
+
+      expect(response.status).toBe(404);
+      expect(prisma.peiEntry.update).not.toHaveBeenCalled();
+    });
+
     it.each(NOT_EDUCATION)(
       'should answer 403 to the %s without reading the entry',
       async (_, level) => {
@@ -632,6 +753,16 @@ describe('PEI, rotas de /pei-entries', () => {
     it.each([
       ['a text above the maximum length', { general_notes: 'a'.repeat(2001) }],
       ['a null field', { adapted_objectives: null }],
+      ['a null opinion field', { semester_progress: null }],
+      [
+        'an opinion text above the maximum length',
+        { individual_sessions: 'a'.repeat(2001) },
+      ],
+      ['an opinion text with a NUL', { next_semester_notes: 'a\u0000b' }],
+      [
+        'an opinion text with a lone surrogate',
+        { semester_difficulties: 'a\uD800b' },
+      ],
       ['a null list', { syllabus_adaptations: null }],
       ['21 pairs', { syllabus_adaptations: maxPairs(21) }],
       ['a pair that is a string', { syllabus_adaptations: ['texto'] }],
