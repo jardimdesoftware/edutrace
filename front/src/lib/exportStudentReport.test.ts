@@ -36,12 +36,26 @@ const peiEntry: NonNullable<ReportsData['peiEntries']>[number] = {
   adapted_assessments: 'Prova com tempo ampliado',
   adapted_resources: 'Calculadora e abaco',
   general_notes: 'Responde bem a atividades em dupla',
+  semester_progress: 'Resolve as operacoes sozinho',
+  semester_difficulties: 'Perde o foco em provas longas',
+  next_semester_notes: 'Manter o tempo ampliado',
+  individual_sessions: 'Tercas as 14h na sala 3',
   author: { full_name: 'Professora Ana' },
 };
 
 const peiEntries = [
   peiEntry,
-  { ...peiEntry, semester: '2026.1', subject: 'Inglês', syllabus_adaptations: [], author: null },
+  {
+    ...peiEntry,
+    semester: '2026.1',
+    subject: 'Inglês',
+    syllabus_adaptations: [],
+    semester_progress: '',
+    semester_difficulties: '',
+    next_semester_notes: '',
+    individual_sessions: '',
+    author: null,
+  },
 ];
 
 describe('renderReportPdf', () => {
