@@ -16,6 +16,7 @@ import { CreatePeiEntryDto } from './dto/create-pei-entry.dto';
 import { UpdatePeiEntryDto } from './dto/update-pei-entry.dto';
 import {
   PEI_ENTRY_CONTENT_SELECT,
+  PEI_ENTRY_OPINION_SELECT,
   PEI_ENTRY_ORDER_BY,
   PEI_ENTRY_SELECT,
 } from './pei-entry-select';
@@ -32,31 +33,43 @@ const MAX_ENTRIES_MESSAGE = `Este estudante já tem o máximo de ${PEI_ENTRIES_M
 const NOT_AUTHOR_MESSAGE =
   'Você só pode alterar os registros do PEI que você mesmo criou';
 
-const CONTENT_KEYS = Object.keys(PEI_ENTRY_CONTENT_SELECT) as Array<
+type Opinion = Record<keyof typeof PEI_ENTRY_OPINION_SELECT, string>;
+
+type Writable = Content & Opinion;
+
+// Os campos que o create grava: os sete de conteúdo. O registro nasce com o
+// parecer semestral em branco (o default do banco), então os quatro campos do
+// parecer ficam de fora, mesmo que o objeto os traga.
+const CREATE_KEYS = Object.keys(PEI_ENTRY_CONTENT_SELECT) as Array<
   keyof Content
 >;
 
-// Só os campos de conteúdo entram na gravação. O estudante, o autor, o
-// semestre, a disciplina e o deleted_at são definidos pelo service (ou não
-// mudam), então um id_student, um id_author, um semester, um subject ou um
-// deleted_at que viesse no objeto não os troca, mesmo que o pipe de validação
-// deixe de recusá-los. Os pares da lista vão como objetos simples com só as
-// duas chaves.
-function pickContent(dto: Partial<Content>): Partial<Content> {
-  const content: Partial<Content> = Object.fromEntries(
-    CONTENT_KEYS.filter((key) => dto[key] !== undefined).map((key) => [
-      key,
-      dto[key],
-    ]),
+// Os campos que o update grava: os sete de conteúdo e os quatro do parecer.
+const UPDATE_KEYS: Array<keyof Writable> = [
+  ...CREATE_KEYS,
+  ...(Object.keys(PEI_ENTRY_OPINION_SELECT) as Array<keyof Opinion>),
+];
+
+// Só os campos da lista entram na gravação. O estudante, o autor, o semestre,
+// a disciplina e o deleted_at são definidos pelo service (ou não mudam), então
+// um id_student, um id_author, um semester, um subject ou um deleted_at que
+// viesse no objeto não os troca, mesmo que o pipe de validação deixe de
+// recusá-los. Os pares da lista vão como objetos simples com só as duas chaves.
+function pickFields(
+  dto: Partial<Writable>,
+  keys: ReadonlyArray<keyof Writable>,
+): Partial<Writable> {
+  const fields: Partial<Writable> = Object.fromEntries(
+    keys.filter((key) => dto[key] !== undefined).map((key) => [key, dto[key]]),
   );
 
-  if (content.syllabus_adaptations === undefined) {
-    return content;
+  if (fields.syllabus_adaptations === undefined) {
+    return fields;
   }
 
   return {
-    ...content,
-    syllabus_adaptations: content.syllabus_adaptations.map(
+    ...fields,
+    syllabus_adaptations: fields.syllabus_adaptations.map(
       ({ syllabus_content, adaptation }) => ({ syllabus_content, adaptation }),
     ),
   };
@@ -124,7 +137,7 @@ export class PeiEntriesService {
 
         return tx.peiEntry.create({
           data: {
-            ...pickContent(createPeiEntryDto),
+            ...pickFields(createPeiEntryDto, CREATE_KEYS),
             semester: createPeiEntryDto.semester,
             subject: createPeiEntryDto.subject,
             id_student: student.id,
@@ -166,10 +179,12 @@ export class PeiEntriesService {
   }
 
   // Cada campo enviado substitui o valor inteiro; os que não vieram ficam como
-  // estão. Só o autor edita, e o 404 vem antes do 403 (como nas anotações): quem
-  // não é o autor também não descobre se o id existe e está excluído. O registro
-  // de um autor cuja conta foi excluída (id_author nulo) não é de ninguém, e
-  // ninguém o edita: a exclusão dele é a única saída (veja o remove).
+  // estão. Vale para o conteúdo e para o parecer semestral: o parecer é escrito
+  // aqui, pelo autor do registro, e não no create. Só o autor edita, e o 404
+  // vem antes do 403 (como nas anotações): quem não é o autor também não
+  // descobre se o id existe e está excluído. O registro de um autor cuja conta
+  // foi excluída (id_author nulo) não é de ninguém, e ninguém o edita: a
+  // exclusão dele é a única saída (veja o remove).
   async update(
     id: number,
     updatePeiEntryDto: UpdatePeiEntryDto,
@@ -185,8 +200,9 @@ export class PeiEntriesService {
       // leitura e a escrita: o update falha com P2025.
       return await this.prisma.peiEntry.update({
         where: { id, deleted_at: null },
-        data: pickContent(
+        data: pickFields(
           updatePeiEntryDto,
+          UPDATE_KEYS,
         ) as unknown as Prisma.PeiEntryUncheckedUpdateInput,
         select: PEI_ENTRY_SELECT,
       });
