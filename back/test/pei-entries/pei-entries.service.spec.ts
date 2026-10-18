@@ -508,6 +508,18 @@ describe('PeiEntriesService', () => {
           requestOf(LEVELS.ALUNO_ESTUDANTE, STUDENT_EMAIL.toUpperCase()),
         ),
       ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.findByStudent(
+          `${STUDENT_EMAIL}.br`,
+          requestOf(LEVELS.ALUNO_ESTUDANTE, STUDENT_EMAIL),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.findByStudent(
+          STUDENT_EMAIL,
+          requestOf(LEVELS.ALUNO_ESTUDANTE, `${STUDENT_EMAIL}.br`),
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should answer 404 when the account is not a student', async () => {
