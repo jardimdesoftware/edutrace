@@ -22,6 +22,10 @@ const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
 const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
+// Estudante que já existe no banco; o administrador lê o PEI de qualquer um.
+// Configure via variável de ambiente: k6 run -e TEST_STUDENT_EMAIL=...
+const TEST_STUDENT_EMAIL = __ENV.TEST_STUDENT_EMAIL || 'estudante@edutrace.com';
+
 export const options = smokeOptions;
 
 export function setup() {
@@ -124,12 +128,12 @@ export default function (data) {
 
   sleep(0.5);
 
-  // ─── Plans Education ──────────────────────────────────────────────────────
-  group('Plans Education', () => {
-    const res = http.get(`${BASE_URL}/plans-education`, { headers });
+  // ─── PEI ──────────────────────────────────────────────────────────────────
+  group('PEI', () => {
+    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers });
     check(res, {
-      '[smoke][plans-education] GET /plans-education → 200': (r) => r.status === 200,
-      '[smoke][plans-education] resposta é array': (r) => {
+      '[smoke][pei-entries] GET /pei-entries/:email → 200': (r) => r.status === 200,
+      '[smoke][pei-entries] resposta é array': (r) => {
         try { 
           return Array.isArray(JSON.parse(r.body)); 
         } catch(e) { 
