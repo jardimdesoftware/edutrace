@@ -40,10 +40,6 @@ export async function listComments(
   );
 }
 
-export async function getAllCommentsByIdUser(id_user: number) {
-  return apiRequest(`/comments/${id_user}`);
-}
-
 export async function postComment(payload: NewCommentPayload): Promise<CommentData> {
   return apiRequest('/comments', {
     method: 'POST',
