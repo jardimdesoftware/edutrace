@@ -1,6 +1,6 @@
 // Corpo do PATCH das telas de edição. A API recusa com 400 qualquer campo fora
 // do DTO de atualização, e as telas preenchem o formulário com o registro do
-// GET, que traz id, datas, o e-mail do titular e a autoria do PEI.
+// GET, que traz id, datas e o e-mail do titular.
 export function pickFields<T extends object, K extends keyof T>(
   source: T,
   fields: readonly K[],
@@ -35,22 +35,4 @@ export const ANAMNESIS_EDIT_FIELDS = [
   "sexuality",
   "student_assessment",
   "student_development",
-] as const;
-
-// Campos de UpdatePlansEducationDto.
-export const PEI_EDIT_FIELDS = [
-  "student_name",
-  "academic_semester",
-  "service_modality",
-  "support_service",
-  "skills",
-  "resource_equipment_used",
-  "resource_equipment_needs",
-  "curriculum_accessibility",
-  "school_content",
-  "activities_to_be_developed",
-  "objectives",
-  "work_methodology",
-  "materials_used",
-  "evaluation_criteria",
 ] as const;
