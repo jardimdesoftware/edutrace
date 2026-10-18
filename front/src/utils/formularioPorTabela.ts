@@ -243,7 +243,7 @@ function valorDoCampo(campo: CampoDef, valor: unknown): string {
 }
 
 // Numa lista de verificação só os itens marcados saem, um por linha, como o
-// relatório faz com os grupos de opções do PEI. Os textos vão em linhas
+// relatório faz com os grupos de opções da triagem. Os textos vão em linhas
 // próprias, que levam o título do grupo no rótulo.
 function linhasDoGrupo(grupo: GrupoDef, registro: unknown): LinhaDeLeitura[] {
   const linhaDe = (campo: CampoDef, label: string): LinhaDeLeitura => ({
