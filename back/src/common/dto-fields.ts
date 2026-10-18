@@ -75,6 +75,25 @@ export function MaxUtf16Length(maxLength: number) {
   );
 }
 
+// Recusa mais de maxRun marcas combinantes (categoria M, os acentos soltos) em
+// sequência. O normalize(NFD) do PostgreSQL reordena cada sequência de marcas em
+// tempo quadrático no tamanho dela: um texto de 10000 unidades com 5000 marcas
+// seguidas levava mais de um segundo para normalizar, e dez deles faziam cada
+// busca levar uns 12 s. A mensagem vem do chamador, porque cada campo se nomeia.
+export function MaxCombiningMarkRun(maxRun: number, message: string) {
+  const tooLongRun = new RegExp(`\\p{M}{${maxRun + 1},}`, 'u');
+
+  return ValidateBy({
+    name: 'maxCombiningMarkRun',
+    constraints: [maxRun],
+    validator: {
+      validate: (value: unknown) =>
+        typeof value === 'string' && !tooLongRun.test(value),
+      defaultMessage: () => message,
+    },
+  });
+}
+
 // Texto sem espaços nas pontas, com tamanho máximo e sem caracteres de controle
 // (a tabulação e as quebras de linha passam). A string vazia é válida: o campo
 // precisa estar no corpo, mas o conteúdo pode ficar em branco.
