@@ -41,7 +41,6 @@ const PAGE_LEVELS: Record<string, readonly number[] | typeof ANY_LEVEL> = {
   "/estudantes/visualizar": NIVEIS_PROFISSIONAIS,
   "/editar-triagem": [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
   "/editar-anamnese": [PROFISSIONAL_NAPNE],
-  "/editar-pei": [ADMIN, PROFISSIONAL_EDUCACAO],
   // Vem antes de "/admin": canAccessPage usa a primeira rota cujo prefixo casa.
   "/admin/usuarios/cadastro": [ADMIN, PROFISSIONAL_NAPNE],
   "/admin": [ADMIN],
