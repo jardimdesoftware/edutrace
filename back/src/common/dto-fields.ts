@@ -61,7 +61,7 @@ const named = (text: string) => (args: ValidationArguments) =>
 // variação (U+FE0E e U+FE0F) como 0, então 2000 emojis com seletor passavam num
 // limite de 2000 e ocupavam 6000 unidades, uns 14 kb. A chave da constraint
 // segue sendo maxLength.
-function MaxUtf16Length(maxLength: number) {
+export function MaxUtf16Length(maxLength: number) {
   return ValidateBy(
     {
       name: 'maxLength',
