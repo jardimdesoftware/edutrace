@@ -112,6 +112,10 @@ describe('ReportsService', () => {
     adapted_assessments: true,
     adapted_resources: true,
     general_notes: true,
+    semester_progress: true,
+    semester_difficulties: true,
+    next_semester_notes: true,
+    individual_sessions: true,
     author: { select: { full_name: true } },
   };
 

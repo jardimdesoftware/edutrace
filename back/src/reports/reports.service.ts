@@ -6,6 +6,7 @@ import { AEE_PLAN_SECTIONS_SELECT } from 'src/aee-plans/aee-plan-select';
 import { CASE_STUDY_SECTIONS_SELECT } from 'src/case-studies/case-study-select';
 import {
   PEI_ENTRY_CONTENT_SELECT,
+  PEI_ENTRY_OPINION_SELECT,
   PEI_ENTRY_ORDER_BY,
 } from 'src/pei-entries/pei-entry-select';
 
@@ -22,14 +23,15 @@ const REPORT_SCREENING_SELECT = {
   other_disabilities: true,
 } satisfies Prisma.ScreeningSelect;
 
-// O semestre, a disciplina, os sete campos de conteúdo e o nome de quem
-// escreveu o registro. O autor sai pelo select explícito: o User inteiro traria
-// o CPF, o e-mail e o hash da senha. Sem id, id_author, id_student, deleted_at
-// nem datas, que o PDF não exibe.
+// O semestre, a disciplina, os sete campos de conteúdo, os quatro do parecer
+// semestral e o nome de quem escreveu o registro. O autor sai pelo select
+// explícito: o User inteiro traria o CPF, o e-mail e o hash da senha. Sem id,
+// id_author, id_student, deleted_at nem datas, que o PDF não exibe.
 const REPORT_PEI_ENTRY_SELECT = {
   semester: true,
   subject: true,
   ...PEI_ENTRY_CONTENT_SELECT,
+  ...PEI_ENTRY_OPINION_SELECT,
   author: { select: { full_name: true } },
 } satisfies Prisma.PeiEntrySelect;
 
