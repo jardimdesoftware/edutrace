@@ -17,12 +17,15 @@ import { StudentsService } from 'src/students/students.service';
 import { requireIntegrationDatabaseUrl } from '../users/integration-database';
 import {
   Json,
+  OPINION_KEYS,
   SEMESTER,
   SUBJECT,
   blankContent,
+  blankOpinion,
   maxBody,
   validBody,
   validContent,
+  validOpinion,
 } from './pei-entry.fixtures';
 
 // Roda contra um PostgreSQL real e só quando INTEGRATION_DATABASE_URL existe,
@@ -1581,6 +1584,201 @@ const EMAIL_DOMAIN = '@pei.test';
         await expect(
           service.remove(2147483648, author.id),
         ).rejects.toBeInstanceOf(NotFoundException);
+      });
+    });
+
+    // O parecer semestral mora nas quatro colunas novas do próprio registro, com
+    // o branco como valor inicial (os registros que já existiam ficam sem parecer).
+    describe('parecer semestral', () => {
+      const OPINION_VALUES = validOpinion() as Record<string, string>;
+
+      async function entryOf(
+        author: { id: number },
+        student: { email: string },
+      ) {
+        return service.create(await dtoOf(student.email), author.id);
+      }
+
+      it('should have the four columns as TEXT NOT NULL with the empty string as the default', async () => {
+        const rows = await prisma.$queryRaw<
+          {
+            column_name: string;
+            data_type: string;
+            is_nullable: string;
+            column_default: string;
+          }[]
+        >`
+          SELECT column_name, data_type, is_nullable, column_default
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'PeiEntry'
+            AND column_name = ANY(${[...OPINION_KEYS]})
+          ORDER BY column_name`;
+
+        expect(rows).toEqual(
+          [...OPINION_KEYS].sort().map((column_name) => ({
+            column_name,
+            data_type: 'text',
+            is_nullable: 'NO',
+            column_default: "''::text",
+          })),
+        );
+      });
+
+      it('should give a row inserted without the four columns the empty string in each one, as the rows that already existed', async () => {
+        const student = await createStudent();
+
+        await prisma.$executeRaw`
+          INSERT INTO "PeiEntry" ("semester", "subject", "adapted_objectives",
+            "prioritized_contents", "syllabus_adaptations", "adapted_methodologies",
+            "adapted_assessments", "adapted_resources", "general_notes", "id_student")
+          VALUES ('2026.2', 'Física', '', '', '[]'::jsonb, '', '', '', '', ${student.id})`;
+
+        const stored = await prisma.peiEntry.findFirstOrThrow({
+          where: { id_student: student.id },
+        });
+        expect(stored).toMatchObject(blankOpinion());
+      });
+
+      it('should create the entry with the four opinion fields as empty strings, and read them back the same', async () => {
+        const author = await createTeacher();
+        const student = await createStudent();
+
+        const created = await entryOf(author, student);
+        const read = await list(author, student.email);
+
+        expect(created).toMatchObject(blankOpinion());
+        expect(read).toEqual([created]);
+      });
+
+      it('should let the author write the opinion, keep the content, and read it in the list and in the report', async () => {
+        const author = await createTeacher();
+        const student = await createStudent();
+        const created = await entryOf(author, student);
+
+        const updated = await service.update(
+          created.id,
+          await updateDtoOf(validOpinion()),
+          author.id,
+        );
+
+        expect(updated).toMatchObject(OPINION_VALUES);
+        expect(updated.adapted_objectives).toBe(created.adapted_objectives);
+        expect(updated.syllabus_adaptations).toEqual(
+          created.syllabus_adaptations,
+        );
+        expect(updated.id_author).toBe(author.id);
+        expect(await list(author, student.email)).toEqual([updated]);
+        const report = await reports.findOne(student.email);
+        expect(report.peiEntries[0]).toMatchObject(OPINION_VALUES);
+      });
+
+      it('should replace only the opinion fields that were sent, and clear one with the empty string', async () => {
+        const author = await createTeacher();
+        const student = await createStudent();
+        const created = await entryOf(author, student);
+        await service.update(
+          created.id,
+          await updateDtoOf(validOpinion()),
+          author.id,
+        );
+
+        const updated = await service.update(
+          created.id,
+          await updateDtoOf({
+            semester_progress: '',
+            individual_sessions: 'Sala 3',
+          }),
+          author.id,
+        );
+
+        expect(updated.semester_progress).toBe('');
+        expect(updated.individual_sessions).toBe('Sala 3');
+        expect(updated.semester_difficulties).toBe(
+          OPINION_VALUES.semester_difficulties,
+        );
+        expect(updated.next_semester_notes).toBe(
+          OPINION_VALUES.next_semester_notes,
+        );
+      });
+
+      it('should store the four opinion texts at their maximum length', async () => {
+        const author = await createTeacher();
+        const student = await createStudent();
+        const created = await entryOf(author, student);
+        const longest = Object.fromEntries(
+          OPINION_KEYS.map((key) => [key, 'ã'.repeat(2000)]),
+        );
+
+        const updated = await service.update(
+          created.id,
+          await updateDtoOf(longest),
+          author.id,
+        );
+
+        expect(updated).toMatchObject(longest);
+      });
+
+      it('should answer 403 to another professor who writes the opinion, and leave it blank', async () => {
+        const author = await createTeacher();
+        const other = await createTeacher();
+        const student = await createStudent();
+        const created = await entryOf(author, student);
+
+        await expect(
+          service.update(
+            created.id,
+            await updateDtoOf(validOpinion()),
+            other.id,
+          ),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        const stored = await prisma.peiEntry.findUniqueOrThrow({
+          where: { id: created.id },
+        });
+        expect(stored).toMatchObject(blankOpinion());
+      });
+
+      it('should answer 403 to every professor who writes the opinion of an entry without author, and leave it blank', async () => {
+        const author = await createTeacher();
+        const student = await createStudent();
+        const created = await entryOf(author, student);
+        await prisma.user.delete({ where: { id: author.id } });
+        const other = await createTeacher();
+
+        await expect(
+          service.update(
+            created.id,
+            await updateDtoOf(validOpinion()),
+            other.id,
+          ),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        const stored = await prisma.peiEntry.findUniqueOrThrow({
+          where: { id: created.id },
+        });
+        expect(stored).toMatchObject(blankOpinion());
+        expect(stored.id_author).toBeNull();
+      });
+
+      it('should answer 404 to the opinion of a deleted entry, and not write it', async () => {
+        const author = await createTeacher();
+        const student = await createStudent();
+        const created = await entryOf(author, student);
+        await service.remove(created.id, author.id);
+
+        await expect(
+          service.update(
+            created.id,
+            await updateDtoOf(validOpinion()),
+            author.id,
+          ),
+        ).rejects.toBeInstanceOf(NotFoundException);
+
+        const stored = await prisma.peiEntry.findUniqueOrThrow({
+          where: { id: created.id },
+        });
+        expect(stored).toMatchObject(blankOpinion());
       });
     });
 
