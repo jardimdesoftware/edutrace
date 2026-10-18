@@ -49,6 +49,17 @@ export const TEXT_LIMITS: ReadonlyArray<readonly [string, number]> = [
 
 export const TEXT_KEYS = TEXT_LIMITS.map(([key]) => key);
 
+// Os quatro campos do parecer semestral e o tamanho máximo de cada um. Só o
+// PATCH os aceita, e todos são opcionais; o POST os recusa.
+export const OPINION_LIMITS: ReadonlyArray<readonly [string, number]> = [
+  ['semester_progress', TEXT_MAX],
+  ['semester_difficulties', TEXT_MAX],
+  ['next_semester_notes', TEXT_MAX],
+  ['individual_sessions', TEXT_MAX],
+];
+
+export const OPINION_KEYS = OPINION_LIMITS.map(([key]) => key);
+
 export function validPair(): Json {
   return {
     syllabus_content: 'Frações e números decimais',
@@ -74,6 +85,16 @@ export function validContent(): Json {
   };
 }
 
+export function validOpinion(): Json {
+  return {
+    semester_progress: 'Passou a resolver as frações com autonomia',
+    semester_difficulties: 'Dificuldade de manter a atenção nas aulas longas',
+    next_semester_notes: 'Manter o material ampliado e a prova em duas etapas',
+    individual_sessions:
+      'Terças, das 14h às 15h, na sala 12, convocado pela coordenação',
+  };
+}
+
 export function validBody(): Json {
   return {
     student_email: STUDENT_EMAIL,
@@ -93,6 +114,14 @@ export function blankContent(): Json {
   };
 }
 
+// Corpo do parecer em branco, como o formulário o envia: os quatro textos vazios.
+export function blankOpinion(): Json {
+  return OPINION_KEYS.reduce(
+    (body, key) => setAt(body, key, ''),
+    validOpinion(),
+  );
+}
+
 export function maxPairs(count = PAIRS_MAX): Json[] {
   return Array.from({ length: count }, () => ({
     syllabus_content: 'ã'.repeat(SYLLABUS_CONTENT_MAX),
@@ -109,4 +138,22 @@ export function maxBody(): Json {
     setAt(validBody(), 'subject', 'ã'.repeat(SUBJECT_MAX)),
   );
   return setAt(withMaxTexts, 'syllabus_adaptations', maxPairs());
+}
+
+// O corpo que o formulário do conteúdo envia no PATCH: os sete campos de
+// conteúdo, todo texto no limite e a lista cheia. O "ã" ocupa 2 bytes em UTF-8.
+export function maxContent(): Json {
+  return TEXT_LIMITS.reduce(
+    (body, [key, limit]) => setAt(body, key, 'ã'.repeat(limit)),
+    setAt(validContent(), 'syllabus_adaptations', maxPairs()),
+  );
+}
+
+// O corpo que o formulário do parecer envia no PATCH: os quatro campos, todo
+// texto no limite, também em "ã" (2 bytes).
+export function maxOpinion(): Json {
+  return OPINION_LIMITS.reduce(
+    (body, [key, limit]) => setAt(body, key, 'ã'.repeat(limit)),
+    validOpinion(),
+  );
 }
