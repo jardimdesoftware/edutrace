@@ -35,7 +35,6 @@ const MATRIZ: [string, number[]][] = [
   ],
   ["/editar-triagem", [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
   ["/editar-anamnese", [PROFISSIONAL_NAPNE]],
-  ["/editar-pei", [ADMIN, PROFISSIONAL_EDUCACAO]],
   ["/admin/usuarios/cadastro", [ADMIN, PROFISSIONAL_NAPNE]],
 ];
 
@@ -71,6 +70,12 @@ describe("canAccessPage", () => {
   it("denies a page that is not in the list to every level", () => {
     for (const nivel of TODOS) {
       assert.equal(canAccessPage("/pagina-nova", nivel), false);
+    }
+  });
+
+  it("denies /editar-pei to every level, because the PEI is now edited on /pei", () => {
+    for (const nivel of TODOS) {
+      assert.equal(canAccessPage("/editar-pei", nivel), false, String(nivel));
     }
   });
 
