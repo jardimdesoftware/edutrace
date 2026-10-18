@@ -87,6 +87,14 @@ const aeePlans = [
 ] as unknown as AeePlansReport;
 
 const TITULO_PEI = 'PEI';
+const CHAVES_DO_PARECER = [
+  'semester_progress',
+  'semester_difficulties',
+  'next_semester_notes',
+  'individual_sessions',
+];
+const ROTULO_DOS_ATENDIMENTOS =
+  'Atendimentos individualizados prestados (datas, horários, salas e meio de convocação)';
 const TITULOS_PEI = ['PEI - 2026.2 - Matemática', 'PEI - 2026.1 - Português'];
 const TITULOS_ESTUDO_DE_CASO = [
   'Estudo de Caso - Identificação',
@@ -257,6 +265,37 @@ describe('buildReportSections', () => {
     assert.equal(valueOf(report, titulo, 'Adequação (1)'), 'Usar material concreto');
     assert.equal(valueOf(report, titulo, 'Conteúdo previsto na ementa (2)'), 'Geometria plana');
     assert.equal(valueOf(report, titulo, 'Adequação (2)'), 'Não informado');
+  });
+
+  it('prints the semester opinion of each PEI entry, after the general notes, under the four labels', () => {
+    const report = { screening: null, peiEntries };
+    const titulo = TITULOS_PEI[0];
+
+    assert.equal(valueOf(report, titulo, 'Avanços no semestre'), 'Passou a resolver as operações sozinho');
+    assert.equal(valueOf(report, titulo, 'Dificuldades no semestre'), 'Perde o foco em provas longas');
+    assert.equal(valueOf(report, titulo, 'Apontamentos para o próximo semestre'), 'Manter o tempo ampliado nas provas');
+    assert.equal(
+      valueOf(report, titulo, ROTULO_DOS_ATENDIMENTOS),
+      'Terças, 14h, sala 3, convocado pela coordenação',
+    );
+    assert.deepEqual(
+      rowsOf(report, titulo)?.slice(-4).map((row) => row.label),
+      ['Avanços no semestre', 'Dificuldades no semestre', 'Apontamentos para o próximo semestre', ROTULO_DOS_ATENDIMENTOS],
+    );
+  });
+
+  it('prints "Não informado" for a blank field of the opinion, also when the API does not send it', () => {
+    const titulo = TITULOS_PEI[1];
+    const rotulos = ['Avanços no semestre', 'Dificuldades no semestre', 'Apontamentos para o próximo semestre', ROTULO_DOS_ATENDIMENTOS];
+    const semOParecer = peiEntries.map((entrada) =>
+      Object.fromEntries(Object.entries(entrada).filter(([chave]) => !CHAVES_DO_PARECER.includes(chave))),
+    ) as unknown as PeiEntriesReport;
+
+    for (const entradas of [peiEntries, semOParecer]) {
+      for (const rotulo of rotulos) {
+        assert.equal(valueOf({ screening: null, peiEntries: entradas }, titulo, rotulo), 'Não informado', rotulo);
+      }
+    }
   });
 
   it('prints "Não informado" for the teacher and for the pairs of a PEI entry that lacks them', () => {
