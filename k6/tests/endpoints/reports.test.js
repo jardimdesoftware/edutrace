@@ -36,7 +36,7 @@ export default function (data) {
     '[reports] GET /reports/:email retorna dados do estudante': (r) => {
       try {
         const body = JSON.parse(r.body);
-        return Boolean(body.screening || body.plansEducation);
+        return Boolean(body.screening || Array.isArray(body.peiEntries));
       } catch {
         return false;
       }
