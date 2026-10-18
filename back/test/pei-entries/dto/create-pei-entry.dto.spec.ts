@@ -191,6 +191,24 @@ describe('CreatePeiEntryDto, subject', () => {
     expect(messages).toEqual(['subject deve ter no máximo 150 caracteres.']);
   });
 
+  // O limite conta unidades UTF-16, como o .length do front: o emoji vale 2 e o
+  // seletor de variação (U+FE0F), 1. O MaxLength do class-validator contava o
+  // par surrogate como 1 e o seletor como 0.
+  it('should count the limit of the subject in UTF-16 units', async () => {
+    const message = ['subject deve ter no máximo 150 caracteres.'];
+    const withSubject = (text: string) => setAt(validBody(), 'subject', text);
+
+    expect(
+      await messagesOf(withSubject('\u{1F600}️'.repeat(SUBJECT_MAX))),
+    ).toEqual(message);
+    expect(
+      await messagesOf(withSubject('\u{1F600}'.repeat(SUBJECT_MAX / 2 + 1))),
+    ).toEqual(message);
+    await expect(
+      validate(withSubject('\u{1F600}'.repeat(SUBJECT_MAX / 2))),
+    ).resolves.toBeDefined();
+  });
+
   it('should refuse a body without subject', async () => {
     await expect(
       validate(removeAt(validBody(), 'subject')),
@@ -480,6 +498,22 @@ describe('CreatePeiEntryDto, textos do conteúdo', () => {
     const result = await validate(setAt(validBody(), 'general_notes', text));
 
     expect(result.general_notes).toBe(text);
+  });
+
+  it('should count the limit of a text in UTF-16 units, as the front does', async () => {
+    const message = ['general_notes deve ter no máximo 2000 caracteres.'];
+    const withNotes = (text: string) =>
+      setAt(validBody(), 'general_notes', text);
+
+    expect(await messagesOf(withNotes('\u{1F600}️'.repeat(2000)))).toEqual(
+      message,
+    );
+    expect(await messagesOf(withNotes('\u{1F600}'.repeat(1001)))).toEqual(
+      message,
+    );
+    await expect(
+      validate(withNotes('\u{1F600}'.repeat(1000))),
+    ).resolves.toBeDefined();
   });
 
   // São textos longos, que o professor escreve em mais de uma linha.
