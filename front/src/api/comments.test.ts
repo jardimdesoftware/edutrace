@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  getAllCommentsByIdUser,
   listComments,
   postComment,
   updateComment,
@@ -209,18 +208,5 @@ describe('listComments', () => {
     await assert.rejects(listComments(3, { q: 'x' }), {
       message: 'q deve ter no máximo 200 caracteres. limit inválido',
     });
-  });
-});
-
-describe('getAllCommentsByIdUser', () => {
-  it('requests the comments of the student with a GET and no body', async () => {
-    respondWith(200, []);
-
-    const result = await getAllCommentsByIdUser(3);
-
-    assert.deepEqual(result, []);
-    assert.equal(calls[0].url, `${API_URL}/comments/3`);
-    assert.equal(calls[0].init.method, 'GET');
-    assert.equal(calls[0].init.body, undefined);
   });
 });
