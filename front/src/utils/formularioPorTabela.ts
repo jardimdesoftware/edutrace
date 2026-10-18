@@ -222,7 +222,7 @@ export interface SecaoDeLeitura {
   linhas: LinhaDeLeitura[];
 }
 
-function textoOuNaoInformado(valor: unknown): string {
+export function textoOuNaoInformado(valor: unknown): string {
   return textoDe(valor).trim() || NAO_INFORMADO;
 }
 
