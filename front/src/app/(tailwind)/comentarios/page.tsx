@@ -1,34 +1,57 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 import Loading from '@/components/Loading';
-import {
-  getAllCommentsByIdUser,
-  postComment,
-  updateComment,
-} from '@/api/comments';
+import { postComment, updateComment } from '@/api/comments';
 import { useAuth } from '@/contexts/AuthContext';
-import { CommentData } from '@/interfaces/CommentData';
+import { CommentData, CommentType } from '@/interfaces/CommentData';
 import { formatarData } from '@/utils/formatDate';
 import { buildPreviousVersions, lastEditedAt } from '@/utils/commentVersions';
 import {
   AREAS,
   CommentFilters,
   FILTROS_VAZIOS,
-  filtrarAnotacoes,
+  erroDaBusca,
   filtrosAtivos,
-  listarAutores,
 } from '@/utils/commentFilters';
+import { resumoDaContagem } from '@/utils/commentPages';
+import {
+  AVISO_DE_TEXTO_LIMPO,
+  LIMITE_DO_TIPO,
+  ROTULO_DO_TIPO,
+  TIPOS_DE_ANOTACAO,
+  erroDeTexto,
+  montarNovaAnotacao,
+  textoParaEditar,
+} from '@/utils/commentTypes';
+import TextAreaField from '@/components/form/TextAreaField';
 import { ESTUDANTE } from '@/consts';
 import { NIVEIS_PROFISSIONAIS } from '@/utils/pageAccess';
 import { ChevronDown, History, Pencil, Search, SlidersHorizontal } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { useEstudanteDaUrl } from '@/hooks/useEstudanteDaUrl';
+import { useAnotacoes } from '@/hooks/useAnotacoes';
+import { BOTAO_SECUNDARIO } from '@/components/form/botoes';
 
-const LIMITE_CARACTERES = 1000;
 const LIMITE_EDICOES = 10;
+
+// Mesmo teto de COMMENT_SEARCH_MAX_LENGTH no back: acima dele a API responde 400.
+const LIMITE_DA_BUSCA = 200;
+
+// O relatório tem 10 vezes o limite da anotação, então o campo é mais alto. O
+// campo da criação fica fixo no topo, por isso a altura não passa de 6 linhas.
+const LINHAS_DO_TIPO: Record<CommentType, number> = {
+  NOTE: 4,
+  CLASS_COUNCIL_REPORT: 6,
+};
+
+// A cor só reforça: o tipo é dito pelo texto do rótulo.
+const ESTILO_DO_ROTULO_DO_TIPO: Record<CommentType, string> = {
+  NOTE: 'bg-gray-100 text-gray-700',
+  CLASS_COUNCIL_REPORT: 'bg-emerald-100 text-emerald-900',
+};
 
 function avisarErro(titulo: string, erro: unknown) {
   Swal.fire({
@@ -53,12 +76,13 @@ function AnotacoesMultiprofissionais() {
   const { registro, nome: nomeEstudante, carregando } = useEstudanteDaUrl();
   const router = useRouter();
 
-  const [anotacoes, setAnotacoes] = useState<CommentData[]>([]);
   const [novaAnotacao, setNovaAnotacao] = useState('');
+  const [tipoNovo, setTipoNovo] = useState<CommentType>('NOTE');
   const [avisarPorEmail, setAvisarPorEmail] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [textoEdicao, setTextoEdicao] = useState('');
+  const [textoFoiLimpo, setTextoFoiLimpo] = useState(false);
   const [avisarEdicaoPorEmail, setAvisarEdicaoPorEmail] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [historicosAbertos, setHistoricosAbertos] = useState<number[]>([]);
@@ -78,39 +102,19 @@ function AnotacoesMultiprofissionais() {
   // estudante indicado pelo id da URL.
   const targetId = isStudent ? token?.sub ?? null : registro?.id ?? null;
 
-  useEffect(() => {
-    if (!targetId) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await getAllCommentsByIdUser(targetId);
-        const ordenado = data.sort((a: CommentData, b: CommentData) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        if (!cancelled) {
-          setAnotacoes(ordenado);
-        }
-      } catch (err) {
-        console.error("Erro ao buscar anotações:", err);
-        if (!cancelled) {
-          setAnotacoes([]);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [targetId]);
-
-  const autores = useMemo(() => listarAutores(anotacoes), [anotacoes]);
-  const anotacoesFiltradas = useMemo(
-    () => filtrarAnotacoes(anotacoes, filtros),
-    [anotacoes, filtros],
-  );
+  const {
+    pagina,
+    carregando: carregandoAnotacoes,
+    carregandoMais,
+    erro: erroDaLista,
+    erroMais,
+    temMais,
+    carregarMais,
+    recarregar,
+  } = useAnotacoes(targetId, filtros);
+  const anotacoes = pagina?.items ?? [];
   const filtrando = filtrosAtivos(filtros);
+  const erroDaBuscaDigitada = erroDaBusca(filtros.busca);
 
   const atualizarFiltro = <K extends keyof CommentFilters>(
     campo: K,
@@ -125,10 +129,10 @@ function AnotacoesMultiprofissionais() {
     !!token && NIVEIS_PROFISSIONAIS.includes(token.id_level) && targetId !== null;
   const alvoDaAnotacao = nomeEstudante?.trim() || 'o estudante';
 
-  const handlePublicar = async () => {
-    const texto = novaAnotacao.trim();
+  const erroNovaAnotacao = erroDeTexto(novaAnotacao, tipoNovo);
 
-    if (!texto) return;
+  const handlePublicar = async () => {
+    if (!novaAnotacao.trim() || erroNovaAnotacao) return;
 
     if (!user || targetId === null) {
       avisarErro(
@@ -141,14 +145,18 @@ function AnotacoesMultiprofissionais() {
     setEnviando(true);
 
     try {
-      const anotacaoSalva = await postComment({
-        comment: texto,
-        id_user: targetId,
-        notify_by_email: avisarPorEmail,
-      });
+      await postComment(
+        montarNovaAnotacao({
+          texto: novaAnotacao,
+          idUsuario: targetId,
+          tipo: tipoNovo,
+          avisarPorEmail,
+        }),
+      );
 
-      setAnotacoes((atuais) => [anotacaoSalva, ...atuais]);
+      recarregar();
       setNovaAnotacao('');
+      setTipoNovo('NOTE');
       setAvisarPorEmail(false);
     } catch (error) {
       console.error("Erro ao publicar anotação:", error);
@@ -159,35 +167,35 @@ function AnotacoesMultiprofissionais() {
   };
 
   const iniciarEdicao = (anotacao: CommentData) => {
+    const { texto, limpou } = textoParaEditar(anotacao.comment);
+
     setEditandoId(anotacao.id);
-    setTextoEdicao(anotacao.comment);
+    setTextoEdicao(texto);
+    setTextoFoiLimpo(limpou);
     setAvisarEdicaoPorEmail(false);
   };
 
   const cancelarEdicao = () => {
     setEditandoId(null);
     setTextoEdicao('');
+    setTextoFoiLimpo(false);
     setAvisarEdicaoPorEmail(false);
   };
 
-  const handleSalvarEdicao = async (idAnotacao: number) => {
+  const handleSalvarEdicao = async (anotacao: CommentData) => {
     const texto = textoEdicao.trim();
 
-    if (!texto) return;
+    if (!texto || erroDeTexto(textoEdicao, anotacao.type)) return;
 
     setSalvandoEdicao(true);
 
     try {
-      const anotacaoAtualizada = await updateComment(idAnotacao, {
+      await updateComment(anotacao.id, {
         comment: texto,
         notify_by_email: avisarEdicaoPorEmail,
       });
 
-      setAnotacoes((atuais) =>
-        atuais.map((anotacao) =>
-          anotacao.id === idAnotacao ? anotacaoAtualizada : anotacao
-        )
-      );
+      recarregar();
       cancelarEdicao();
     } catch (error) {
       console.error("Erro ao editar anotação:", error);
@@ -214,7 +222,7 @@ function AnotacoesMultiprofissionais() {
         {/* O -mt-[70px] sobe o painel até a altura do botão Voltar do
             AppLayout: a faixa dele tem 54px com o botão a 8px do topo, e esta
             página começa 24px (p-6) depois da faixa. */}
-        {anotacoes.length > 0 && (
+        {pagina && pagina.overall > 0 && (
           <aside className="mb-4 w-full max-w-3xl mx-auto xl:mx-0 xl:mb-0 xl:-mt-[70px] xl:col-start-3 xl:row-start-1 xl:self-start xl:sticky xl:top-4 xl:z-10">
             <section
               aria-label="Buscar e filtrar anotações"
@@ -229,12 +237,22 @@ function AnotacoesMultiprofissionais() {
                 />
                 <input
                   type="search"
-                  className="w-full rounded-full border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className={`w-full rounded-full border py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
+                    erroDaBuscaDigitada ? 'border-red-600' : 'border-gray-300'
+                  }`}
                   placeholder="Buscar texto ou autor"
+                  maxLength={LIMITE_DA_BUSCA}
                   value={filtros.busca}
+                  aria-invalid={erroDaBuscaDigitada ? true : undefined}
+                  aria-describedby={erroDaBuscaDigitada ? 'erro-da-busca' : undefined}
                   onChange={(e) => atualizarFiltro('busca', e.target.value)}
                 />
               </label>
+              {erroDaBuscaDigitada && (
+                <p id="erro-da-busca" role="alert" className="px-3 text-red-700">
+                  {erroDaBuscaDigitada}
+                </p>
+              )}
 
               <div className="flex items-center justify-between gap-2">
                 <button
@@ -253,8 +271,13 @@ function AnotacoesMultiprofissionais() {
                   />
                 </button>
                 <span className="text-gray-500" aria-live="polite">
-                  {anotacoesFiltradas.length}/{anotacoes.length}{' '}
-                  <span className="text-gray-400">anotações exibidas</span>
+                  {erroDaLista
+                    ? ''
+                    : resumoDaContagem({
+                        carregadas: anotacoes.length,
+                        total: pagina.total,
+                        overall: pagina.overall,
+                      })}
                 </span>
               </div>
 
@@ -270,9 +293,9 @@ function AnotacoesMultiprofissionais() {
                       }
                     >
                       <option value="">Todos</option>
-                      {autores.map((autor) => (
+                      {pagina.authors.map((autor) => (
                         <option key={autor.id} value={autor.id}>
-                          {autor.nome}
+                          {autor.name}
                         </option>
                       ))}
                     </select>
@@ -291,6 +314,27 @@ function AnotacoesMultiprofissionais() {
                       {AREAS.map((area) => (
                         <option key={area.nivel} value={area.nivel}>
                           {area.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block text-gray-600">
+                    Tipo
+                    <select
+                      className="mt-0.5 w-full rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      value={filtros.tipo ?? ''}
+                      onChange={(e) =>
+                        atualizarFiltro(
+                          'tipo',
+                          TIPOS_DE_ANOTACAO.find((tipo) => tipo === e.target.value) ?? null,
+                        )
+                      }
+                    >
+                      <option value="">Todos</option>
+                      {TIPOS_DE_ANOTACAO.map((tipo) => (
+                        <option key={tipo} value={tipo}>
+                          {ROTULO_DO_TIPO[tipo]}
                         </option>
                       ))}
                     </select>
@@ -349,12 +393,40 @@ function AnotacoesMultiprofissionais() {
           {podeAnotar && (
             <div className="sticky top-0 z-10 bg-white pt-4 pb-4">
               <div className="border border-gray-200 rounded-2xl shadow-sm p-4">
-                <textarea
-                  className="w-full h-24 border border-gray-300 rounded-2xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                  placeholder={`Faça sua anotação sobre ${alvoDaAnotacao}`}
-                  maxLength={LIMITE_CARACTERES}
-                  value={novaAnotacao}
-                  onChange={(e) => setNovaAnotacao(e.target.value)}
+                <fieldset className="mb-3 min-w-0">
+                  <legend className="text-sm font-medium text-gray-800">
+                    Tipo de registro
+                  </legend>
+                  <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
+                    {TIPOS_DE_ANOTACAO.map((tipo) => (
+                      <label key={tipo} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="radio"
+                          name="tipo-da-anotacao"
+                          value={tipo}
+                          checked={tipoNovo === tipo}
+                          onChange={() => setTipoNovo(tipo)}
+                          className="h-4 w-4 accent-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                        />
+                        {ROTULO_DO_TIPO[tipo]}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <TextAreaField
+                  rotulo={`Texto do registro (${ROTULO_DO_TIPO[tipoNovo].toLowerCase()})`}
+                  rotuloOculto
+                  placeholder={
+                    tipoNovo === 'CLASS_COUNCIL_REPORT'
+                      ? `Escreva o relatório multiprofissional sobre ${alvoDaAnotacao}`
+                      : `Faça sua anotação sobre ${alvoDaAnotacao}`
+                  }
+                  linhas={LINHAS_DO_TIPO[tipoNovo]}
+                  tamanhoMaximo={LIMITE_DO_TIPO[tipoNovo]}
+                  valor={novaAnotacao}
+                  onChange={setNovaAnotacao}
+                  erro={erroNovaAnotacao}
                 />
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -368,32 +440,51 @@ function AnotacoesMultiprofissionais() {
                     Enviar aviso por e-mail
                   </label>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500">
-                      {novaAnotacao.length}/{LIMITE_CARACTERES}
-                    </span>
-                    <button
-                      type="button"
-                      className="bg-emerald-700 text-white px-4 py-2 rounded-full font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={handlePublicar}
-                      disabled={enviando || !novaAnotacao.trim()}
-                    >
-                      {enviando ? 'Publicando...' : 'Publicar'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="bg-emerald-700 text-white px-4 py-2 rounded-full font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handlePublicar}
+                    disabled={enviando || !novaAnotacao.trim() || !!erroNovaAnotacao}
+                  >
+                    {enviando ? 'Publicando...' : 'Publicar'}
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
           {/* Lista de anotações */}
-          <div className="space-y-4 mt-4">
-            {anotacoes.length > 0 && anotacoesFiltradas.length === 0 ? (
+          <p
+            role="status"
+            className={
+              carregandoAnotacoes && !pagina ? 'mt-4 py-10 text-center text-gray-500' : 'sr-only'
+            }
+          >
+            {carregandoAnotacoes ? 'Carregando anotações...' : ''}
+          </p>
+
+          {erroDaLista && (
+            <div
+              role="alert"
+              className="mt-4 space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5"
+            >
+              <p className="text-red-800">{erroDaLista}</p>
+              <button type="button" className={BOTAO_SECUNDARIO} onClick={recarregar}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
+          <div
+            className={`space-y-4 mt-4 ${carregandoAnotacoes ? 'opacity-60' : ''}`}
+            aria-busy={carregandoAnotacoes}
+          >
+            {erroDaLista || !pagina ? null : anotacoes.length === 0 && pagina.overall > 0 ? (
               <div className="text-center text-gray-500 py-10">
                 <p>Nenhuma anotação corresponde à busca e aos filtros.</p>
               </div>
             ) : anotacoes.length > 0 ? (
-              anotacoesFiltradas.map((anotacao) => {
+              anotacoes.map((anotacao) => {
                 const versoesAnteriores = buildPreviousVersions(anotacao);
                 const editadaEm = lastEditedAt(anotacao);
                 const foiEditada = versoesAnteriores.length > 0;
@@ -405,6 +496,7 @@ function AnotacoesMultiprofissionais() {
                   0,
                 );
                 const emEdicao = editandoId === anotacao.id;
+                const erroEdicao = emEdicao ? erroDeTexto(textoEdicao, anotacao.type) : '';
 
                 return (
                   <article
@@ -412,21 +504,41 @@ function AnotacoesMultiprofissionais() {
                     className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4"
                   >
                     <div className="flex justify-between items-start gap-4">
-                      <p className="text-sm font-semibold text-gray-800">
-                        {anotacao.author_name}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {anotacao.author_name}
+                        </p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ESTILO_DO_ROTULO_DO_TIPO[anotacao.type]}`}
+                        >
+                          {ROTULO_DO_TIPO[anotacao.type]}
+                        </span>
+                      </div>
                       <p className="text-xs text-gray-500">
                         {formatarData(anotacao.created_at)}
                       </p>
                     </div>
 
+                    {/* A região fica montada em todo cartão para que o leitor
+                        de tela anuncie o aviso quando ele aparece. */}
+                    <div role="status">
+                      {emEdicao && textoFoiLimpo && (
+                        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                          {AVISO_DE_TEXTO_LIMPO}
+                        </p>
+                      )}
+                    </div>
+
                     {emEdicao ? (
                       <div className="mt-3">
-                        <textarea
-                          className="w-full h-24 border border-gray-300 rounded-2xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                          maxLength={LIMITE_CARACTERES}
-                          value={textoEdicao}
-                          onChange={(e) => setTextoEdicao(e.target.value)}
+                        <TextAreaField
+                          rotulo={`Editar o texto (${ROTULO_DO_TIPO[anotacao.type].toLowerCase()})`}
+                          rotuloOculto
+                          linhas={LINHAS_DO_TIPO[anotacao.type]}
+                          tamanhoMaximo={LIMITE_DO_TIPO[anotacao.type]}
+                          valor={textoEdicao}
+                          onChange={setTextoEdicao}
+                          erro={erroEdicao}
                         />
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -441,9 +553,6 @@ function AnotacoesMultiprofissionais() {
                           </label>
 
                           <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-500">
-                              {textoEdicao.length}/{LIMITE_CARACTERES}
-                            </span>
                             <button
                               type="button"
                               className="px-4 py-2 border rounded-full text-gray-600 hover:bg-gray-100"
@@ -455,8 +564,8 @@ function AnotacoesMultiprofissionais() {
                             <button
                               type="button"
                               className="bg-emerald-700 text-white px-4 py-2 rounded-full font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => handleSalvarEdicao(anotacao.id)}
-                              disabled={salvandoEdicao || !textoEdicao.trim()}
+                              onClick={() => handleSalvarEdicao(anotacao)}
+                              disabled={salvandoEdicao || !textoEdicao.trim() || !!erroEdicao}
                             >
                               {salvandoEdicao ? 'Salvando...' : 'Salvar'}
                             </button>
@@ -575,6 +684,24 @@ function AnotacoesMultiprofissionais() {
             ) : (
               <div className="text-center text-gray-500 py-10">
                 <p>Nenhuma anotação encontrada para este estudante.</p>
+              </div>
+            )}
+
+            {temMais && (
+              <div className="flex flex-col items-center gap-2 py-2">
+                {erroMais && (
+                  <p role="alert" className="text-sm text-red-700">
+                    {erroMais}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className={`${BOTAO_SECUNDARIO} disabled:opacity-50 disabled:cursor-not-allowed`}
+                  onClick={carregarMais}
+                  disabled={carregandoAnotacoes || carregandoMais}
+                >
+                  {carregandoMais ? 'Carregando...' : 'Carregar mais'}
+                </button>
               </div>
             )}
           </div>
