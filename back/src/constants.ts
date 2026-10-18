@@ -1,3 +1,5 @@
+import type { CommentType } from '@prisma/client';
+
 export const PHASES = {
   TRIAGEM: 1,
   ANAMNESE: 2,
@@ -66,6 +68,57 @@ export const MANAGER_CONTACT_READERS: readonly number[] = [
 ];
 
 export const COMMENT_EDIT_LIMIT = 10;
+
+// Tamanho máximo do texto de cada tipo de anotação, em unidades UTF-16: o que o
+// .length do JavaScript conta e o maxLength do textarea do front aplica. O
+// MaxLength do class-validator conta o par surrogate (um emoji) como 1 e o
+// seletor de variação como 0, então não serve de critério. O DTO de criação e o
+// service de edição leem o limite daqui.
+export const COMMENT_MAX_LENGTH = {
+  NOTE: 1000,
+  CLASS_COUNCIL_REPORT: 10000,
+} as const satisfies Record<CommentType, number>;
+
+// Paginação da lista de anotações do estudante: o limite é o tamanho da página,
+// e o teto impede que um limit enorme devolva o histórico inteiro de uma vez.
+export const COMMENT_LIST_LIMIT = { DEFAULT: 20, MAX: 50 } as const;
+
+// Tamanho máximo do termo de busca da lista de anotações, em unidades UTF-16.
+export const COMMENT_SEARCH_MAX_LENGTH = 200;
+
+// Maior sequência de marcas combinantes (categoria Unicode M, os acentos soltos)
+// que o texto da anotação e o termo de busca aceitam. É o limite do Stream-Safe
+// Text Format (UAX #15). O normalize(NFD) do PostgreSQL, que a busca roda em
+// cada registro, reordena cada sequência de marcas em tempo quadrático no
+// tamanho dela, e texto de verdade não passa de 3 ou 4 marcas seguidas.
+export const COMBINING_MARKS_MAX_RUN = 30;
+
+// Tempo máximo de cada consulta da lista de anotações (statement_timeout, em
+// milissegundos). O custo da busca por texto cresce com o tamanho dos registros
+// do estudante, e sem teto uma busca lenta segura a conexão do pool até
+// terminar. O PostgreSQL cancela a consulta que passa disto (SQLSTATE 57014).
+export const COMMENT_LIST_STATEMENT_TIMEOUT_MS = 3000;
+
+// Teto da transação que roda as três consultas da lista em sequência. Precisa
+// passar de três vezes o tempo de cada consulta, senão o Prisma (cujo padrão é
+// 5 s) fecha a transação antes do statement_timeout e a resposta vira 500, e
+// não o 503 da busca lenta.
+export const COMMENT_LIST_TRANSACTION_TIMEOUT_MS =
+  COMMENT_LIST_STATEMENT_TIMEOUT_MS * 3 + 1000;
+
+// Tempo máximo que a lista espera por uma conexão livre do pool para abrir a
+// transação (maxWait do Prisma, cujo padrão é 2 s). Com o pool ocupado pelas
+// buscas lentas, passar disto responde 503 "O sistema está ocupado".
+export const COMMENT_LIST_TRANSACTION_MAX_WAIT_MS = 5000;
+
+// Áreas que o filtro da lista aceita: os níveis de quem escreve anotações. O
+// estudante só lê, então não é uma área de autor.
+export const COMMENT_AUTHOR_AREAS: readonly number[] = [
+  LEVELS.ADMIN,
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_SAUDE,
+  LEVELS.PROFISSIONAL_NAPNE,
+];
 
 export type Phase = keyof typeof PHASES;
 export type Level = keyof typeof LEVELS;
