@@ -270,7 +270,6 @@ model PeiEntry {
   author    User? @relation("PeiEntryAuthor", fields: [id_author], references: [id], onDelete: SetNull)
 
   @@unique([id_student, semester, subject], where: { deleted_at: null })
-
   @@index([id_student])
   @@index([id_author])
 }
