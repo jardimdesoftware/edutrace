@@ -238,6 +238,10 @@ describe('buildReportSections', () => {
         'Atividades avaliativas adaptadas',
         'Recursos adaptados',
         'Observações gerais',
+        'Avanços no semestre',
+        'Dificuldades no semestre',
+        'Apontamentos para o próximo semestre',
+        'Atendimentos individualizados prestados (datas, horários, salas e meio de convocação)',
       ],
     );
     assert.equal(valueOf(report, TITULOS_PEI[0], 'Objetivos adaptados'), 'Ampliar a autonomia nas operações');

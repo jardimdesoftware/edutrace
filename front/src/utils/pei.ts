@@ -3,6 +3,7 @@ import type {
   NewPeiEntryPayload,
   PeiEntry,
   PeiEntryContent,
+  PeiEntryOpinion,
   SyllabusAdaptation,
 } from '@/interfaces/PeiEntry';
 import {
@@ -61,6 +62,35 @@ export const SECOES_PEI: readonly SecaoDef[] = [
   secaoDeTexto('general_notes', 'Observações gerais'),
 ];
 
+const TITULO_PARECER = 'Parecer semestral';
+
+// Rótulos e limites copiados do contrato da issue #707. O parecer é gravado à
+// parte do conteúdo (formulário e PATCH próprios), então tem a própria tabela,
+// que também monta a leitura na tela e no PDF.
+export const SECOES_PARECER: readonly SecaoDef[] = [
+  {
+    titulo: TITULO_PARECER,
+    grupos: [
+      {
+        campos: [
+          textoLongo('semester_progress', 'Avanços no semestre', LIMITES_PEI.TEXTO),
+          textoLongo('semester_difficulties', 'Dificuldades no semestre', LIMITES_PEI.TEXTO),
+          textoLongo(
+            'next_semester_notes',
+            'Apontamentos para o próximo semestre',
+            LIMITES_PEI.TEXTO,
+          ),
+          textoLongo(
+            'individual_sessions',
+            'Atendimentos individualizados prestados (datas, horários, salas e meio de convocação)',
+            LIMITES_PEI.TEXTO,
+          ),
+        ],
+      },
+    ],
+  },
+];
+
 export const CAMINHO_DO_SEMESTRE = 'semester';
 export const CAMINHO_DA_DISCIPLINA = 'subject';
 export const CAMINHO_DOS_PARES = 'syllabus_adaptations';
@@ -105,6 +135,19 @@ export function formularioDoPei(registro: PeiEntryContent & Pick<PeiEntry, 'seme
     ...formularioDoRegistro<TextosDoForm>(SECOES_PEI, registro),
     [CAMINHO_DOS_PARES]: paresDoRegistro(registro.syllabus_adaptations),
   };
+}
+
+export type PeiOpinionForm = Formulario<PeiEntryOpinion>;
+
+export function formularioDoParecer(registro: PeiEntryOpinion): PeiOpinionForm {
+  return formularioDoRegistro<PeiOpinionForm>(SECOES_PARECER, registro);
+}
+
+// Os quatro campos do parecer e só eles: o conteúdo segue em outro PATCH, para
+// cada corpo ficar abaixo do limite de 100 kb do body parser do back. O campo em
+// branco vai como texto vazio, que limpa o valor gravado.
+export function montarCorpoDoParecer(form: PeiOpinionForm): PeiEntryOpinion {
+  return montarCorpoDe<PeiEntryOpinion>(SECOES_PARECER, form);
 }
 
 // Pares sem espaços nas pontas e sem o par com os dois lados em branco, como o
@@ -188,7 +231,7 @@ function erroDaDisciplina(disciplina: string): ErrosDoFormulario {
 }
 
 // Tamanho e caracteres de controle dos textos de uma seção da tabela.
-function errosDosTextos(secao: SecaoDef, form: PeiEntryForm): ErrosDoFormulario {
+function errosDosTextos(secao: SecaoDef, form: unknown): ErrosDoFormulario {
   const doTamanho = validarFormularioDe([secao], form);
 
   return Object.fromEntries(
@@ -263,6 +306,10 @@ export function validarPeiExistente(form: PeiEntryForm): ErrosDoFormulario {
   );
 }
 
+export function validarParecer(form: PeiOpinionForm): ErrosDoFormulario {
+  return errosDosTextos(SECOES_PARECER[0], form);
+}
+
 export function validarPeiNovo(form: PeiEntryForm): ErrosDoFormulario {
   return {
     ...erroDoSemestre(form.semester),
@@ -272,6 +319,7 @@ export function validarPeiNovo(form: PeiEntryForm): ErrosDoFormulario {
 }
 
 type PeiParaLeitura = PeiEntryContent &
+  PeiEntryOpinion &
   Pick<PeiEntry, 'semester' | 'subject'> & {
     author?: { full_name: string } | null;
   };
@@ -291,9 +339,9 @@ function linhasDosPares(pares: readonly SyllabusAdaptation[]): LinhaDeLeitura[] 
 // Seções do registro do PEI prontas para a tela de leitura e para o PDF, na
 // ordem da tabela: a Identificação (semestre, disciplina e professor(a)), os
 // textos e a lista de pares, uma linha para o conteúdo previsto e outra para a
-// adequação de cada par.
+// adequação de cada par, e por último o Parecer semestral.
 export function secoesDoPeiParaLeitura(registro: PeiParaLeitura): SecaoDeLeitura[] {
-  return secoesDeLeitura(SECOES_PEI, registro).map((secao) => {
+  const doConteudo = secoesDeLeitura(SECOES_PEI, registro).map((secao) => {
     switch (secao.titulo) {
       case TITULO_IDENTIFICACAO:
         return {
@@ -310,6 +358,8 @@ export function secoesDoPeiParaLeitura(registro: PeiParaLeitura): SecaoDeLeitura
         return secao;
     }
   });
+
+  return [...doConteudo, ...secoesDeLeitura(SECOES_PARECER, registro)];
 }
 
 export interface GrupoDeSemestre {
