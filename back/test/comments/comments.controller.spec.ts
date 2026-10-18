@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsController } from 'src/comments/comments.controller';
 import { CommentsService } from 'src/comments/comments.service';
+import { ListCommentsQueryDto } from 'src/comments/dto/list-comments-query.dto';
 import { ForbiddenException } from '@nestjs/common';
 import { LEVELS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
@@ -113,27 +114,58 @@ describe('CommentsController', () => {
   });
 
   describe('findAllByIdUser', () => {
-    it('should return comments for a given user id', async () => {
-      const comments = [mockComment];
+    const page = {
+      items: [mockComment],
+      next_cursor: null,
+      total: 1,
+      overall: 1,
+      authors: [{ id: 5, name: 'Dr. Silva' }],
+    };
+
+    it('should return the page of a given user id', async () => {
       const request = { user: { sub: 10, id_level: 2 } } as any;
 
-      jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(comments as any);
+      jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(page as any);
 
-      const result = await controller.findAllByIdUser('10', request);
+      const result = await controller.findAllByIdUser('10', {}, request);
 
-      expect(service.findAllByIdUser).toHaveBeenCalledWith(10, request);
-      expect(result).toEqual(comments);
+      expect(service.findAllByIdUser).toHaveBeenCalledWith(10, {}, request);
+      expect(result).toEqual(page);
     });
 
     it('should convert id_user param from string to number', async () => {
-      const comments = [mockComment];
       const request = { user: { sub: 42, id_level: 2 } } as any;
 
-      jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(comments as any);
+      jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(page as any);
 
-      await controller.findAllByIdUser('42', request);
+      await controller.findAllByIdUser('42', {}, request);
 
-      expect(service.findAllByIdUser).toHaveBeenCalledWith(42, request);
+      expect(service.findAllByIdUser).toHaveBeenCalledWith(42, {}, request);
+    });
+
+    it('should pass the validated query to the service', async () => {
+      const request = { user: { sub: 3, id_level: 4 } } as any;
+      const query = Object.assign(new ListCommentsQueryDto(), {
+        q: 'acao',
+        author: 5,
+        limit: 10,
+      });
+
+      jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(page as any);
+
+      await controller.findAllByIdUser('10', query, request);
+
+      expect(service.findAllByIdUser).toHaveBeenCalledWith(10, query, request);
+    });
+
+    it('should receive the query as the DTO, so the global pipe validates it', () => {
+      const paramTypes = Reflect.getMetadata(
+        'design:paramtypes',
+        CommentsController.prototype,
+        'findAllByIdUser',
+      );
+
+      expect(paramTypes[1]).toBe(ListCommentsQueryDto);
     });
 
     it('should propagate ForbiddenException thrown by the service', async () => {
@@ -147,9 +179,9 @@ describe('CommentsController', () => {
           ),
         );
 
-      await expect(controller.findAllByIdUser('10', request)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        controller.findAllByIdUser('10', {}, request),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
