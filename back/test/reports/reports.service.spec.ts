@@ -29,6 +29,10 @@ describe('ReportsService', () => {
       syllabus_adaptations: [
         { syllabus_content: 'Cinemática', adaptation: 'Material concreto' },
       ],
+      semester_progress: 'Avançou em cinemática',
+      semester_difficulties: 'Dificuldade com gráficos',
+      next_semester_notes: 'Manter o material concreto',
+      individual_sessions: 'Terças, 14h, sala 12',
       author: { full_name: 'Professora Ana' },
     },
     {
@@ -232,6 +236,27 @@ describe('ReportsService', () => {
       expect(Object.keys(select).sort()).toEqual(
         Object.keys(peiEntrySelect).sort(),
       );
+    });
+
+    // O relatório (e o PDF que o front monta dele) traz o parecer semestral de
+    // cada registro, ao lado dos sete campos de conteúdo.
+    it('should select the four opinion fields of each PEI entry for the report', async () => {
+      jest
+        .spyOn(prisma.peiEntry, 'findMany')
+        .mockResolvedValue(mockPeiEntries as never);
+
+      await service.findOne(email);
+
+      const { select } = (prisma.peiEntry.findMany as jest.Mock).mock
+        .calls[0][0] as { select: Record<string, unknown> };
+      for (const key of [
+        'semester_progress',
+        'semester_difficulties',
+        'next_semester_notes',
+        'individual_sessions',
+      ]) {
+        expect(select[key]).toBe(true);
+      }
     });
 
     it('should return an empty PEI list for a student without entries', async () => {
