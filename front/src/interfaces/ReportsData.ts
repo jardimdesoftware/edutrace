@@ -1,5 +1,6 @@
 import { AeePlan, AeePlanAuthor, AeePlanStudent } from "./AeePlan";
 import { CaseStudy, CaseStudyAuthor, CaseStudyStudent } from "./CaseStudy";
+import { PeiEntry, PeiEntryContent } from "./PeiEntry";
 import { PlansEducationData } from "./PlansEducationData";
 import { ScreeningData } from "./ScreeningData";
 
@@ -17,9 +18,14 @@ type AeePlanDoRelatorio = Omit<AeePlan, "id" | "student" | "author" | "created_a
     author: Pick<AeePlanAuthor, "full_name"> | null
 }
 
+// Do PEI o relatório traz o semestre, a disciplina, os campos de conteúdo e só o
+// nome do professor autor.
+type PeiEntryDoRelatorio = PeiEntryContent & Pick<PeiEntry, "semester" | "subject" | "author">
+
 export interface ReportsData {
     screening: Omit<ScreeningData, "full_name" | "email" | "special_service"> | null
-    plansEducation: Omit<PlansEducationData, "student_email" | "student_name"> | null
+    plansEducation?: Omit<PlansEducationData, "student_email" | "student_name"> | null
+    peiEntries?: PeiEntryDoRelatorio[]
     caseStudy?: CaseStudyDoRelatorio | null
     aeePlans?: AeePlanDoRelatorio[]
 }
