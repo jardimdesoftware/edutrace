@@ -203,6 +203,12 @@ export function validarFormularioDe(secoes: readonly SecaoDef[], form: unknown):
   );
 }
 
+// Tira o erro do caminho: o campo que o usuário alterou deixa de mostrar o erro
+// que tinha.
+export function semErroDoCaminho(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
+  return Object.fromEntries(Object.entries(erros).filter(([chave]) => chave !== caminho));
+}
+
 export interface LinhaDeLeitura {
   label: string;
   value: string;
