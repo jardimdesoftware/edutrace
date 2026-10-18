@@ -24,22 +24,42 @@ const caseStudy = {
   student: { course: 'Informática' },
 } as unknown as NonNullable<ReportsData['caseStudy']>;
 
+const peiEntry: NonNullable<ReportsData['peiEntries']>[number] = {
+  semester: '2026.2',
+  subject: 'Matemática',
+  adapted_objectives: 'Ampliar a autonomia nas operacoes',
+  prioritized_contents: 'Funcoes e geometria',
+  syllabus_adaptations: [
+    { syllabus_content: 'Funcoes do primeiro grau', adaptation: 'Usar material concreto' },
+  ],
+  adapted_methodologies: 'Aulas com recursos visuais',
+  adapted_assessments: 'Prova com tempo ampliado',
+  adapted_resources: 'Calculadora e abaco',
+  general_notes: 'Responde bem a atividades em dupla',
+  author: { full_name: 'Professora Ana' },
+};
+
+const peiEntries = [
+  peiEntry,
+  { ...peiEntry, semester: '2026.1', subject: 'Inglês', syllabus_adaptations: [], author: null },
+];
+
 describe('renderReportPdf', () => {
   it('draws the student, the filled sections and marks the missing one', async () => {
-    const doc = await renderReportPdf(estudante, { screening, plansEducation: null });
+    const doc = await renderReportPdf(estudante, { screening });
     const pdf = doc.output();
 
     assert.equal(doc.getNumberOfPages(), 1);
     assert.match(pdf, /Relat.rio do estudante/);
     assert.match(pdf, /aluno@example\.test/);
     assert.match(pdf, /\(Triagem\)/);
-    assert.match(pdf, /PEI - Plano de Ensino Individualizado/);
+    assert.match(pdf, /\(PEI\)/);
     assert.match(pdf, /Ficha n.o preenchida/);
     assert.doesNotMatch(pdf, /Anamnese/);
   });
 
   it('draws the sections of the case study with the author and the checked items', async () => {
-    const doc = await renderReportPdf(estudante, { screening: null, plansEducation: null, caseStudy });
+    const doc = await renderReportPdf(estudante, { screening: null, caseStudy });
     const pdf = doc.output();
 
     assert.match(pdf, /Estudo de Caso - Identifica/);
@@ -67,7 +87,7 @@ describe('renderReportPdf', () => {
       },
     ] as unknown as NonNullable<ReportsData['aeePlans']>;
 
-    const doc = await renderReportPdf(estudante, { screening: null, plansEducation: null, aeePlans });
+    const doc = await renderReportPdf(estudante, { screening: null, aeePlans });
     const pdf = doc.output();
 
     assert.match(pdf, /PAEE - 2026\.1/);
@@ -79,12 +99,27 @@ describe('renderReportPdf', () => {
     assert.match(pdf, /Registro semanal/);
   });
 
-  it('breaks a long answer across pages and numbers them', async () => {
-    const plansEducation = {
-      objectives: 'Objetivo de aprendizagem. '.repeat(1500),
-    } as unknown as NonNullable<ReportsData['plansEducation']>;
+  it('draws one section per PEI entry, with the semester, the subject, the teacher and the pairs', async () => {
+    const doc = await renderReportPdf(estudante, { screening: null, peiEntries });
+    const pdf = doc.output();
 
-    const doc = await renderReportPdf(estudante, { screening, plansEducation });
+    assert.match(pdf, /PEI - 2026\.2 - Matem.tica/);
+    assert.match(pdf, /PEI - 2026\.1 - Ingl.s/);
+    assert.match(pdf, /Professora Ana/);
+    assert.match(pdf, /Ampliar a autonomia nas operacoes/);
+    assert.match(pdf, /Conte.do previsto na ementa/);
+    assert.match(pdf, /Funcoes do primeiro grau/);
+    assert.match(pdf, /Adequa..o/);
+    assert.match(pdf, /Usar material concreto/);
+    assert.match(pdf, /Prova com tempo ampliado/);
+  });
+
+  it('breaks a long answer across pages and numbers them', async () => {
+    const peiEntries = [
+      { ...peiEntry, adapted_objectives: 'Objetivo de aprendizagem. '.repeat(1500) },
+    ];
+
+    const doc = await renderReportPdf(estudante, { screening, peiEntries });
     const pages = doc.getNumberOfPages();
 
     assert.ok(pages > 1, `expected more than one page, got ${pages}`);
@@ -98,7 +133,7 @@ describe('exportStudentReportPdf', () => {
     process.env.NEXT_PUBLIC_API_EDU_TRACE = 'http://api.test';
     globalThis.fetch = (async (url: string) => {
       urls.push(url);
-      return new Response(JSON.stringify({ screening: null, plansEducation: null }), {
+      return new Response(JSON.stringify({ screening: null, peiEntries: [] }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });

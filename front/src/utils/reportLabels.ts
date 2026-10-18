@@ -12,9 +12,9 @@ export interface ReportSectionDef {
   fields: ReportFieldDef[];
 }
 
-// Títulos e rótulos copiados das telas de triagem e PEI, na mesma ordem. Só
-// sai no relatório o campo listado aqui. As opções do PEI que a tela gera a
-// partir da chave não têm rótulo próprio e usam o mesmo texto da tela.
+// Títulos e rótulos copiados da tela de triagem, na mesma ordem. Só sai no
+// relatório o campo listado aqui. As outras fichas do relatório (estudo de caso,
+// PAEE e PEI) têm a tabela de rótulos no próprio documento.
 export const REPORT_SECTIONS: ReportSectionDef[] = [
   {
     key: 'screening',
@@ -69,42 +69,6 @@ export const REPORT_SECTIONS: ReportSectionDef[] = [
         },
       },
       { key: 'other_disabilities', label: 'Outros casos de deficiência' },
-    ],
-  },
-  {
-    key: 'plansEducation',
-    title: 'PEI - Plano de Ensino Individualizado',
-    fields: [
-      { key: 'professor_name', label: 'Nome do Professor' },
-      { key: 'professor_email', label: 'Email do Professor' },
-      {
-        key: 'academic_semester',
-        label: 'Semestre Acadêmico',
-        options: {
-          primeiro_semestre: 'Primeiro Semestre',
-          segundo_semestre: 'Segundo Semestre',
-        },
-      },
-      {
-        key: 'service_modality',
-        label: 'Modalidade de Serviço',
-        options: {
-          turma_regular: 'Turma Regular',
-          atendimento_pedagogico_domiciliar: 'Atendimento Pedagógico Domiciliar',
-          atendimento_pedagogico_hospitalar: 'Atendimento Pedagógico Hospitalar',
-        },
-      },
-      { key: 'support_service', label: 'Serviço de Apoio' },
-      { key: 'skills', label: 'Habilidades e Potencialidades' },
-      { key: 'resource_equipment_used', label: 'Recursos/Equipamentos já utilizados' },
-      { key: 'resource_equipment_needs', label: 'Recursos/Equipamentos a providenciar' },
-      { key: 'curriculum_accessibility', label: 'Acessibilidade Curricular' },
-      { key: 'school_content', label: 'Conteúdo Escolar' },
-      { key: 'activities_to_be_developed', label: 'Atividades a serem desenvolvidas' },
-      { key: 'objectives', label: 'Objetivos' },
-      { key: 'work_methodology', label: 'Metodologia de Trabalho' },
-      { key: 'materials_used', label: 'Materiais Utilizados' },
-      { key: 'evaluation_criteria', label: 'Critérios de Avaliação' },
     ],
   },
 ];

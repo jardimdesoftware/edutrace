@@ -1,6 +1,7 @@
 import type { ReportsData } from '@/interfaces/ReportsData';
 import { secoesParaLeitura } from './estudoDeCaso';
 import { secoesDoPlanoParaLeitura } from './paee';
+import { secoesDoPeiParaLeitura } from './pei';
 import { REPORT_SECTIONS, type ReportFieldDef } from './reportLabels';
 
 export interface ReportRow {
@@ -18,14 +19,18 @@ const NAO_INFORMADO = 'Não informado';
 const CHAVES_OUTRO = ['outro', 'outros'];
 const TITULO_ESTUDO_DE_CASO = 'Estudo de Caso';
 const TITULO_PAEE = 'PAEE';
+const TITULO_PEI = 'PEI';
 
 export function relatorioVazio(report: ReportsData): boolean {
   return (
-    !report.screening && !report.plansEducation && !report.caseStudy && !report.aeePlans?.length
+    !report.screening &&
+    !report.peiEntries?.length &&
+    !report.caseStudy &&
+    !report.aeePlans?.length
   );
 }
 
-// Mesmo texto que a tela do PEI exibe nas opções geradas a partir da chave.
+// Texto das opções que não têm rótulo no formulário, gerado a partir da chave.
 function humanizarChave(key: string): string {
   return key.replaceAll('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 }
@@ -88,6 +93,20 @@ function secoesDoPaee(planos: ReportsData['aeePlans']): ReportSection[] {
   }));
 }
 
+// O PEI tem um registro por semestre e disciplina, então sai uma seção do
+// relatório por registro, na ordem da API (do semestre mais recente para o mais
+// antigo, e por disciplina dentro dele), com as seções do registro em sequência.
+// Sem nenhum registro (lista vazia, ou ausente quando a API não a envia), sai uma
+// seção sem linhas, como nas outras fichas.
+function secoesDoPei(registros: ReportsData['peiEntries']): ReportSection[] {
+  if (!registros?.length) return [{ title: TITULO_PEI, rows: null }];
+
+  return registros.map((registro) => ({
+    title: `${TITULO_PEI} - ${registro.semester} - ${registro.subject}`,
+    rows: secoesDoPeiParaLeitura(registro).flatMap((secao) => secao.linhas),
+  }));
+}
+
 export function buildReportSections(report: ReportsData): ReportSection[] {
   const fichas = REPORT_SECTIONS.map((section) => {
     const dados = report[section.key] as Record<string, unknown> | null;
@@ -103,7 +122,12 @@ export function buildReportSections(report: ReportsData): ReportSection[] {
     };
   });
 
-  return [...fichas, ...secoesDoEstudoDeCaso(report.caseStudy), ...secoesDoPaee(report.aeePlans)];
+  return [
+    ...fichas,
+    ...secoesDoPei(report.peiEntries),
+    ...secoesDoEstudoDeCaso(report.caseStudy),
+    ...secoesDoPaee(report.aeePlans),
+  ];
 }
 
 // Tira os caracteres que o Windows recusa em nome de arquivo.
