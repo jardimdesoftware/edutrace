@@ -9,11 +9,11 @@ import type { Request } from 'express';
 
 // O maior INTEGER do PostgreSQL. Um id acima dele não existe, e o banco o
 // recusaria com o P2020.
-const MAX_ID = 2147483647;
+export const MAX_ID = 2147483647;
 
 // Inteiro positivo escrito por inteiro: sem sinal, sem zero à esquerda, sem
 // expoente, sem base, sem espaço e com no máximo 10 dígitos.
-const CANONICAL_ID = /^[1-9]\d{0,9}$/;
+export const CANONICAL_ID = /^[1-9]\d{0,9}$/;
 
 const INVALID_ID_MESSAGE =
   'O identificador deve ser um número inteiro positivo.';
