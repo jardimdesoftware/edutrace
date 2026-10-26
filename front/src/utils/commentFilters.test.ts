@@ -29,6 +29,13 @@ const PARAMETROS_DO_CONTRATO = [
 ];
 
 describe('AREAS', () => {
+  it('offers the AEE teacher area on role 6', () => {
+    assert.deepEqual(
+      AREAS.find((area) => area.nivel === 6),
+      { nivel: 6, nome: 'Professor do AEE' },
+    );
+  });
+
   it('has the NAPNE area on level 5', () => {
     assert.deepEqual(
       AREAS.find((area) => area.nivel === PROFISSIONAL_NAPNE),

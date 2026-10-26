@@ -1,6 +1,7 @@
 import type { CommentQuery, CommentType } from '../interfaces/CommentData';
 import {
   ADMIN,
+  PROFESSOR_AEE,
   PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
@@ -31,6 +32,7 @@ export const AREAS: { nivel: number; nome: string }[] = [
   { nivel: PROFISSIONAL_SAUDE, nome: 'Saúde' },
   { nivel: PROFISSIONAL_EDUCACAO, nome: 'Educação' },
   { nivel: PROFISSIONAL_NAPNE, nome: 'NAPNE' },
+  { nivel: PROFESSOR_AEE, nome: 'Professor do AEE' },
   { nivel: ADMIN, nome: 'Administração' },
 ];
 
