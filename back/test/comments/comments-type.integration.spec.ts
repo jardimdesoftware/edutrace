@@ -45,7 +45,7 @@ const EMAIL_DOMAIN = '@anotacoes.test';
           cpf: `${isStudent ? 26 : 27}${String(n).padStart(9, '0')}`,
           email: `conta${n}${EMAIL_DOMAIN}`,
           password: 'x',
-          id_level,
+          roles: [id_level],
           id_current_phase: PHASES.TRIAGEM,
           ...(isStudent
             ? { service_status: 'WAITING' as const, queued_at: new Date() }
@@ -71,7 +71,7 @@ const EMAIL_DOMAIN = '@anotacoes.test';
       ({
         user: {
           sub: id,
-          id_level,
+          roles: [id_level],
           email: 'quem.pede@example.com',
           name: 'Quem',
         },
@@ -115,16 +115,6 @@ const EMAIL_DOMAIN = '@anotacoes.test';
       // O banco do job nasce só com as migrations, sem o seed. O createMany
       // com skipDuplicates é um INSERT ... ON CONFLICT DO NOTHING, que não
       // falha para o spec que perde a corrida dos que rodam em paralelo.
-      await prisma.level.createMany({
-        data: [
-          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
-          {
-            id: LEVELS.PROFISSIONAL_EDUCACAO,
-            name: 'Profissional da Educação',
-          },
-        ],
-        skipDuplicates: true,
-      });
       await prisma.currentPhases.createMany({
         data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
         skipDuplicates: true,
@@ -238,7 +228,7 @@ const EMAIL_DOMAIN = '@anotacoes.test';
           }),
           author.id,
           'Autor',
-          LEVELS.PROFISSIONAL_EDUCACAO,
+          [LEVELS.PROFISSIONAL_EDUCACAO],
         );
         const read = await service.findAllByIdUser(
           student.id,
@@ -263,7 +253,7 @@ const EMAIL_DOMAIN = '@anotacoes.test';
           await dtoOf({ id_user: student.id, comment: 'Texto' }),
           author.id,
           'Autor',
-          LEVELS.PROFISSIONAL_EDUCACAO,
+          [LEVELS.PROFISSIONAL_EDUCACAO],
         );
 
         expect(created.type).toBe(CommentType.NOTE);
@@ -280,7 +270,7 @@ const EMAIL_DOMAIN = '@anotacoes.test';
           }),
           author.id,
           'Autor',
-          LEVELS.PROFISSIONAL_EDUCACAO,
+          [LEVELS.PROFISSIONAL_EDUCACAO],
         );
 
         const updated = await service.update(
@@ -303,7 +293,7 @@ const EMAIL_DOMAIN = '@anotacoes.test';
           await dtoOf({ id_user: student.id, comment: 'Texto original' }),
           author.id,
           'Autor',
-          LEVELS.PROFISSIONAL_EDUCACAO,
+          [LEVELS.PROFISSIONAL_EDUCACAO],
         );
 
         await expect(

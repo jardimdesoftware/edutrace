@@ -118,7 +118,7 @@ describe('anotações, rotas de /comments', () => {
         findMany: jest
           .fn()
           .mockResolvedValue([
-            { id: SUB, id_level: LEVELS.PROFISSIONAL_SAUDE },
+            { id: SUB, roles: [LEVELS.PROFISSIONAL_SAUDE] },
           ]),
       },
       $queryRaw: jest.fn().mockImplementation((sql: { text: string }) => {
@@ -602,8 +602,8 @@ describe('anotações, rotas de /comments', () => {
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
           items: [
-            { ...NOTE, author_level: LEVELS.PROFISSIONAL_SAUDE },
-            { ...REPORT, author_level: LEVELS.PROFISSIONAL_SAUDE },
+            { ...NOTE, author_roles: [LEVELS.PROFISSIONAL_SAUDE] },
+            { ...REPORT, author_roles: [LEVELS.PROFISSIONAL_SAUDE] },
           ],
           next_cursor: null,
           total: 2,

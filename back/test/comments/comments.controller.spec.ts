@@ -49,7 +49,7 @@ describe('CommentsController', () => {
     it('should create a comment using author from request', async () => {
       const createDto = { id_user: 10, comment: 'Observação importante' };
       const request = {
-        user: { sub: 5, name: 'Dr. Silva', id_level: 3 },
+        user: { sub: 5, name: 'Dr. Silva', roles: [3] },
       } as any;
 
       jest.spyOn(service, 'create').mockResolvedValue(mockComment as any);
@@ -60,7 +60,7 @@ describe('CommentsController', () => {
         createDto,
         5,
         'Dr. Silva',
-        3,
+        [3],
       );
       expect(result).toEqual(mockComment);
     });
@@ -68,7 +68,7 @@ describe('CommentsController', () => {
     it('should propagate errors thrown by the service', async () => {
       const createDto = { id_user: 10, comment: 'Observação importante' };
       const request = {
-        user: { sub: 5, name: 'Dr. Silva', id_level: 3 },
+        user: { sub: 5, name: 'Dr. Silva', roles: [3] },
       } as any;
 
       jest.spyOn(service, 'create').mockRejectedValue(new Error('DB error'));
@@ -83,7 +83,7 @@ describe('CommentsController', () => {
     it('should delegate the update to the service with the parsed id', async () => {
       const updateDto = { comment: 'Texto corrigido' };
       const request = {
-        user: { sub: 5, name: 'Dr. Silva', id_level: 3 },
+        user: { sub: 5, name: 'Dr. Silva', roles: [3] },
       } as any;
 
       jest.spyOn(service, 'update').mockResolvedValue(mockComment as any);
@@ -96,7 +96,7 @@ describe('CommentsController', () => {
 
     it('should propagate ForbiddenException thrown by the service', async () => {
       const request = {
-        user: { sub: 7, name: 'Dr. Souza', id_level: 4 },
+        user: { sub: 7, name: 'Dr. Souza', roles: [4] },
       } as any;
 
       jest
@@ -123,7 +123,7 @@ describe('CommentsController', () => {
     };
 
     it('should return the page of a given user id', async () => {
-      const request = { user: { sub: 10, id_level: 2 } } as any;
+      const request = { user: { sub: 10, roles: [2] } } as any;
 
       jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(page as any);
 
@@ -134,7 +134,7 @@ describe('CommentsController', () => {
     });
 
     it('should convert id_user param from string to number', async () => {
-      const request = { user: { sub: 42, id_level: 2 } } as any;
+      const request = { user: { sub: 42, roles: [2] } } as any;
 
       jest.spyOn(service, 'findAllByIdUser').mockResolvedValue(page as any);
 
@@ -144,7 +144,7 @@ describe('CommentsController', () => {
     });
 
     it('should pass the validated query to the service', async () => {
-      const request = { user: { sub: 3, id_level: 4 } } as any;
+      const request = { user: { sub: 3, roles: [4] } } as any;
       const query = Object.assign(new ListCommentsQueryDto(), {
         q: 'acao',
         author: 5,
@@ -169,7 +169,7 @@ describe('CommentsController', () => {
     });
 
     it('should propagate ForbiddenException thrown by the service', async () => {
-      const request = { user: { sub: 99, id_level: 1 } } as any;
+      const request = { user: { sub: 99, roles: [1] } } as any;
 
       jest
         .spyOn(service, 'findAllByIdUser')
@@ -196,6 +196,7 @@ describe('CommentsController', () => {
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
+          LEVELS.PROFESSOR_AEE,
         ]);
       },
     );
@@ -212,6 +213,7 @@ describe('CommentsController', () => {
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
         LEVELS.PROFISSIONAL_NAPNE,
+        LEVELS.PROFESSOR_AEE,
       ]);
     });
   });

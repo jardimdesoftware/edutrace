@@ -19,6 +19,7 @@ import {
   COMMENT_MAX_LENGTH,
   STUDENT_RECORD_READERS,
 } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { AuthenticatedRequest } from './types/express';
 import { StudentsService } from 'src/students/students.service';
 import { commentTooLongMessage } from './comment-max-length';
@@ -89,7 +90,7 @@ export class CommentsService {
     createCommentDto: CreateCommentDto,
     idAuthor: number,
     userName: string,
-    authorLevel: number,
+    authorRoles: number[],
   ) {
     const {
       comment,
@@ -115,7 +116,7 @@ export class CommentsService {
       await this.notifyStudent(id_user, 'created');
     }
 
-    return { ...commentCreated, author_level: authorLevel };
+    return { ...commentCreated, author_roles: authorRoles };
   }
 
   async update(
@@ -177,7 +178,7 @@ export class CommentsService {
       await this.notifyStudent(existingComment.id_user, 'updated');
     }
 
-    return { ...commentUpdated, author_level: request.user.id_level };
+    return { ...commentUpdated, author_roles: request.user.roles };
   }
 
   async findAllByIdUser(
@@ -185,8 +186,9 @@ export class CommentsService {
     query: ListCommentsQueryDto,
     request: AuthenticatedRequest,
   ) {
-    const readsAnyStudent = STUDENT_RECORD_READERS.includes(
-      request.user.id_level,
+    const readsAnyStudent = hasAnyRole(
+      request.user.roles,
+      STUDENT_RECORD_READERS,
     );
     const isOwnRecord = request.user.sub === idUser;
 
@@ -219,7 +221,7 @@ export class CommentsService {
           });
 
     return {
-      items: await this.withAuthorLevel(comments),
+      items: await this.withAuthorRoles(comments),
       next_cursor: hasMore ? pageIds[pageIds.length - 1] : null,
       total: counts.total,
       overall: counts.overall,
@@ -269,7 +271,7 @@ export class CommentsService {
     }
   }
 
-  private async withAuthorLevel<T extends { id_author: number }>(
+  private async withAuthorRoles<T extends { id_author: number }>(
     comments: T[],
   ) {
     const authorIds = [...new Set(comments.map((c) => c.id_author))];
@@ -280,15 +282,15 @@ export class CommentsService {
 
     const authors = await this.prisma.user.findMany({
       where: { id: { in: authorIds } },
-      select: { id: true, id_level: true },
+      select: { id: true, roles: true },
     });
-    const levelByAuthor = new Map(
-      authors.map((author) => [author.id, author.id_level]),
+    const rolesByAuthor = new Map(
+      authors.map((author) => [author.id, author.roles]),
     );
 
     return comments.map((comment) => ({
       ...comment,
-      author_level: levelByAuthor.get(comment.id_author) ?? null,
+      author_roles: rolesByAuthor.get(comment.id_author) ?? null,
     }));
   }
 
