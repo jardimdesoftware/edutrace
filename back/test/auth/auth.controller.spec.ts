@@ -70,14 +70,20 @@ describe('AuthController', () => {
       const authDto = { email: 'user@test.com', password: 'password123' };
       const resposta = criarRespostaFalsa();
 
-      jest.spyOn(service, 'signIn').mockResolvedValue({ access_token: 'mock.jwt.token' });
+      jest
+        .spyOn(service, 'signIn')
+        .mockResolvedValue({ access_token: 'mock.jwt.token' });
 
       const result = await controller.signIn(authDto, requestFalso, resposta);
 
-      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password, {
-        ip: requestFalso.ip,
-        userAgent: requestFalso.headers['user-agent'],
-      });
+      expect(service.signIn).toHaveBeenCalledWith(
+        authDto.email,
+        authDto.password,
+        {
+          ip: requestFalso.ip,
+          userAgent: requestFalso.headers['user-agent'],
+        },
+      );
       expect(resposta.cookie).toHaveBeenCalledWith(
         'edutrace_session',
         'mock.jwt.token',
@@ -92,15 +98,23 @@ describe('AuthController', () => {
 
       jest
         .spyOn(service, 'signIn')
-        .mockRejectedValue(new UnauthorizedException('E-mail ou senha inválidos.'));
+        .mockRejectedValue(
+          new UnauthorizedException('E-mail ou senha inválidos.'),
+        );
 
       const resposta = criarRespostaFalsa();
-      await expect(controller.signIn(authDto, requestFalso, resposta)).rejects.toThrow(UnauthorizedException);
+      await expect(
+        controller.signIn(authDto, requestFalso, resposta),
+      ).rejects.toThrow(UnauthorizedException);
       expect(resposta.cookie).not.toHaveBeenCalled();
-      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password, {
-        ip: requestFalso.ip,
-        userAgent: requestFalso.headers['user-agent'],
-      });
+      expect(service.signIn).toHaveBeenCalledWith(
+        authDto.email,
+        authDto.password,
+        {
+          ip: requestFalso.ip,
+          userAgent: requestFalso.headers['user-agent'],
+        },
+      );
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
@@ -108,15 +122,23 @@ describe('AuthController', () => {
 
       jest
         .spyOn(service, 'signIn')
-        .mockRejectedValue(new UnauthorizedException('E-mail ou senha inválidos.'));
+        .mockRejectedValue(
+          new UnauthorizedException('E-mail ou senha inválidos.'),
+        );
 
       const resposta = criarRespostaFalsa();
-      await expect(controller.signIn(authDto, requestFalso, resposta)).rejects.toThrow(UnauthorizedException);
+      await expect(
+        controller.signIn(authDto, requestFalso, resposta),
+      ).rejects.toThrow(UnauthorizedException);
       expect(resposta.cookie).not.toHaveBeenCalled();
-      expect(service.signIn).toHaveBeenCalledWith(authDto.email, authDto.password, {
-        ip: requestFalso.ip,
-        userAgent: requestFalso.headers['user-agent'],
-      });
+      expect(service.signIn).toHaveBeenCalledWith(
+        authDto.email,
+        authDto.password,
+        {
+          ip: requestFalso.ip,
+          userAgent: requestFalso.headers['user-agent'],
+        },
+      );
     });
   });
 
@@ -133,10 +155,13 @@ describe('AuthController', () => {
         resposta,
       );
 
-      expect(service.signInWithGoogle).toHaveBeenCalledWith('credencial-google', {
-        ip: requestFalso.ip,
-        userAgent: requestFalso.headers['user-agent'],
-      });
+      expect(service.signInWithGoogle).toHaveBeenCalledWith(
+        'credencial-google',
+        {
+          ip: requestFalso.ip,
+          userAgent: requestFalso.headers['user-agent'],
+        },
+      );
       expect(resposta.cookie).toHaveBeenCalledWith(
         'edutrace_session',
         'google.jwt.token',
@@ -149,20 +174,24 @@ describe('AuthController', () => {
   describe('vínculo da Conta Google', () => {
     const requestComSessao = { user: { email: 'user@test.com' } };
 
-    it.each(['getGoogleLinkStatus', 'linkGoogleAccount', 'unlinkGoogleAccount'])(
-      '%s should require a session',
-      (method) => {
-        expect(
-          Reflect.getMetadata(
-            IS_PUBLIC_KEY,
-            AuthController.prototype[method as keyof AuthController],
-          ),
-        ).toBeUndefined();
-      },
-    );
+    it.each([
+      'getGoogleLinkStatus',
+      'linkGoogleAccount',
+      'unlinkGoogleAccount',
+    ])('%s should require a session', (method) => {
+      expect(
+        Reflect.getMetadata(
+          IS_PUBLIC_KEY,
+          AuthController.prototype[method as keyof AuthController],
+        ),
+      ).toBeUndefined();
+    });
 
     it('should read the account from the session and not from the body', async () => {
-      const dto = { credential: 'credencial', currentPassword: 'senhaAtual123' };
+      const dto = {
+        credential: 'credencial',
+        currentPassword: 'senhaAtual123',
+      };
 
       await controller.getGoogleLinkStatus(requestComSessao);
       await controller.linkGoogleAccount(requestComSessao, dto);
@@ -180,7 +209,10 @@ describe('AuthController', () => {
   describe('updateMe', () => {
     it('should replace the session cookie with the token issued after the update', async () => {
       const resposta = criarRespostaFalsa();
-      const dto = { currentPassword: 'senhaAtual123', password: 'novaSenha123' };
+      const dto = {
+        currentPassword: 'senhaAtual123',
+        password: 'novaSenha123',
+      };
       jest
         .spyOn(service, 'updateProfile')
         .mockResolvedValue({ access_token: 'novo.jwt.token' });
@@ -206,7 +238,11 @@ describe('AuthController', () => {
         .mockRejectedValue(new UnauthorizedException('Senha atual incorreta'));
 
       await expect(
-        controller.updateMe(requestFalso, { currentPassword: 'errada' }, resposta),
+        controller.updateMe(
+          requestFalso,
+          { currentPassword: 'errada' },
+          resposta,
+        ),
       ).rejects.toThrow(UnauthorizedException);
       expect(resposta.cookie).not.toHaveBeenCalled();
     });
@@ -265,7 +301,9 @@ describe('AuthController', () => {
 
       jest
         .spyOn(service, 'verifyResetCode')
-        .mockRejectedValue(new UnauthorizedException('Código inválido ou expirado.'));
+        .mockRejectedValue(
+          new UnauthorizedException('Código inválido ou expirado.'),
+        );
 
       await expect(controller.verifyResetCode(dto)).rejects.toThrow(
         UnauthorizedException,
@@ -304,7 +342,9 @@ describe('AuthController', () => {
 
       jest
         .spyOn(service, 'resetPassword')
-        .mockRejectedValue(new UnauthorizedException('Código inválido ou expirado.'));
+        .mockRejectedValue(
+          new UnauthorizedException('Código inválido ou expirado.'),
+        );
 
       await expect(controller.resetPassword(dto)).rejects.toThrow(
         UnauthorizedException,
@@ -390,23 +430,61 @@ describe('AuthController', () => {
   });
 
   describe('getProfile', () => {
-    it('should return the user from the request', () => {
+    it('should return only the listed profile fields, without token internals', () => {
       const mockRequest = {
-        user: { sub: 1, email: 'user@test.com', name: 'Test User', id_level: 2 },
+        user: {
+          sub: 1,
+          email: 'user@test.com',
+          name: 'Test User',
+          roles: [2],
+          must_change_password: true,
+          must_complete_registration: false,
+          id_level: 2,
+          jti: 'sessao-1',
+          iat: 1,
+          exp: 2,
+        },
       } as any;
 
       const result = controller.getProfile(mockRequest);
 
-      expect(result).toEqual(mockRequest.user);
+      expect(Object.keys(result).sort()).toEqual([
+        'email',
+        'must_change_password',
+        'must_complete_registration',
+        'name',
+        'roles',
+        'sub',
+      ]);
+      expect(result).toEqual({
+        sub: 1,
+        email: 'user@test.com',
+        name: 'Test User',
+        roles: [2],
+        must_change_password: true,
+        must_complete_registration: false,
+      });
     });
 
-    it('should return the exact user object attached to the request', () => {
-      const mockUser = { sub: 42, email: 'admin@test.com', name: 'Admin', id_level: 1 };
-      const mockRequest = { user: mockUser } as any;
+    it('should omit the optional flags the token does not carry', () => {
+      const mockRequest = {
+        user: {
+          sub: 42,
+          email: 'admin@test.com',
+          name: 'Admin',
+          roles: [1],
+          jti: 'x',
+        },
+      } as any;
 
       const result = controller.getProfile(mockRequest);
 
-      expect(result).toBe(mockRequest.user);
+      expect(result).toEqual({
+        sub: 42,
+        email: 'admin@test.com',
+        name: 'Admin',
+        roles: [1],
+      });
     });
   });
 
@@ -419,8 +497,13 @@ describe('AuthController', () => {
       'logout',
       'updateMe',
       'completeRegistration',
-    ] as const)('should open %s to any level, since it acts on the session account', (route) => {
-      expect(Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route])).toBe(ANY_LEVEL);
-    });
+    ] as const)(
+      'should open %s to any level, since it acts on the session account',
+      (route) => {
+        expect(Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route])).toBe(
+          ANY_LEVEL,
+        );
+      },
+    );
   });
 });

@@ -185,7 +185,24 @@ export class AuthController {
       'Devolve o perfil do usuário da sessão, identificada pelo cookie de sessão ou pelo header "Authorization: Bearer {token}".',
   })
   getProfile(@Request() req) {
-    return req.user;
+    const {
+      sub,
+      email,
+      name,
+      roles,
+      must_change_password,
+      must_complete_registration,
+    } = req.user;
+    return {
+      sub,
+      email,
+      name,
+      roles,
+      ...(must_change_password !== undefined && { must_change_password }),
+      ...(must_complete_registration !== undefined && {
+        must_complete_registration,
+      }),
+    };
   }
 
   @AllowAnyLevel()
