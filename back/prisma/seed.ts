@@ -22,6 +22,7 @@ async function main() {
     { id: LEVELS.PROFISSIONAL_EDUCACAO, name: 'Profissional da Educação' },
     { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' },
     { id: LEVELS.PROFISSIONAL_NAPNE, name: 'Profissional NAPNE' },
+    { id: LEVELS.PROFESSOR_AEE, name: 'Professor do AEE' },
   ];
 
   for (const level of levels) {
@@ -59,7 +60,7 @@ async function main() {
     });
 
     const admins = await prisma.user.count({
-      where: { id_level: adminLevel.id },
+      where: { roles: { has: adminLevel.id } },
     });
 
     if (admins === 0) {
@@ -71,7 +72,7 @@ async function main() {
           cpf: admin.cpf,
           email: admin.email,
           password: await hash(admin.password, 10),
-          id_level: adminLevel.id,
+          roles: [adminLevel.id],
           id_current_phase: triagePhase.id,
           must_change_password: true,
         },
