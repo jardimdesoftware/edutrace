@@ -1,4 +1,5 @@
 import { PROFISSIONAL_NAPNE } from '@/consts';
+import { temPapel, type Papeis } from '@/utils/papeis';
 import type { AeePlanAuthor, AeePlanPayload, AeePlanSections } from '@/interfaces/AeePlan';
 import {
   NAO_INFORMADO,
@@ -186,8 +187,8 @@ export function validarPlanoNovo(form: AeePlanForm): ErrosDoFormulario {
 
 // A regra definitiva é do back (POST, PATCH e DELETE só do NAPNE). Aqui só
 // decide se os botões de escrita aparecem.
-export function podeEditarPaee(idLevel?: number): boolean {
-  return idLevel === PROFISSIONAL_NAPNE;
+export function podeEditarPaee(roles?: Papeis): boolean {
+  return temPapel(roles, PROFISSIONAL_NAPNE);
 }
 
 type PlanoParaLeitura = AeePlanSections & {

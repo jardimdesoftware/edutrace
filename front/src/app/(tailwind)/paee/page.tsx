@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { temPapel } from '@/utils/papeis';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -62,9 +63,9 @@ function PaeePage() {
     window.scrollTo({ top: 0 });
   }, [edicao]);
 
-  const podeEditar = podeEditarPaee(user?.id_level);
+  const podeEditar = podeEditarPaee(user?.roles);
   const nomeDoEstudante = nome?.trim() || 'o estudante';
-  const quemSemPaee = user?.id_level === ESTUDANTE ? 'Você' : nomeDoEstudante;
+  const quemSemPaee = temPapel(user?.roles, ESTUDANTE) ? 'Você' : nomeDoEstudante;
 
   const handleSalvar = async (periodo: string, corpo: AeePlanPayload) => {
     if (!email || !edicao) return;
