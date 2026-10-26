@@ -29,7 +29,7 @@ function filterConditions(query: ListCommentsQueryDto): Prisma.Sql[] {
   }
   if (query.area !== undefined) {
     conditions.push(
-      Prisma.sql`EXISTS (SELECT 1 FROM "User" u WHERE u."id" = c."id_author" AND u."id_level" = ${query.area})`,
+      Prisma.sql`EXISTS (SELECT 1 FROM "User" u WHERE u."id" = c."id_author" AND ${query.area} = ANY(u."roles"))`,
     );
   }
   if (query.type !== undefined) {
