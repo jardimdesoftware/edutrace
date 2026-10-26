@@ -98,7 +98,7 @@ describe('Session cookie over HTTP', () => {
       .set('Cookie', 'edutrace_session=token.emitido');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual(payload);
+    expect(response.body).toEqual({ ...payload, roles: [2] });
     expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.emitido', expect.any(Object));
   });
 

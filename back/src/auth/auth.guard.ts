@@ -59,7 +59,13 @@ export class AuthGuard implements CanActivate {
 
       await this.sessionsService.registerUse(session);
 
-      const user = { ...payload, id_level: session.user.id_level };
+      // Ponte da troca de nível por papéis: enquanto os serviços trocam a leitura
+      // do id_level pela de roles, a lista deriva do nível gravado no banco.
+      const user = {
+        ...payload,
+        id_level: session.user.id_level,
+        roles: [session.user.id_level],
+      };
       request['user'] = user;
 
       // Enquanto a troca do primeiro acesso não acontece, o token só abre as
