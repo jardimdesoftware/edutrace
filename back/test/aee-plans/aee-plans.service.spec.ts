@@ -37,9 +37,9 @@ const plan = {
   updated_at: new Date('2026-10-17T10:00:00Z'),
 };
 
-function requestOf(id_level: number, email = 'quem.pede@example.com') {
+function requestOf(roles: number | number[], email = 'quem.pede@example.com') {
   return {
-    user: { sub: 99, id_level, email, name: 'Quem pede' },
+    user: { sub: 99, roles: [roles].flat(), email, name: 'Quem pede' },
   } as AuthenticatedRequest;
 }
 
@@ -256,6 +256,24 @@ describe('AeePlansService', () => {
         });
       },
     );
+
+    it('should let an account with the Education and the Professor do AEE roles read the records of any student', async () => {
+      const result = await service.findByStudent(
+        STUDENT_EMAIL,
+        requestOf([3, 6], 'outra.pessoa@example.com'),
+      );
+
+      expect(result).toEqual([plan]);
+    });
+
+    it('should not let a student read the records of another one, even with the same e-mail case', async () => {
+      await expect(
+        service.findByStudent(
+          STUDENT_EMAIL,
+          requestOf([2], 'outra.pessoa@example.com'),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
 
     it('should list the plans of the student from the newest semester to the oldest', async () => {
       await service.findByStudent(

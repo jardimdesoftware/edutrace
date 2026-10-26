@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { AEE_PLAN_READERS } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from 'src/students/students.service';
 import { AEE_PLAN_SECTIONS_SELECT, AEE_PLAN_SELECT } from './aee-plan-select';
 import { CreateAeePlanDto } from './dto/create-aee-plan.dto';
@@ -87,7 +88,7 @@ export class AeePlansService {
   // Do período mais recente para o mais antigo. O AAAA.S ordena como texto: o
   // ano de quatro dígitos vem primeiro, e o semestre é 1 ou 2.
   async findByStudent(email: string, request: AuthenticatedRequest) {
-    const readsAnyStudent = AEE_PLAN_READERS.includes(request.user.id_level);
+    const readsAnyStudent = hasAnyRole(request.user.roles, AEE_PLAN_READERS);
     const isOwnRecord = request.user.email === email;
 
     // O 403 vem antes de consultar o banco, para que o estudante receba a
