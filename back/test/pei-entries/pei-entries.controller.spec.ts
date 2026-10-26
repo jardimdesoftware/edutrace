@@ -18,7 +18,7 @@ import { STUDENT_EMAIL, validBody, validContent } from './pei-entry.fixtures';
 const request = {
   user: {
     sub: 7,
-    id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+    roles: [LEVELS.PROFISSIONAL_EDUCACAO],
     email: 'professora@example.com',
     name: 'Professora',
   },
@@ -139,6 +139,7 @@ describe('PeiEntriesController', () => {
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
+          LEVELS.PROFESSOR_AEE,
         ],
       });
     });
