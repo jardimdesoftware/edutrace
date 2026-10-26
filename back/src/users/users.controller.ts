@@ -19,6 +19,8 @@ import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { USER_CREATE_THROTTLE } from './users.throttle';
+import { hasAnyRole } from 'src/auth/roles';
+import { sameRoles } from './roles';
 
 @Controller('users')
 export class UsersController {
@@ -36,22 +38,21 @@ export class UsersController {
     @Body() createUserDto: CreateUserDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    const requesterLevel = req.user?.id_level;
+    const requesterRoles = req.user?.roles;
 
     if (
-      requesterLevel !== LEVELS.ADMIN &&
-      requesterLevel !== LEVELS.PROFISSIONAL_NAPNE
+      !hasAnyRole(requesterRoles, [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])
     ) {
       throw new ForbiddenException(
         'Apenas administradores e o Profissional NAPNE podem cadastrar usuários',
       );
     }
 
-    const createdLevel = createUserDto.id_level ?? LEVELS.ALUNO_ESTUDANTE;
+    const createdRoles = createUserDto.roles ?? [LEVELS.ALUNO_ESTUDANTE];
 
     if (
-      requesterLevel === LEVELS.PROFISSIONAL_NAPNE &&
-      createdLevel !== LEVELS.ALUNO_ESTUDANTE
+      !hasAnyRole(requesterRoles, [LEVELS.ADMIN]) &&
+      !sameRoles(createdRoles, [LEVELS.ALUNO_ESTUDANTE])
     ) {
       throw new ForbiddenException(
         'O Profissional NAPNE cadastra apenas estudantes.',
@@ -61,7 +62,7 @@ export class UsersController {
     return maskUserCpf(
       await this.usersService.create({
         ...createUserDto,
-        id_level: createdLevel,
+        roles: createdRoles,
       }),
     );
   }

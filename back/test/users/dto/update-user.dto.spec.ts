@@ -9,27 +9,54 @@ function validate(value: object) {
   });
 }
 
-describe('UpdateUserDto, campo id_level', () => {
-  it.each([1, 2, 3, 4, 5])('should accept the level %s', async (id_level) => {
-    await expect(validate({ id_level })).resolves.toEqual({ id_level });
+describe('UpdateUserDto, campo roles', () => {
+  it.each([[[1]], [[2]], [[3]], [[6]], [[3, 6]], [[3, 4, 5, 6]]])(
+    'should accept the roles %j',
+    async (roles) => {
+      await expect(validate({ roles })).resolves.toEqual({ roles });
+    },
+  );
+
+  it('should keep the roles in ascending order', async () => {
+    await expect(validate({ roles: [6, 3] })).resolves.toEqual({
+      roles: [3, 6],
+    });
   });
 
-  it('should accept a body without id_level', async () => {
+  it('should accept a body without roles', async () => {
     await expect(validate({ full_name: 'Nome' })).resolves.toEqual({
       full_name: 'Nome',
     });
   });
 
   // 1.5 era gravado truncado como 1 (Administrador); 99, -1 e null chegavam ao
-  // banco e respondiam 500.
-  it.each([1.5, 99, -1, 0, null, '1'])(
-    'should refuse %p with 400',
-    async (id_level) => {
-      await expect(validate({ id_level })).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-    },
-  );
+  // banco e respondiam 500. Administrador e Estudante/Família não combinam, e o
+  // CHECK do banco também recusa.
+  it.each([
+    [[]],
+    [[1.5]],
+    [[99]],
+    [[-1]],
+    [[0]],
+    [[3, 3]],
+    [[1, 3]],
+    [[2, 6]],
+    [[1, 2]],
+    [null],
+    ['1'],
+    [1],
+    [['1']],
+  ])('should refuse the roles %j with 400', async (roles) => {
+    await expect(validate({ roles })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('should refuse the old id_level field with 400', async () => {
+    await expect(validate({ id_level: 3 })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
 });
 
 // UsersService.update grava só o nome e o nível. Os demais campos do cadastro

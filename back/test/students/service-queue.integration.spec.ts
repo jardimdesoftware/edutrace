@@ -257,7 +257,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
 
         await Promise.allSettled([
           ...students.map((student) => queue.assume(student.email, napne.id)),
-          users.update(napne.email, { id_level: LEVELS.PROFISSIONAL_SAUDE }),
+          users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ]);
 
         const after = await prisma.user.findUniqueOrThrow({
@@ -283,7 +283,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         [
           'the level change',
           (napne: { id: number; email: string }) =>
-            users.update(napne.email, { id_level: LEVELS.PROFISSIONAL_SAUDE }),
+            users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ],
         [
           'the deletion',
@@ -477,12 +477,12 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           full_name: 'Profissional',
           cpf: '70000000002',
           email: `profissional${EMAIL_DOMAIN}`,
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         });
         expect(created.service_status).toBeNull();
 
         const student = await users.update(created.email, {
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
         });
         expect(student.service_status).toBe(ServiceStatus.WAITING);
         expect(student.queued_at).toBeInstanceOf(Date);
@@ -490,7 +490,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         const napne = await createNapne(1);
         await queue.assume(student.email, napne.id);
         const professional = await users.update(student.email, {
-          id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+          roles: [LEVELS.PROFISSIONAL_EDUCACAO],
         });
 
         expect(professional).toMatchObject({
@@ -509,7 +509,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         await queue.assume(student.email, napne.id);
 
         await expect(
-          users.update(napne.email, { id_level: LEVELS.PROFISSIONAL_SAUDE }),
+          users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ).rejects.toBeInstanceOf(ConflictException);
         await expect(users.remove(napne.id)).rejects.toBeInstanceOf(
           ConflictException,
@@ -524,7 +524,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
 
         await queue.close(student.email, { sub: 1, id_level: LEVELS.ADMIN });
         await expect(
-          users.update(napne.email, { id_level: LEVELS.PROFISSIONAL_SAUDE }),
+          users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ).resolves.toMatchObject({ id_level: LEVELS.PROFISSIONAL_SAUDE });
         await expect(
           prisma.user.findUniqueOrThrow({

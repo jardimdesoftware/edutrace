@@ -32,7 +32,7 @@ const MANAGER_CLEARED = {
 };
 
 const BUSY_NAPNE_MESSAGE =
-  'Encerre os atendimentos do Profissional NAPNE antes de trocar o nível ou excluir a conta.';
+  'Encerre os atendimentos do Profissional NAPNE antes de tirar esse papel ou excluir a conta.';
 
 describe('UsersService, fila de atendimento do NAPNE', () => {
   let service: UsersService;
@@ -51,10 +51,10 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
 
   const created = { id: 7, email: 'novo@test.com' };
 
-  // A leitura que trava a linha devolve id e nível atuais da conta.
-  const lockedAccount = (id_level: number | null) =>
+  // A leitura que trava a linha devolve id e papéis atuais da conta.
+  const lockedAccount = (roles: number | number[] | null) =>
     tx.$queryRaw.mockResolvedValue(
-      id_level === null ? [] : [{ id: 7, id_level }],
+      roles === null ? [] : [{ id: 7, roles: [roles].flat() }],
     );
 
   const updateData = () => tx.user.update.mock.calls[0][0].data;
@@ -127,7 +127,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     });
 
     it('should queue a student whose level was sent explicitly', async () => {
-      await service.create({ ...dto, id_level: LEVELS.ALUNO_ESTUDANTE } as any);
+      await service.create({ ...dto, roles: [LEVELS.ALUNO_ESTUDANTE] } as any);
 
       expect(createdData()).toMatchObject(QUEUED);
     });
@@ -138,7 +138,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
     ])('should not queue an account of the level %s', async (id_level) => {
-      await service.create({ ...dto, id_level } as any);
+      await service.create({ ...dto, roles: [id_level] } as any);
 
       expect(createdData()).not.toHaveProperty('service_status');
       expect(createdData()).not.toHaveProperty('queued_at');
@@ -150,7 +150,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.PROFISSIONAL_EDUCACAO);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: [LEVELS.ALUNO_ESTUDANTE],
       });
 
       expect(updateData()).toMatchObject(QUEUED);
@@ -160,7 +160,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_SAUDE,
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(updateData()).toMatchObject(CLEARED);
@@ -169,7 +169,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     it('should keep the matrícula and the course of the student that stops being one', async () => {
       lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
-      await service.update('novo@test.com', { id_level: LEVELS.ADMIN });
+      await service.update('novo@test.com', { roles: [LEVELS.ADMIN] });
 
       expect(updateData().enrollment_number).toBeUndefined();
       expect(updateData().course).toBeUndefined();
@@ -179,7 +179,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: [LEVELS.ALUNO_ESTUDANTE],
       });
 
       for (const field of Object.keys(CLEARED)) {
@@ -201,7 +201,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_NAPNE,
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
         service_capacity: 3,
       });
 
@@ -220,7 +220,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       async (to) => {
         lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
-        await service.update('novo@test.com', { id_level: to });
+        await service.update('novo@test.com', { roles: [to] });
 
         expect(tx.user.update).toHaveBeenCalledTimes(1);
         expect(updateData()).toMatchObject({ ...CLEARED, ...MANAGER_CLEARED });
@@ -231,7 +231,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_SAUDE,
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(updateData()).toMatchObject(MANAGER_CLEARED);
@@ -242,7 +242,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     it.each([
       [
         'the level sent is the one the student already has',
-        { id_level: LEVELS.ALUNO_ESTUDANTE },
+        { roles: [LEVELS.ALUNO_ESTUDANTE] },
       ],
       ['the request has no level', { full_name: 'Outro nome' }],
     ])('should leave the manager alone when %s', async (_, dto) => {
@@ -264,7 +264,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       async (from, to) => {
         lockedAccount(from);
 
-        await service.update('novo@test.com', { id_level: to });
+        await service.update('novo@test.com', { roles: [to] });
 
         for (const field of Object.keys(MANAGER_CLEARED)) {
           expect(updateData()).not.toHaveProperty(field);
@@ -291,7 +291,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
         lockedAccount(from);
 
         await service.update('novo@test.com', {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         });
 
         expect(tx.user.updateMany).toHaveBeenCalledTimes(1);
@@ -304,7 +304,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       async (to) => {
         lockedAccount(LEVELS.PROFISSIONAL_EDUCACAO);
 
-        await service.update('novo@test.com', { id_level: to });
+        await service.update('novo@test.com', { roles: [to] });
 
         expect(tx.user.updateMany).toHaveBeenCalledWith(CLEAR_LINKS);
       },
@@ -314,7 +314,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.PROFISSIONAL_EDUCACAO);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_SAUDE,
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
@@ -333,7 +333,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       async (from, to) => {
         lockedAccount(from);
 
-        await service.update('novo@test.com', { id_level: to });
+        await service.update('novo@test.com', { roles: [to] });
 
         expect(tx.user.updateMany).not.toHaveBeenCalled();
       },
@@ -342,10 +342,10 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     it.each([
       [
         LEVELS.PROFISSIONAL_EDUCACAO,
-        { id_level: LEVELS.PROFISSIONAL_EDUCACAO },
+        { roles: [LEVELS.PROFISSIONAL_EDUCACAO] },
       ],
       [LEVELS.PROFISSIONAL_EDUCACAO, { full_name: 'Outro nome' }],
-      [LEVELS.PROFISSIONAL_NAPNE, { id_level: LEVELS.PROFISSIONAL_NAPNE }],
+      [LEVELS.PROFISSIONAL_NAPNE, { roles: [LEVELS.PROFISSIONAL_NAPNE] }],
     ])(
       'should keep the students linked when the level %s does not change',
       async (current, dto) => {
@@ -367,7 +367,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       async (from, to) => {
         lockedAccount(from);
 
-        await service.update('novo@test.com', { id_level: to });
+        await service.update('novo@test.com', { roles: [to] });
 
         expect(tx.user.updateMany).not.toHaveBeenCalled();
       },
@@ -379,7 +379,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
 
       await expect(
         service.update('novo@test.com', {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         }),
       ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
 
@@ -416,7 +416,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.PROFISSIONAL_EDUCACAO);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_SAUDE,
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(events).toEqual(['update', 'commit', 'revoke']);
@@ -427,7 +427,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.PROFISSIONAL_SAUDE);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_SAUDE,
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(sessions.revokeAllFromUser).not.toHaveBeenCalled();
@@ -439,7 +439,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
 
       await expect(
         service.update('novo@test.com', {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         }),
       ).rejects.toThrow('conexão perdida');
 
@@ -455,7 +455,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
 
       await expect(
         service.update('novo@test.com', {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         }),
       ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
 
@@ -471,7 +471,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
 
     it('should clear the capacity of a NAPNE with no students in service that leaves the level', async () => {
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_SAUDE,
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(updateData()).toMatchObject({ service_capacity: null });
@@ -481,7 +481,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       tx.user.count.mockResolvedValue(2);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_NAPNE,
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
       });
 
       expect(tx.user.count).not.toHaveBeenCalled();
@@ -528,12 +528,12 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       lockedAccount(LEVELS.PROFISSIONAL_SAUDE);
 
       await service.update('novo@test.com', {
-        id_level: LEVELS.PROFISSIONAL_NAPNE,
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
         service_capacity: 2,
       });
 
       expect(updateData()).toMatchObject({
-        id_level: LEVELS.PROFISSIONAL_NAPNE,
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
         service_capacity: 2,
       });
     });
@@ -558,7 +558,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
 
       await expect(
         service.update('novo@test.com', {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
           service_capacity: 3,
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -629,6 +629,133 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       await service.remove(99);
 
       expect(tx.user.delete).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('papéis combinados', () => {
+    const NAPNE_AEE = [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE];
+
+    it('should not queue an account that combines professional roles', async () => {
+      await service.create({
+        full_name: 'Novo',
+        cpf: '12345678900',
+        email: 'novo@test.com',
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+      } as any);
+
+      const data = prisma.user.create.mock.calls[0][0].data;
+      expect(data.roles).toEqual([
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        LEVELS.PROFESSOR_AEE,
+      ]);
+      expect(data).not.toHaveProperty('service_status');
+    });
+
+    it('should answer 409 when the account loses the NAPNE role and keeps the AEE one while it has students in service', async () => {
+      lockedAccount(NAPNE_AEE);
+      tx.user.count.mockResolvedValue(2);
+
+      await expect(
+        service.update('novo@test.com', { roles: [LEVELS.PROFESSOR_AEE] }),
+      ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
+
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should answer 409 when an Education + NAPNE account becomes only Education', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
+      tx.user.count.mockResolvedValue(1);
+
+      await expect(
+        service.update('novo@test.com', {
+          roles: [LEVELS.PROFISSIONAL_EDUCACAO],
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should let the NAPNE with students in service lose only the AEE role, keeping the capacity', async () => {
+      lockedAccount(NAPNE_AEE);
+      tx.user.count.mockResolvedValue(2);
+
+      await service.update('novo@test.com', {
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
+      });
+
+      expect(updateData().roles).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
+      expect(updateData().service_capacity).toBeUndefined();
+      expect(tx.user.count).not.toHaveBeenCalled();
+    });
+
+    it('should clear the capacity of the account that loses the NAPNE role', async () => {
+      lockedAccount(NAPNE_AEE);
+
+      await service.update('novo@test.com', {
+        roles: [LEVELS.PROFESSOR_AEE],
+      });
+
+      expect(updateData().service_capacity).toBeNull();
+    });
+
+    it('should unlink the students when the account loses every manager role', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
+
+      await service.update('novo@test.com', {
+        roles: [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFESSOR_AEE],
+      });
+
+      expect(tx.user.updateMany).toHaveBeenCalledWith({
+        where: { pedagogical_manager_id: 7 },
+        data: { pedagogical_manager_id: null },
+      });
+    });
+
+    it('should keep the students linked while one manager role remains', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
+
+      await service.update('novo@test.com', {
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
+      });
+
+      expect(tx.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('should revoke the sessions when only the order-insensitive set changes, and not when it is the same set', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
+      await service.update('novo@test.com', {
+        roles: [LEVELS.PROFESSOR_AEE, LEVELS.PROFISSIONAL_EDUCACAO],
+      });
+      expect(sessions.revokeAllFromUser).not.toHaveBeenCalled();
+
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
+      await service.update('novo@test.com', {
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_SAUDE],
+      });
+      expect(sessions.revokeAllFromUser).toHaveBeenCalledWith(7);
+    });
+
+    it('should answer 400 for a capacity on an account without the NAPNE role', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
+
+      await expect(
+        service.update('novo@test.com', { service_capacity: 3 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should accept a capacity on an account that has the NAPNE role among others', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
+
+      await service.update('novo@test.com', { service_capacity: 3 });
+
+      expect(updateData().service_capacity).toBe(3);
+    });
+
+    it('should answer 409 and delete nothing for an Education + NAPNE account with students in service', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
+      tx.user.count.mockResolvedValue(1);
+
+      await expect(service.remove(7)).rejects.toThrow(ConflictException);
+
+      expect(tx.user.delete).not.toHaveBeenCalled();
     });
   });
 });

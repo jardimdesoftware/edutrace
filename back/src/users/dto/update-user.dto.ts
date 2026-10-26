@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -12,7 +11,8 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import { LEVELS } from 'src/constants';
+import { sortRoles } from '../roles';
+import { IsRoles } from './is-roles.validator';
 import { SERVICE_CAPACITY_MAX, SERVICE_CAPACITY_MIN } from '../service-queue';
 import {
   COURSE_MAX_LENGTH,
@@ -23,7 +23,7 @@ import {
   trimText,
 } from './student-fields';
 
-// UsersService.update grava só o nome, o nível, a matrícula, o curso e o limite
+// UsersService.update grava só o nome, os papéis, a matrícula, o curso e o limite
 // de atendimentos. O DTO declara só esses campos, para que e-mail, CPF e os
 // demais campos do cadastro sejam recusados com 400, e não aceitos com 200 sem
 // alterar nada.
@@ -37,14 +37,20 @@ export class UpdateUserDto {
   full_name?: string;
 
   @ApiProperty({
-    description: 'Apenas quem pode fazer essa atualização é o ADMIN.',
+    description:
+      'Papéis de acesso, em lista. Administrador (1) e Estudante/Família (2) ficam sozinhos; os profissionais (3, 4, 5 e 6) combinam entre si. Apenas quem pode fazer essa atualização é o ADMIN.',
+    example: [3, 6],
+    required: false,
+    type: [Number],
   })
-  @ValidateIf((dto: UpdateUserDto) => dto.id_level !== undefined)
-  @IsInt({ message: 'O campo id_level deve ser um inteiro.' })
-  @IsIn(Object.values(LEVELS), {
-    message: 'O campo id_level deve ser um nível de acesso existente.',
-  })
-  readonly id_level?: number;
+  @ValidateIf((dto: UpdateUserDto) => dto.roles !== undefined)
+  @IsRoles()
+  @Transform(({ value }: { value: unknown }) =>
+    Array.isArray(value) && value.every((role) => Number.isInteger(role))
+      ? sortRoles(value as number[])
+      : value,
+  )
+  readonly roles?: number[];
 
   @ApiProperty({
     description:

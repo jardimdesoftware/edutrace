@@ -4,7 +4,7 @@ import { validateSync } from 'class-validator';
 import { createValidationPipe } from 'src/common/validation-pipe';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 
-// Sem id_level o cadastro cria estudante, que precisa de matrícula e curso.
+// Sem roles o cadastro cria estudante, que precisa de matrícula e curso.
 const base = {
   full_name: 'Usuário de Teste',
   email: 'usuario@edutrace.com',
@@ -70,21 +70,71 @@ describe('CreateUserDto, campo cpf', () => {
   });
 });
 
-describe('CreateUserDto, campo id_level', () => {
+describe('CreateUserDto, campo roles', () => {
   const valid = { ...base, cpf: '01234567890' };
+  const errorsOf = (roles: unknown) =>
+    validateSync(plainToInstance(CreateUserDto, { ...valid, roles }));
 
-  it.each([1, 2, 3, 4, 5])('should accept the level %s', (id_level) => {
-    expect(
-      validateSync(plainToInstance(CreateUserDto, { ...valid, id_level })),
-    ).toHaveLength(0);
+  it.each([
+    [[1]],
+    [[2]],
+    [[3]],
+    [[4]],
+    [[5]],
+    [[6]],
+    [[3, 4]],
+    [[5, 6]],
+    [[3, 4, 5, 6]],
+    [[6, 3]],
+  ])('should accept the roles %j', (roles) => {
+    expect(errorsOf(roles)).toHaveLength(0);
   });
 
-  it.each([1.5, 99, -1, 0])('should refuse the level %p', (id_level) => {
-    const errors = validateSync(
-      plainToInstance(CreateUserDto, { ...valid, id_level }),
-    );
+  it('should keep the roles in ascending order', () => {
+    const dto = plainToInstance(CreateUserDto, {
+      ...valid,
+      roles: [6, 3, 5],
+    });
 
-    expect(errors.map((error) => error.property)).toEqual(['id_level']);
+    expect(dto.roles).toEqual([3, 5, 6]);
+  });
+
+  it.each([
+    ['empty', []],
+    ['out of range', [99]],
+    ['zero', [0]],
+    ['negative', [-1]],
+    ['decimal', [1.5]],
+    ['text', ['3']],
+    ['not a list', 3],
+    ['repeated', [3, 3]],
+    ['the Administrator with another role', [1, 3]],
+    ['the student with another role', [2, 6]],
+    ['the Administrator and the student', [1, 2]],
+    ['an unknown role among valid ones', [3, 7]],
+  ])('should refuse the roles %s', (_case, roles) => {
+    const errors = errorsOf(roles);
+
+    expect(errors.map((error) => error.property)).toEqual(['roles']);
+    expect(errors[0].constraints).toEqual({
+      isRoles: expect.any(String),
+    });
+  });
+
+  it('should tell why the Administrator cannot combine', () => {
+    expect(errorsOf([1, 3])[0].constraints).toEqual({
+      isRoles:
+        'Administrador e Estudante/Família não combinam com outros papéis.',
+    });
+  });
+
+  it('should refuse the old id_level field when the pipe forbids unknown fields', () => {
+    expect(() =>
+      createValidationPipe().transform(
+        { ...valid, id_level: 3 },
+        { type: 'body', metatype: CreateUserDto },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
 
@@ -122,10 +172,10 @@ describe('CreateUserDto, matrícula e curso do estudante', () => {
     );
   }
 
-  it.each([undefined, null, 2])(
-    'should accept the student with id_level %p',
-    (id_level) => {
-      expect(invalidFields({ ...student, id_level })).toEqual([]);
+  it.each([undefined, null, [2]])(
+    'should accept the student with roles %p',
+    (roles) => {
+      expect(invalidFields({ ...student, roles })).toEqual([]);
     },
   );
 
@@ -138,19 +188,17 @@ describe('CreateUserDto, matrícula e curso do estudante', () => {
       >;
 
       expect(invalidFields(withoutField)).toEqual([field]);
-      expect(invalidFields({ ...withoutField, id_level: 2 })).toEqual([field]);
-      expect(invalidFields({ ...withoutField, id_level: null })).toEqual([
-        field,
-      ]);
+      expect(invalidFields({ ...withoutField, roles: [2] })).toEqual([field]);
+      expect(invalidFields({ ...withoutField, roles: null })).toEqual([field]);
     },
   );
 
-  it.each([1, 3, 4, 5])(
-    'should not require matrícula and curso for the level %s',
-    (id_level) => {
+  it.each([[1], [3], [4], [5], [6], [3, 6]])(
+    'should not require matrícula and curso for the roles %j',
+    (...roles) => {
       const { enrollment_number, course, ...withoutFields } = student;
 
-      expect(invalidFields({ ...withoutFields, id_level })).toEqual([]);
+      expect(invalidFields({ ...withoutFields, roles })).toEqual([]);
     },
   );
 

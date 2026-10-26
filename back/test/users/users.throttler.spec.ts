@@ -48,7 +48,7 @@ describe('UsersController create rate limit', () => {
               const req = context.switchToHttp().getRequest();
               req.user = {
                 sub: Number(req.headers['x-session-user']),
-                id_level: LEVELS.ADMIN,
+                roles: [LEVELS.ADMIN],
               };
               return true;
             },
