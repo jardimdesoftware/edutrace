@@ -652,7 +652,7 @@ describe('anotações, rotas de /comments', () => {
       ['cursor=0x10', 'cursor deve ser um número inteiro positivo.'],
       ['cursor=0', 'cursor deve ser um número inteiro positivo.'],
       ['edited=yes', 'edited deve ser true ou false.'],
-      ['area=2', 'area deve ser 1, 3, 4 ou 5.'],
+      ['area=2', 'area deve ser 1, 3, 4, 5 ou 6.'],
       ['type=OTHER', 'type deve ser NOTE ou CLASS_COUNCIL_REPORT.'],
       [
         'from=2026-10-17',

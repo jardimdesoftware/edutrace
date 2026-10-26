@@ -178,6 +178,7 @@ describe('limites da lista de anotações', () => {
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
     ]);
     expect(COMMENT_AUTHOR_AREAS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
   });

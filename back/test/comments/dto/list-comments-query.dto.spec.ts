@@ -255,6 +255,7 @@ describe('ListCommentsQueryDto', () => {
       ['3', 3],
       ['4', 4],
       ['5', 5],
+      ['6', 6],
     ])('should accept %s', async (text, expected) => {
       expect((await transform({ area: text })).area).toBe(expected);
     });
@@ -262,7 +263,7 @@ describe('ListCommentsQueryDto', () => {
     it.each([
       ['2, the student level, which does not write', '2'],
       ['zero', '0'],
-      ['6', '6'],
+      ['7', '7'],
       ['a leading zero', '03'],
       ['an exponent', '3e0'],
       ['a decimal', '3.0'],
@@ -271,7 +272,7 @@ describe('ListCommentsQueryDto', () => {
       ['a repeated parameter', ['3', '4']],
     ])('should reject %s', async (_, value) => {
       expect(await messagesOf({ area: value })).toMatchObject({
-        message: ['area deve ser 1, 3, 4 ou 5.'],
+        message: ['area deve ser 1, 3, 4, 5 ou 6.'],
       });
     });
   });
