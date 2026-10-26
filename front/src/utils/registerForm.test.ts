@@ -10,20 +10,20 @@ const form = {
   nome: "  Maria Souza  ",
   email: "  Maria.Souza@Escola.Br  ",
   cpf: "111.444.777-35",
-  id_level: "3",
+  roles: [3],
   matricula: "",
   curso: "",
 };
 
 const estudante = {
   ...form,
-  id_level: "2",
+  roles: [2],
   matricula: "  20261TADS0012  ",
   curso: "  Análise e Desenvolvimento de Sistemas  ",
 };
 
 describe("buildRegisterData", () => {
-  it("builds the payload with the cpf digits, the trimmed name and the level as number", () => {
+  it("builds the payload with the cpf digits, the trimmed name and the roles as a list of numbers", () => {
     const result = buildRegisterData(form, true);
 
     assert.deepEqual(result, {
@@ -32,9 +32,29 @@ describe("buildRegisterData", () => {
         full_name: "Maria Souza",
         email: "maria.souza@escola.br",
         cpf: "11144477735",
-        id_level: 3,
+        roles: [3],
       },
     });
+  });
+
+  it("sends the roles in ascending order and never an id_level", () => {
+    const result = buildRegisterData({ ...form, roles: [6, 5] }, true);
+
+    assert.equal(result.ok, true);
+    assert.ok(result.ok);
+    assert.deepEqual(result.data.roles, [5, 6]);
+    assert.equal("id_level" in result.data, false);
+  });
+
+  it("refuses the submission without any role", () => {
+    assert.deepEqual(buildRegisterData({ ...form, roles: [] }, true), {
+      ok: false,
+      error: "Selecione ao menos um papel.",
+    });
+  });
+
+  it("refuses Admin together with a professional role", () => {
+    assert.equal(buildRegisterData({ ...form, roles: [1, 5] }, true).ok, false);
   });
 
   it("refuses the submission while the consent term is not accepted", () => {
@@ -60,7 +80,7 @@ describe("buildRegisterData, matrícula e curso do estudante", () => {
         full_name: "Maria Souza",
         email: "maria.souza@escola.br",
         cpf: "11144477735",
-        id_level: 2,
+        roles: [2],
         enrollment_number: "20261TADS0012",
         course: "Análise e Desenvolvimento de Sistemas",
       },
@@ -69,7 +89,7 @@ describe("buildRegisterData, matrícula e curso do estudante", () => {
 
   it("does not send matrícula and course for the other levels, even with the fields still filled", () => {
     const result = buildRegisterData(
-      { ...estudante, id_level: "3" },
+      { ...estudante, roles: [3] },
       true,
     );
 
@@ -79,7 +99,7 @@ describe("buildRegisterData, matrícula e curso do estudante", () => {
         full_name: "Maria Souza",
         email: "maria.souza@escola.br",
         cpf: "11144477735",
-        id_level: 3,
+        roles: [3],
       },
     });
   });
@@ -103,7 +123,7 @@ describe("buildRegisterData, matrícula e curso do estudante", () => {
   });
 
   it("does not require them for the other levels", () => {
-    assert.equal(buildRegisterData({ ...form, id_level: "1" }, true).ok, true);
+    assert.equal(buildRegisterData({ ...form, roles: [1] }, true).ok, true);
   });
 
   it("keeps the consent and the cpf checks ahead of the student fields", () => {
@@ -195,7 +215,7 @@ describe("buildRegisterData, formato da matrícula", () => {
 
   it("does not judge the format for the other levels, where the field is not sent", () => {
     const result = buildRegisterData(
-      { ...estudante, id_level: "3", matricula: "AB 12" },
+      { ...estudante, roles: [3], matricula: "AB 12" },
       true,
     );
 
@@ -245,11 +265,11 @@ describe("MATRICULA_PATTERN", () => {
 });
 
 describe("cadastraEstudante", () => {
-  it("is true only for the student level", () => {
-    assert.equal(cadastraEstudante("2"), true);
+  it("is true only for the student role", () => {
+    assert.equal(cadastraEstudante([2]), true);
 
-    for (const nivel of ["1", "3", "4", "5", ""]) {
-      assert.equal(cadastraEstudante(nivel), false);
+    for (const roles of [[1], [3], [4], [5], [5, 6], []]) {
+      assert.equal(cadastraEstudante(roles), false);
     }
   });
 });
