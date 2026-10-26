@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { temPapel } from '@/utils/papeis';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -73,9 +74,9 @@ function PeiPage() {
     window.scrollTo({ top: 0 });
   }, [edicao, parecerEmEdicao]);
 
-  const podeCriar = podeCriarPei(user?.id_level);
+  const podeCriar = podeCriarPei(user?.roles);
   const nomeDoEstudante = nome?.trim() || 'o estudante';
-  const quemSemPei = user?.id_level === ESTUDANTE ? 'Você' : nomeDoEstudante;
+  const quemSemPei = temPapel(user?.roles, ESTUDANTE) ? 'Você' : nomeDoEstudante;
 
   // Grava, recarrega a lista, fecha o formulário (aoConcluir) e avisa; se a
   // gravação falha, o formulário continua aberto com o que foi digitado.
