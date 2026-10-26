@@ -165,12 +165,25 @@ describe('AuthService', () => {
           sub: mockUser.id,
           email: mockUser.email,
           name: mockUser.full_name,
-          id_level: mockUser.id_level,
           must_change_password: false,
           jti: expect.any(String),
         }),
       );
       expect(result).toEqual({ access_token: 'mock.jwt.token' });
+    });
+
+    it('should not put the level or the roles in the token, which the guard reads from the database', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUser,
+        id_level: 3,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.signIn('user@test.com', 'plainPassword');
+
+      const [payload] = (jwtService.signAsync as jest.Mock).mock.calls[0];
+      expect(payload).not.toHaveProperty('roles');
+      expect(payload).not.toHaveProperty('id_level');
     });
 
     it('should carry must_change_password in the token payload on first access', async () => {
@@ -571,7 +584,7 @@ describe('AuthService', () => {
         const result = await service.signInWithGoogle('credencial');
 
         expect(jwtService.signAsync).toHaveBeenCalledWith(
-          expect.objectContaining({ email: mockUser.email, id_level: 3 }),
+          expect.objectContaining({ email: mockUser.email }),
         );
         expect(result).toEqual({ access_token: 'mock.jwt.token' });
       });
