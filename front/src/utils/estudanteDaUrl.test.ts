@@ -10,8 +10,8 @@ import { ADMIN, PROFISSIONAL_SAUDE } from '../consts';
 const API_URL = 'http://api.test';
 
 const usuarios = [
-  { id: 3, full_name: 'Estudante A', email: 'a@edutrace.com', id_level: 2 },
-  { id: 7, full_name: 'Estudante B', email: 'b@edutrace.com', id_level: 2 },
+  { id: 3, full_name: 'Estudante A', email: 'a@edutrace.com', roles: [2] },
+  { id: 7, full_name: 'Estudante B', email: 'b@edutrace.com', roles: [2] },
 ];
 
 let urls: string[];
@@ -52,25 +52,25 @@ describe('rotaDoEstudante', () => {
 
 describe('buscarUsuarioPorId', () => {
   it('finds the student among the students listed for a professional', async () => {
-    const usuario = await buscarUsuarioPorId('7', PROFISSIONAL_SAUDE);
+    const usuario = await buscarUsuarioPorId('7', [PROFISSIONAL_SAUDE]);
 
     assert.deepEqual(usuario, usuarios[1]);
     assert.deepEqual(urls, [`${API_URL}/students`]);
   });
 
   it('searches every user when the session is the administrator', async () => {
-    await buscarUsuarioPorId('3', ADMIN);
+    await buscarUsuarioPorId('3', [ADMIN]);
 
     assert.deepEqual(urls, [`${API_URL}/users`]);
   });
 
   it('returns null when no listed user has the id', async () => {
-    assert.equal(await buscarUsuarioPorId('99', PROFISSIONAL_SAUDE), null);
+    assert.equal(await buscarUsuarioPorId('99', [PROFISSIONAL_SAUDE]), null);
   });
 
   for (const invalido of [null, '', 'abc', '3.5', '0', '-3']) {
     it(`returns null without calling the API for the id ${JSON.stringify(invalido)}`, async () => {
-      assert.equal(await buscarUsuarioPorId(invalido, PROFISSIONAL_SAUDE), null);
+      assert.equal(await buscarUsuarioPorId(invalido, [PROFISSIONAL_SAUDE]), null);
       assert.deepEqual(urls, []);
     });
   }
@@ -78,13 +78,13 @@ describe('buscarUsuarioPorId', () => {
 
 describe('resolverEstudanteDaUrl', () => {
   it('returns the record of the student found by the id', async () => {
-    assert.deepEqual(await resolverEstudanteDaUrl('7', PROFISSIONAL_SAUDE), {
+    assert.deepEqual(await resolverEstudanteDaUrl('7', [PROFISSIONAL_SAUDE]), {
       registro: usuarios[1],
     });
   });
 
   it('returns the not found alert when no listed user has the id', async () => {
-    assert.deepEqual(await resolverEstudanteDaUrl('99', PROFISSIONAL_SAUDE), {
+    assert.deepEqual(await resolverEstudanteDaUrl('99', [PROFISSIONAL_SAUDE]), {
       alerta: {
         title: 'Estudante não encontrado',
         text: 'O estudante não existe ou você não tem acesso a ele.',
@@ -103,7 +103,7 @@ describe('resolverEstudanteDaUrl', () => {
     console.error = () => {};
 
     try {
-      assert.deepEqual(await resolverEstudanteDaUrl('7', PROFISSIONAL_SAUDE), {
+      assert.deepEqual(await resolverEstudanteDaUrl('7', [PROFISSIONAL_SAUDE]), {
         alerta: {
           title: 'Estudante não encontrado',
           text: 'Falha ao listar estudantes',
