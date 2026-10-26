@@ -99,24 +99,24 @@ describe('podeDefinirResponsavel', () => {
 describe('rotuloDaOpcao', () => {
   it('names the level of the server, since two servers can have the same name', () => {
     assert.equal(
-      rotuloDaOpcao({ id: 1, full_name: 'Ana Souza', id_level: PROFISSIONAL_EDUCACAO, roles: [PROFISSIONAL_EDUCACAO] }),
+      rotuloDaOpcao({ id: 1, full_name: 'Ana Souza', roles: [PROFISSIONAL_EDUCACAO] }),
       'Ana Souza (Profissional da Educação)',
     );
     assert.equal(
-      rotuloDaOpcao({ id: 2, full_name: 'Ana Souza', id_level: PROFISSIONAL_NAPNE, roles: [PROFISSIONAL_NAPNE] }),
+      rotuloDaOpcao({ id: 2, full_name: 'Ana Souza', roles: [PROFISSIONAL_NAPNE] }),
       'Ana Souza (Profissional NAPNE)',
     );
   });
 
   it('lists every role of the server in order', () => {
     assert.equal(
-      rotuloDaOpcao({ id: 4, full_name: 'Ana Souza', id_level: 5, roles: [6, 5] }),
+      rotuloDaOpcao({ id: 4, full_name: 'Ana Souza', roles: [6, 5] }),
       'Ana Souza (Profissional NAPNE, Professor(a) do AEE)',
     );
   });
 
   it('shows only the name for a level the list does not name', () => {
-    assert.equal(rotuloDaOpcao({ id: 3, full_name: 'Ana Souza', id_level: 9, roles: [9] }), 'Ana Souza');
+    assert.equal(rotuloDaOpcao({ id: 3, full_name: 'Ana Souza', roles: [9] }), 'Ana Souza');
   });
 });
 
