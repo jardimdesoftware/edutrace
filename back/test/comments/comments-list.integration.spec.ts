@@ -50,16 +50,17 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
 
     const nextNumber = () => ++sequence;
 
-    function createAccount(id_level: number, full_name?: string) {
+    function createAccount(level: number | number[], full_name?: string) {
+      const roles = [level].flat();
       const n = nextNumber();
-      const isStudent = id_level === LEVELS.ALUNO_ESTUDANTE;
+      const isStudent = roles.includes(LEVELS.ALUNO_ESTUDANTE);
       return prisma.user.create({
         data: {
           full_name: full_name ?? `Conta ${n}`,
           cpf: `${isStudent ? 28 : 29}${String(n).padStart(9, '0')}`,
           email: `conta${n}${EMAIL_DOMAIN}`,
           password: 'x',
-          id_level,
+          roles,
           id_current_phase: PHASES.TRIAGEM,
           ...(isStudent
             ? { service_status: 'WAITING' as const, queued_at: new Date() }
@@ -70,9 +71,9 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
 
     const createStudent = () => createAccount(LEVELS.ALUNO_ESTUDANTE);
     const createAuthor = (
-      id_level: number = LEVELS.PROFISSIONAL_EDUCACAO,
+      level: number | number[] = LEVELS.PROFISSIONAL_EDUCACAO,
       full_name?: string,
-    ) => createAccount(id_level, full_name);
+    ) => createAccount(level, full_name);
 
     interface CommentFixture {
       student: { id: number };
@@ -127,7 +128,7 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
       ({
         user: {
           sub: id,
-          id_level,
+          roles: [id_level],
           email: 'quem.pede@example.com',
           name: 'Quem',
         },
@@ -192,19 +193,6 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
       // O banco do job nasce só com as migrations, sem o seed. O createMany
       // com skipDuplicates é um INSERT ... ON CONFLICT DO NOTHING, que não
       // falha para o spec que perde a corrida dos que rodam em paralelo.
-      await prisma.level.createMany({
-        data: [
-          { id: LEVELS.ADMIN, name: 'Administrador' },
-          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
-          {
-            id: LEVELS.PROFISSIONAL_EDUCACAO,
-            name: 'Profissional da Educação',
-          },
-          { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' },
-          { id: LEVELS.PROFISSIONAL_NAPNE, name: 'Profissional NAPNE' },
-        ],
-        skipDuplicates: true,
-      });
       await prisma.currentPhases.createMany({
         data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
         skipDuplicates: true,
@@ -376,7 +364,7 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
           comment: 'Texto final',
           type: CommentType.NOTE,
           id_author: author.id,
-          author_level: LEVELS.PROFISSIONAL_SAUDE,
+          author_roles: [LEVELS.PROFISSIONAL_SAUDE],
         });
         expect(page.items[0].edits.map((edit) => edit.comment)).toEqual([
           'Primeira versão',
@@ -384,13 +372,13 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
         ]);
       });
 
-      it('should answer author_level null for an author that no longer exists', async () => {
+      it('should answer author_roles null for an author that no longer exists', async () => {
         const student = await createStudent();
         await addComment({ student, author: { id: 2147483000 } });
 
         const page = await list(student.id);
 
-        expect(page.items.map((item) => item.author_level)).toEqual([null]);
+        expect(page.items.map((item) => item.author_roles)).toEqual([null]);
       });
     });
 
@@ -511,7 +499,7 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
           const comments = new Map<number, number>();
           for (const author of authors) {
             const created = await addComment({ student, author });
-            comments.set(author.id_level as number, created.id);
+            comments.set(author.roles[0], created.id);
           }
 
           const page = await list(student.id, { area: `${area}` });
@@ -519,6 +507,43 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
           expect(idsOf(page)).toEqual([comments.get(area)]);
           expect(page.total).toBe(1);
           expect(page.overall).toBe(4);
+        });
+
+        it('should match an author by each one of his roles, and not by roles he does not have', async () => {
+          const student = await createStudent();
+          const author = await createAuthor([
+            LEVELS.PROFISSIONAL_EDUCACAO,
+            LEVELS.PROFESSOR_AEE,
+          ]);
+          const other = await createAuthor(LEVELS.PROFISSIONAL_SAUDE);
+          const mine = await addComment({ student, author });
+          const theirs = await addComment({ student, author: other });
+
+          expect(idsOf(await list(student.id, { area: '3' }))).toEqual([
+            mine.id,
+          ]);
+          expect(idsOf(await list(student.id, { area: '6' }))).toEqual([
+            mine.id,
+          ]);
+          expect(idsOf(await list(student.id, { area: '4' }))).toEqual([
+            theirs.id,
+          ]);
+          expect(idsOf(await list(student.id, { area: '5' }))).toEqual([]);
+        });
+
+        it('should return the current roles of the author in author_roles', async () => {
+          const student = await createStudent();
+          const author = await createAuthor([
+            LEVELS.PROFISSIONAL_SAUDE,
+            LEVELS.PROFESSOR_AEE,
+          ]);
+          await addComment({ student, author });
+
+          const page = await list(student.id, {});
+
+          expect(page.items.map((item) => item.author_roles)).toEqual([
+            [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFESSOR_AEE],
+          ]);
         });
 
         it('should follow the level the author has today, not the one of the day he wrote', async () => {
@@ -534,7 +559,7 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
 
           await prisma.user.update({
             where: { id: author.id },
-            data: { id_level: LEVELS.PROFISSIONAL_NAPNE },
+            data: { roles: [LEVELS.PROFISSIONAL_NAPNE] },
           });
 
           expect(idsOf(await list(student.id, { area: '4' }))).toEqual([]);
