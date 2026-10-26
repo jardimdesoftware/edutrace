@@ -538,9 +538,9 @@ describe('validarFormulario', () => {
 
 describe('podeEditarEstudoDeCaso', () => {
   it('lets only the NAPNE professional write, as POST, PATCH and DELETE in the API', () => {
-    assert.equal(podeEditarEstudoDeCaso(PROFISSIONAL_NAPNE), true);
+    assert.equal(podeEditarEstudoDeCaso([PROFISSIONAL_NAPNE]), true);
     for (const nivel of [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]) {
-      assert.equal(podeEditarEstudoDeCaso(nivel), false, String(nivel));
+      assert.equal(podeEditarEstudoDeCaso([nivel]), false, String(nivel));
     }
   });
 
@@ -744,5 +744,17 @@ describe('secoesParaLeitura', () => {
     estudo.general_info.diagnosis = '';
 
     assert.equal(valorDe('Informações gerais', 'Diagnóstico', estudo), 'Não informado');
+  });
+});
+
+describe('podeEditarEstudoDeCaso with several roles', () => {
+  it('keeps the write with the NAPNE role, alone or together with the AEE role', () => {
+    assert.equal(podeEditarEstudoDeCaso([PROFISSIONAL_NAPNE, 6]), true);
+    assert.equal(podeEditarEstudoDeCaso([PROFISSIONAL_EDUCACAO, PROFISSIONAL_NAPNE]), true);
+  });
+
+  it('gives the AEE teacher alone only the read, since the write changes owner in a later issue', () => {
+    assert.equal(podeEditarEstudoDeCaso([6]), false);
+    assert.equal(podeEditarEstudoDeCaso([PROFISSIONAL_EDUCACAO, 6]), false);
   });
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { temPapel } from '@/utils/papeis';
 import { useRouter } from 'next/navigation';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -60,10 +61,10 @@ function EstudoDeCasoPage() {
     window.scrollTo({ top: 0 });
   }, [editando]);
 
-  const podeEditar = podeEditarEstudoDeCaso(user?.id_level);
+  const podeEditar = podeEditarEstudoDeCaso(user?.roles);
   const curso = cursoDoEstudo(estudo, registro);
   const nomeDoEstudante = nome?.trim() || 'o estudante';
-  const quemSemEstudo = user?.id_level === ESTUDANTE ? 'Você' : nomeDoEstudante;
+  const quemSemEstudo = temPapel(user?.roles, ESTUDANTE) ? 'Você' : nomeDoEstudante;
 
   const handleSalvar = async (corpo: CaseStudyPayload) => {
     if (!email) return;
