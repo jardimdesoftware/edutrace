@@ -94,7 +94,7 @@ describe('LevelsController', () => {
 
   describe('access levels', () => {
     it.each(['findAll', 'findOne'] as const)(
-      'should open %s to the four levels',
+      'should open %s to the four original levels and to the NAPNE and the Professor do AEE',
       (route) => {
         expect(
           Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]),
@@ -103,16 +103,23 @@ describe('LevelsController', () => {
           LEVELS.ALUNO_ESTUDANTE,
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
+          LEVELS.PROFISSIONAL_NAPNE,
+          LEVELS.PROFESSOR_AEE,
         ]);
       },
     );
 
     it.each(['findAll', 'findOne'] as const)(
-      'should not open %s to the NAPNE professional',
+      'should open %s to the NAPNE professional and to the Professor do AEE',
       (route) => {
         expect(
           Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]),
-        ).not.toContain(LEVELS.PROFISSIONAL_NAPNE);
+        ).toEqual(
+          expect.arrayContaining([
+            LEVELS.PROFISSIONAL_NAPNE,
+            LEVELS.PROFESSOR_AEE,
+          ]),
+        );
       },
     );
   });
