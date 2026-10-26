@@ -46,6 +46,7 @@ export class AeePlansController {
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @Get(':email')
   findByStudent(
