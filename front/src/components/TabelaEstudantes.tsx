@@ -83,7 +83,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
   const { user, loading } = useAuth();
 
   const isAdmin = user?.id_level === ADMIN;
-  const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.id_level);
+  const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.roles);
   const totalColunas = isAdmin ? 8 : 7;
 
   const filtrados = students && filtrarPorStatus(

@@ -2,6 +2,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { temPapel } from "@/utils/papeis";
 import "@govbr-ds/core/dist/core.min.css";
 import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
@@ -97,8 +98,8 @@ function TriagemPage() {
           return;
         }
 
-        const isStudent = token.id_level === ESTUDANTE;
-        const isReadOnly = !canAccessPage("/editar-triagem", token.id_level);
+        const isStudent = temPapel(token.roles, ESTUDANTE);
+        const isReadOnly = !canAccessPage("/editar-triagem", token.roles);
         setUserIsReadOnly(isReadOnly);
 
         const target = isStudent ? token.email : email;

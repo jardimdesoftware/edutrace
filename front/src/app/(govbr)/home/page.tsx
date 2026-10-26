@@ -35,8 +35,8 @@ function HomePage() {
     return <Loading />;
   }
 
-  const conteudo = conteudoDaHome(user.id_level);
-  const comPainel = podeVerEstatisticas(user.id_level);
+  const conteudo = conteudoDaHome(user.roles);
+  const comPainel = podeVerEstatisticas(user.roles);
 
   return (
     <AppLayout showBack={false}>
