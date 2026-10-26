@@ -13,7 +13,7 @@ import { STUDENT_EMAIL, validBody, validSections } from './case-study.fixtures';
 const request = {
   user: {
     sub: 7,
-    id_level: LEVELS.PROFISSIONAL_NAPNE,
+    roles: [LEVELS.PROFISSIONAL_NAPNE],
     email: 'napne@example.com',
     name: 'Profissional NAPNE',
   },
@@ -134,6 +134,7 @@ describe('CaseStudiesController', () => {
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
+          LEVELS.PROFESSOR_AEE,
         ],
       });
     });
