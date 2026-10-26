@@ -1,5 +1,9 @@
+import { ConflictException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
+import { MailService } from 'src/mail/mail.service';
+import { SessionsService } from 'src/sessions/sessions.service';
+import { UsersService } from 'src/users/users.service';
 import { LEVELS, PHASES } from 'src/constants';
 import { requireIntegrationDatabaseUrl } from './integration-database';
 
@@ -13,21 +17,38 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
   'User.roles contra o PostgreSQL, CHECKs de composição',
   () => {
     let prisma: PrismaService;
+    let service: UsersService;
+    let revokeAllFromUser: jest.Mock;
     let originalDatabaseUrl: string | undefined;
+    let originalFrontendUrl: string | undefined;
     let counter = 0;
 
     beforeAll(async () => {
       originalDatabaseUrl = process.env.DATABASE_URL;
+      originalFrontendUrl = process.env.FRONTEND_URL;
 
       const databaseUrl = requireIntegrationDatabaseUrl(integrationDatabaseUrl);
       process.env.DATABASE_URL = databaseUrl;
+      process.env.FRONTEND_URL = 'https://edutrace.example.com';
+      revokeAllFromUser = jest.fn();
 
       const module = await Test.createTestingModule({
-        providers: [PrismaService],
+        providers: [
+          UsersService,
+          PrismaService,
+          { provide: SessionsService, useValue: { revokeAllFromUser } },
+          {
+            provide: MailService,
+            useValue: {
+              sendAccountActivationLink: jest.fn().mockResolvedValue(undefined),
+            },
+          },
+        ],
       }).compile();
 
       await module.init();
       prisma = module.get(PrismaService);
+      service = module.get(UsersService);
     });
 
     const deleteFixtures = () =>
@@ -45,6 +66,11 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
         delete process.env.DATABASE_URL;
       } else {
         process.env.DATABASE_URL = originalDatabaseUrl;
+      }
+      if (originalFrontendUrl === undefined) {
+        delete process.env.FRONTEND_URL;
+      } else {
+        process.env.FRONTEND_URL = originalFrontendUrl;
       }
     });
 
@@ -189,6 +215,101 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
       await expect(
         prisma.$executeRaw`UPDATE "User" SET "roles" = ARRAY[1, 3] WHERE "id" = ${id}`,
       ).rejects.toThrow(/User_roles_exclusive_chk/);
+    });
+
+    describe('UsersService', () => {
+      const base = {
+        full_name: 'Conta combinada',
+        cpf: '01234567890',
+        email: 'combinada@roles.edutrace.test',
+      };
+
+      it('should store and return the roles of a combined account in ascending order', async () => {
+        const created = await service.create({
+          ...base,
+          roles: [6, 3],
+        });
+
+        expect(created.roles).toEqual([3, 6]);
+        expect(created.service_status).toBeNull();
+      });
+
+      it('should answer 409 and change nothing when the NAPNE with a student in service loses the role', async () => {
+        const napne = await service.create({
+          ...base,
+          roles: [5, 6],
+        });
+        const student = await service.create({
+          ...base,
+          cpf: '11144477735',
+          email: 'estudante@roles.edutrace.test',
+          enrollment_number: 'ROLES0001',
+          course: 'ADS',
+        });
+        await prisma.user.update({
+          where: { id: student.id },
+          data: {
+            service_status: 'IN_SERVICE',
+            napne_responsible_id: napne.id,
+          },
+        });
+
+        await expect(
+          service.update(base.email, { roles: [3, 6] }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        await expect(
+          service.update(base.email, { roles: [5] }),
+        ).resolves.toMatchObject({ roles: [5] });
+
+        const row = await prisma.user.findUniqueOrThrow({
+          where: { id: napne.id },
+        });
+        expect(row.roles).toEqual([5]);
+      });
+
+      it('should revoke the sessions only when the set of roles changes', async () => {
+        await service.create({ ...base, roles: [3, 6] });
+        revokeAllFromUser.mockClear();
+
+        await service.update(base.email, { roles: [3, 6] });
+        expect(revokeAllFromUser).not.toHaveBeenCalled();
+
+        await service.update(base.email, { roles: [3, 4, 6] });
+        expect(revokeAllFromUser).toHaveBeenCalledTimes(1);
+      });
+
+      it('should clear the capacity when the NAPNE role is lost', async () => {
+        await service.create({ ...base, roles: [5, 6] });
+        await service.update(base.email, { service_capacity: 4 });
+
+        const updated = await service.update(base.email, { roles: [6] });
+
+        expect(updated.service_capacity).toBeNull();
+      });
+
+      it('should put the account that becomes a student in the queue and take it out when it stops being one', async () => {
+        await service.create({ ...base, roles: [3, 6] });
+
+        const student = await service.update(base.email, {
+          roles: [2],
+          enrollment_number: 'ROLES0002',
+          course: 'ADS',
+        });
+        expect(student.service_status).toBe('WAITING');
+
+        const professional = await service.update(base.email, {
+          roles: [3, 6],
+        });
+        expect(professional.service_status).toBeNull();
+      });
+
+      it('should delete an account that combines roles with no student in service', async () => {
+        const created = await service.create({ ...base, roles: [5, 6] });
+
+        await expect(service.remove(created.id)).resolves.toMatchObject({
+          id: created.id,
+        });
+      });
     });
   },
 );
