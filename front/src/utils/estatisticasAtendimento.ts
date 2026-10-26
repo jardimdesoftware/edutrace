@@ -1,6 +1,7 @@
 import { ADMIN, PROFISSIONAL_NAPNE } from '@/consts';
 import type { ProfessionalLoad, ServiceQueue, ServiceStats } from '@/interfaces/ServiceStats';
 import type { ServiceStatus } from '@/interfaces/StudentData';
+import { temPapel, type Papeis } from './papeis';
 import { rotuloDoStatus, STATUS_ATENDIMENTO } from './atendimento';
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
@@ -43,8 +44,8 @@ export interface PainelDeAtendimento {
 // Mesmo critério da rota GET /students/service-stats no back
 // (@AllowLevels do Administrador e do Profissional NAPNE). Quem protege o dado
 // é o back; aqui só decide se o painel aparece.
-export function podeVerEstatisticas(idLevel: number): boolean {
-  return idLevel === ADMIN || idLevel === PROFISSIONAL_NAPNE;
+export function podeVerEstatisticas(roles: Papeis): boolean {
+  return temPapel(roles, ADMIN, PROFISSIONAL_NAPNE);
 }
 
 function esperaEmDias(dias: number): string {

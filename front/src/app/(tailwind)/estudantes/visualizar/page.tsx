@@ -125,7 +125,7 @@ function VisualizarEstudante() {
         )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 max-w-5xl mx-auto">
-          {(user ? fichasDoEstudante(user.id_level) : []).map((ficha) => (
+          {(user ? fichasDoEstudante(user.roles) : []).map((ficha) => (
             <Card key={ficha.rota} label={ficha.label} url={rotaDoEstudante(ficha.rota, id)} />
           ))}
         </div>

@@ -47,7 +47,7 @@ function AdminUserCreatePage() {
   });
   const router = useRouter();
   const { user, loading } = useAuth();
-  const podeCadastrar = !!user && canAccessPage(ROTA_CADASTRO, user.id_level);
+  const podeCadastrar = !!user && canAccessPage(ROTA_CADASTRO, user.roles);
   const niveis = niveisDoCadastro(user?.id_level);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [mostrarTermos, setMostrarTermos] = useState(false);

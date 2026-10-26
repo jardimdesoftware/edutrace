@@ -1,4 +1,5 @@
 import { canAccessPage } from "./pageAccess";
+import type { Papeis } from "./papeis";
 
 export interface FichaDoEstudante {
   label: string;
@@ -14,8 +15,8 @@ const FICHAS: readonly FichaDoEstudante[] = [
   { label: "PEI", rota: "/pei" },
 ];
 
-// Só as fichas que o nível abre: o cartão de uma página que o middleware nega
+// Só as fichas que os papéis abrem: o cartão de uma página que o middleware nega
 // levaria o usuário a um redirecionamento para a home.
-export function fichasDoEstudante(idLevel: number): FichaDoEstudante[] {
-  return FICHAS.filter((ficha) => canAccessPage(ficha.rota, idLevel));
+export function fichasDoEstudante(roles: Papeis): FichaDoEstudante[] {
+  return FICHAS.filter((ficha) => canAccessPage(ficha.rota, roles));
 }
