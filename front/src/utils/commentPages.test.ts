@@ -20,7 +20,7 @@ function anotacao(id: number, comment = `Anotação ${id}`): CommentData {
     id_user: 100,
     id_author: 1,
     author_name: 'Autora',
-    author_level: 3,
+    author_roles: [3],
     comment,
     created_at: new Date('2026-10-01T12:00:00Z'),
   };
