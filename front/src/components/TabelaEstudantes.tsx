@@ -195,7 +195,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
       console.error("Erro ao reler o estudante", error);
     }
     try {
-      setStudents(await listarUsuariosDaTabela(user?.id_level));
+      setStudents(await listarUsuariosDaTabela(user?.roles));
     } catch (error) {
       console.error("Erro ao recarregar a lista de estudantes", error);
     }
@@ -243,14 +243,14 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await listarUsuariosDaTabela(user?.id_level);
+        const data = await listarUsuariosDaTabela(user?.roles);
         setStudents(data);
       } catch (error) {
         console.error("Erro ao buscar estudantes", error);
       }
     }
     fetchData();
-  }, [user?.id_level]);
+  }, [user?.roles]);
 
   function getLevelName(id_level: number) {
     switch(id_level) {
