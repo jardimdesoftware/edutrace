@@ -479,7 +479,7 @@ const NO_MANAGER = {
           await Promise.allSettled([
             set(student.email, { kind: 'SERVER', user_id: server.id }),
             users.update(student.email, {
-              id_level: LEVELS.PROFISSIONAL_SAUDE,
+              roles: [LEVELS.PROFISSIONAL_SAUDE],
             }),
           ]);
 
@@ -549,7 +549,7 @@ const NO_MANAGER = {
               set(student.email, { kind: 'SERVER', user_id: server.id }),
             ),
             users.update(server.email, {
-              id_level: LEVELS.PROFISSIONAL_SAUDE,
+              roles: [LEVELS.PROFISSIONAL_SAUDE],
             }),
           ]);
 
@@ -574,7 +574,7 @@ const NO_MANAGER = {
             pedagogical_manager_id: server.id,
           });
 
-          await users.update(student.email, { id_level });
+          await users.update(student.email, { roles: [id_level] });
 
           await expect(managerOf(student.id)).resolves.toEqual(NO_MANAGER);
         },
@@ -585,7 +585,7 @@ const NO_MANAGER = {
         async (id_level) => {
           const student = await createStudent(EXTERNAL);
 
-          await users.update(student.email, { id_level });
+          await users.update(student.email, { roles: [id_level] });
 
           await expect(managerOf(student.id)).resolves.toEqual(NO_MANAGER);
         },
@@ -599,7 +599,7 @@ const NO_MANAGER = {
         });
 
         await users.update(student.email, {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         });
 
         await expect(
@@ -617,7 +617,7 @@ const NO_MANAGER = {
         const student = await createStudent(EXTERNAL);
 
         await users.update(student.email, { full_name: 'Outro nome' });
-        await users.update(student.email, { id_level: LEVELS.ALUNO_ESTUDANTE });
+        await users.update(student.email, { roles: [LEVELS.ALUNO_ESTUDANTE] });
 
         await expect(managerOf(student.id)).resolves.toMatchObject(EXTERNAL);
       });
@@ -691,7 +691,7 @@ const NO_MANAGER = {
         const other = await createStudent(EXTERNAL);
 
         await users.update(server.email, {
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
         });
 
         await expect(managerOf(linked.id)).resolves.toMatchObject({
@@ -707,7 +707,7 @@ const NO_MANAGER = {
         });
 
         await users.update(server.email, {
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
         });
 
         await expect(managerOf(linked.id)).resolves.toMatchObject({

@@ -27,7 +27,7 @@ describe('UsersController', () => {
     failed_login_attempts: 0,
     locked_until: null,
     login_lock_count: 0,
-    id_level: LEVELS.ALUNO_ESTUDANTE,
+    roles: [LEVELS.ALUNO_ESTUDANTE],
     id_current_phase: 1,
     created_at: new Date(),
     updated_at: new Date(),
@@ -50,7 +50,6 @@ describe('UsersController', () => {
 
   const mockPublicUser = {
     ...camposPublicos,
-    level: { id: LEVELS.ALUNO_ESTUDANTE, name: 'Aluno/Estudante' },
     current_phase: { id: 1, name: 'Triagem' },
   };
 
@@ -88,7 +87,7 @@ describe('UsersController', () => {
       email: 'new@test.com',
       password: '123',
     };
-    const requestOf = (id_level: number) => ({ user: { id_level } }) as any;
+    const requestOf = (...roles: number[]) => ({ user: { roles } }) as any;
 
     it.each([
       LEVELS.ADMIN,
@@ -99,7 +98,7 @@ describe('UsersController', () => {
     ])(
       'should create a user of level %i when requester is admin',
       async (id_level) => {
-        const dto = { ...createDto, id_level };
+        const dto = { ...createDto, roles: [id_level] };
         jest
           .spyOn(service, 'create')
           .mockResolvedValue(mockPublicUser as never);
@@ -114,7 +113,7 @@ describe('UsersController', () => {
       },
     );
 
-    it('should create a student with the level written explicitly when requester is admin and id_level is absent', async () => {
+    it('should create a student with the level written explicitly when requester is admin and roles is absent', async () => {
       jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
 
       const result = await controller.create(
@@ -124,13 +123,13 @@ describe('UsersController', () => {
 
       expect(service.create).toHaveBeenCalledWith({
         ...createDto,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: [LEVELS.ALUNO_ESTUDANTE],
       });
       expect(result).toEqual(maskedUser);
     });
 
-    it('should create a student when requester is NAPNE and id_level is the student level', async () => {
-      const dto = { ...createDto, id_level: LEVELS.ALUNO_ESTUDANTE };
+    it('should create a student when requester is NAPNE and roles is the student role', async () => {
+      const dto = { ...createDto, roles: [LEVELS.ALUNO_ESTUDANTE] };
       jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
 
       const result = await controller.create(
@@ -144,9 +143,9 @@ describe('UsersController', () => {
 
     it.each([
       ['absent', createDto],
-      ['null', { ...createDto, id_level: null }],
+      ['null', { ...createDto, roles: null }],
     ])(
-      'should create a student with the level written explicitly when requester is NAPNE and id_level is %s',
+      'should create a student with the level written explicitly when requester is NAPNE and roles is %s',
       async (_case, dto) => {
         jest
           .spyOn(service, 'create')
@@ -159,7 +158,7 @@ describe('UsersController', () => {
 
         expect(service.create).toHaveBeenCalledWith({
           ...createDto,
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
         });
         expect(result).toEqual(maskedUser);
       },
@@ -171,11 +170,11 @@ describe('UsersController', () => {
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
     ])(
-      'should throw ForbiddenException and not create when NAPNE sends id_level %i',
+      'should throw ForbiddenException and not create when NAPNE sends the role %i',
       async (id_level) => {
         await expect(
           controller.create(
-            { ...createDto, id_level } as any,
+            { ...createDto, roles: [id_level] } as any,
             requestOf(LEVELS.PROFISSIONAL_NAPNE),
           ),
         ).rejects.toThrow(ForbiddenException);
@@ -188,6 +187,65 @@ describe('UsersController', () => {
       async (requesterLevel) => {
         await expect(
           controller.create(createDto as any, requestOf(requesterLevel)),
+        ).rejects.toThrow(ForbiddenException);
+        expect(service.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should create a user with combined professional roles when requester is admin', async () => {
+      const dto = {
+        ...createDto,
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+      };
+      jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
+
+      await controller.create(dto as any, requestOf(LEVELS.ADMIN));
+
+      expect(service.create).toHaveBeenCalledWith(dto);
+    });
+
+    it('should let an Education + NAPNE account create a student', async () => {
+      jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
+
+      await controller.create(
+        { ...createDto, roles: [LEVELS.ALUNO_ESTUDANTE] } as any,
+        requestOf(LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE),
+      );
+
+      expect(service.create).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      [LEVELS.PROFISSIONAL_EDUCACAO],
+      [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE],
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
+    ])(
+      'should not let an account with the NAPNE role and no Administrator create roles %j',
+      async (...roles) => {
+        await expect(
+          controller.create(
+            { ...createDto, roles: [LEVELS.ADMIN] } as any,
+            requestOf(LEVELS.PROFISSIONAL_NAPNE, ...roles),
+          ),
+        ).rejects.toThrow(ForbiddenException);
+        await expect(
+          controller.create(
+            { ...createDto, roles } as any,
+            requestOf(LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE),
+          ),
+        ).rejects.toThrow(ForbiddenException);
+        expect(service.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      [LEVELS.PROFESSOR_AEE],
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+    ])(
+      'should throw ForbiddenException when the requester has only the roles %j',
+      async (...roles) => {
+        await expect(
+          controller.create(createDto as any, requestOf(...roles)),
         ).rejects.toThrow(ForbiddenException);
         expect(service.create).not.toHaveBeenCalled();
       },
@@ -279,7 +337,7 @@ describe('UsersController', () => {
     };
 
     it('should mask both cpfs in every route and keep the phone', async () => {
-      const requester = { user: { id_level: LEVELS.ADMIN } } as any;
+      const requester = { user: { roles: [LEVELS.ADMIN] } } as any;
       jest.spyOn(service, 'create').mockResolvedValue(withContact as never);
       jest.spyOn(service, 'findAll').mockResolvedValue([withContact] as never);
       jest
@@ -289,7 +347,7 @@ describe('UsersController', () => {
       jest.spyOn(service, 'remove').mockResolvedValue(withContact as never);
 
       const results = [
-        await controller.create({ id_level: 2 } as any, requester),
+        await controller.create({ roles: [2] } as any, requester),
         await controller.findAll(),
         await controller.findOne('test@test.com'),
         await controller.update('test@test.com', {} as any),

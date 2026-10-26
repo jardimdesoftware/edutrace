@@ -17,7 +17,7 @@ describe('POST e PATCH /users, matrícula e curso', () => {
     full_name: 'Estudante de Teste',
     cpf: '01234567890',
     email: 'estudante@edutrace.com',
-    id_level: LEVELS.ALUNO_ESTUDANTE,
+    roles: [LEVELS.ALUNO_ESTUDANTE],
   };
 
   const student = {
@@ -48,7 +48,7 @@ describe('POST e PATCH /users, matrícula e curso', () => {
               switchToHttp: () => { getRequest: () => { user?: unknown } };
             }) => {
               context.switchToHttp().getRequest().user = {
-                id_level: requesterLevel,
+                roles: [requesterLevel],
               };
               return true;
             },
@@ -89,7 +89,7 @@ describe('POST e PATCH /users, matrícula e curso', () => {
         expect.objectContaining({
           enrollment_number: '2026.1-ADS/01',
           course: 'Análise e Desenvolvimento de Sistemas',
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
         }),
       );
     });
@@ -123,7 +123,7 @@ describe('POST e PATCH /users, matrícula e curso', () => {
 
       const response = await post({
         ...body,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: [LEVELS.ALUNO_ESTUDANTE],
       });
 
       expect(response.status).toBe(400);
@@ -171,7 +171,7 @@ describe('POST e PATCH /users, matrícula e curso', () => {
 
       const response = await post({
         ...body,
-        id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO],
       });
 
       expect(response.status).toBe(201);

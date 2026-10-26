@@ -10,6 +10,8 @@ import { PrismaService } from 'src/database/prisma.service';
 import { hash } from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { LEVELS, PEDAGOGICAL_MANAGER_LEVELS, PHASES } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
+import { sameRoles, sortRoles } from './roles';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { MailService } from 'src/mail/mail.service';
 import {
@@ -39,7 +41,7 @@ const UNIQUE_FIELD_MESSAGES = [
 ] as const;
 
 const NAPNE_IN_SERVICE_MESSAGE =
-  'Encerre os atendimentos do Profissional NAPNE antes de trocar o nível ou excluir a conta.';
+  'Encerre os atendimentos do Profissional NAPNE antes de tirar esse papel ou excluir a conta.';
 
 // As rotas que chegam a este serviço são do Administrador (o cadastro, também
 // do NAPNE), que leem o telefone e o CPF do responsável pedagógico externo, e
@@ -60,9 +62,9 @@ export class UsersService {
   // ao e-mail. Assim nenhuma senha conhecida por terceiros chega a existir, e o
   // primeiro acesso não precisa de troca obrigatória.
   async create(createUserDto: CreateUserDto) {
-    const { id_level, ...userData } = createUserDto;
-    const level = id_level ?? LEVELS.ALUNO_ESTUDANTE;
-    this.assertStudentOnlyFields(level, createUserDto);
+    const { roles: requestedRoles, ...userData } = createUserDto;
+    const roles = sortRoles(requestedRoles ?? [LEVELS.ALUNO_ESTUDANTE]);
+    this.assertStudentOnlyFields(roles, createUserDto);
     const activation = generateActivationToken();
     const activationExpires = new Date(Date.now() + ACTIVATION_TOKEN_TTL_MS);
 
@@ -74,12 +76,12 @@ export class UsersService {
         data: {
           ...userData,
           password: await hash(randomUUID(), 10),
-          id_level: level,
+          roles,
           id_current_phase: PHASES.TRIAGEM,
           must_change_password: false,
           activation_token: activation.hash,
           activation_expires: activationExpires,
-          ...(level === LEVELS.ALUNO_ESTUDANTE ? enterQueue() : {}),
+          ...(roles.includes(LEVELS.ALUNO_ESTUDANTE) ? enterQueue() : {}),
         },
       });
     } catch (error) {
@@ -169,19 +171,24 @@ export class UsersService {
     );
   }
 
-  // Matrícula e curso só existem para o estudante. O nível é o final da
-  // requisição: o informado ou, na atualização sem troca de nível, o da conta.
-  // Nível desconhecido (conta inexistente) fica para o update, que já falha.
+  // Matrícula e curso só existem para o estudante. Os papéis são os finais da
+  // requisição: os informados ou, na atualização sem troca de papéis, os da
+  // conta. Papéis desconhecidos (conta inexistente) ficam para o update, que já
+  // falha.
   private assertStudentOnlyFields(
-    level: number | undefined,
+    roles: readonly number[] | undefined,
     fields: { enrollment_number?: string; course?: string },
   ) {
     const sent =
       fields.enrollment_number !== undefined || fields.course !== undefined;
 
-    if (sent && level !== undefined && level !== LEVELS.ALUNO_ESTUDANTE) {
+    if (
+      sent &&
+      roles !== undefined &&
+      !roles.includes(LEVELS.ALUNO_ESTUDANTE)
+    ) {
       throw new BadRequestException(
-        'Matrícula e curso só podem ser informados para o nível Estudante/Família.',
+        'Matrícula e curso só podem ser informados para o papel Estudante/Família.',
       );
     }
   }
@@ -239,7 +246,7 @@ export class UsersService {
           email: data.email,
           password: data.passwordHash,
           google_sub: data.googleSubject,
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
           id_current_phase: PHASES.TRIAGEM,
           must_change_password: false,
           ...enterQueue(),
@@ -271,15 +278,15 @@ export class UsersService {
     }
   }
 
-  // A decisão sobre a fila depende do nível que a conta tem agora, e o NAPNE
-  // com estudantes em atendimento não pode sair do nível. Por isso a linha é
+  // A decisão sobre a fila depende dos papéis que a conta tem agora, e o NAPNE
+  // com estudantes em atendimento não pode perder o papel. Por isso a linha é
   // travada com FOR UPDATE antes de qualquer leitura: o "assumir" do mesmo NAPNE
   // trava a mesma linha, então nenhum atendimento novo entra entre a conferência
-  // e a troca de nível, e duas trocas simultâneas da mesma conta se enfileiram.
+  // e a troca de papéis, e duas trocas simultâneas da mesma conta se enfileiram.
   // A transação usa o isolamento padrão (READ COMMITTED), em que cada comando
   // enxerga o que a transação anterior confirmou.
   async update(email: string, updateUserDto: UpdateUserDto) {
-    let result: { user: UserWithManagerContact; levelChanged: boolean };
+    let result: { user: UserWithManagerContact; rolesChanged: boolean };
 
     try {
       result = await this.prisma.$transaction((tx) =>
@@ -289,11 +296,12 @@ export class UsersService {
       throw this.duplicateFieldError(error) ?? error;
     }
 
-    // O nível de acesso viaja dentro do token. Sem encerrar as sessões, quem foi
-    // rebaixado continua com o nível antigo até o token vencer. A revogação vem
-    // depois do commit: com a transação aberta, a sessão cairia por uma troca
-    // que ainda pode ser desfeita.
-    if (result.levelChanged) {
+    // O guard lê os papéis do banco a cada requisição, mas a sessão aberta
+    // continua valendo. Encerrar as sessões obriga quem foi rebaixado a entrar
+    // de novo e a ver a tela do papel novo. A revogação vem depois do commit: com
+    // a transação aberta, a sessão cairia por uma troca que ainda pode ser
+    // desfeita.
+    if (result.rolesChanged) {
       await this.sessionsService.revokeAllFromUser(result.user.id);
     }
 
@@ -305,104 +313,116 @@ export class UsersService {
     email: string,
     updateUserDto: UpdateUserDto,
   ) {
-    const { full_name, id_level, enrollment_number, course, service_capacity } =
+    const { full_name, roles, enrollment_number, course, service_capacity } =
       updateUserDto;
 
-    const [current] = await tx.$queryRaw<{ id: number; id_level: number }[]>`
-      SELECT "id", "id_level" FROM "User" WHERE "email" = ${email} FOR UPDATE`;
+    const [current] = await tx.$queryRaw<{ id: number; roles: number[] }[]>`
+      SELECT "id", "roles" FROM "User" WHERE "email" = ${email} FOR UPDATE`;
 
     // Conta inexistente (current indefinido) fica para o update, que falha.
-    const finalLevel = id_level ?? current?.id_level;
-    this.assertStudentOnlyFields(finalLevel, updateUserDto);
-    this.assertCapacityOnlyForNapne(finalLevel, service_capacity);
+    const finalRoles = roles ?? current?.roles;
+    this.assertStudentOnlyFields(finalRoles, updateUserDto);
+    this.assertCapacityOnlyForNapne(finalRoles, service_capacity);
 
-    const levelChange = await this.applyLevelChange(tx, current, id_level);
+    const rolesChange = await this.applyRolesChange(tx, current, roles);
 
     const user = await tx.user.update({
       select: USER_WITH_MANAGER_CONTACT_SELECT,
       where: { email: email },
       data: {
         full_name,
-        id_level,
+        roles: rolesChange?.to,
         enrollment_number,
         course,
         service_capacity,
-        ...(levelChange
-          ? this.studentFieldsOnLevelChange(levelChange.from, levelChange.to)
+        ...(rolesChange
+          ? this.studentFieldsOnRolesChange(rolesChange.from, rolesChange.to)
           : {}),
       },
     });
 
-    return { user, levelChanged: levelChange !== null };
+    return { user, rolesChanged: rolesChange !== null };
   }
 
-  // O DTO aceita o nível que a conta já tem: nesse caso nada muda. Chamado com a
-  // linha da conta já travada (FOR UPDATE).
-  private async applyLevelChange(
+  // O DTO aceita os papéis que a conta já tem: nesse caso nada muda. Chamado
+  // com a linha da conta já travada (FOR UPDATE).
+  private async applyRolesChange(
     tx: Prisma.TransactionClient,
-    current: { id: number; id_level: number } | undefined,
-    idLevel: number | undefined,
+    current: { id: number; roles: number[] } | undefined,
+    roles: number[] | undefined,
   ) {
-    if (!current || idLevel === undefined || idLevel === current.id_level) {
+    if (!current || roles === undefined || sameRoles(roles, current.roles)) {
       return null;
     }
-    const levelChange = { from: current.id_level, to: idLevel };
+    const rolesChange = { from: current.roles, to: sortRoles(roles) };
 
-    if (levelChange.from === LEVELS.PROFISSIONAL_NAPNE) {
+    if (
+      rolesChange.from.includes(LEVELS.PROFISSIONAL_NAPNE) &&
+      !rolesChange.to.includes(LEVELS.PROFISSIONAL_NAPNE)
+    ) {
       await this.assertNoServiceInProgress(tx, current.id);
     }
 
-    // Quem deixa os níveis 3 e 5 deixa de ser responsável pedagógico. Com a
+    // Quem deixa os papéis 3 e 5 deixa de ser responsável pedagógico. Com a
     // linha dele travada, o vínculo que o PATCH do estudante grava ao mesmo
-    // tempo termina antes desta limpeza ou recusa o nível novo depois dela.
-    if (this.leavesPedagogicalManagerLevels(levelChange)) {
+    // tempo termina antes desta limpeza ou recusa o papel novo depois dela.
+    if (this.leavesPedagogicalManagerRoles(rolesChange)) {
       await tx.user.updateMany({
         where: { pedagogical_manager_id: current.id },
         data: { pedagogical_manager_id: null },
       });
     }
 
-    return levelChange;
+    return rolesChange;
   }
 
-  private leavesPedagogicalManagerLevels({
+  private leavesPedagogicalManagerRoles({
     from,
     to,
   }: {
-    from: number;
-    to: number;
+    from: readonly number[];
+    to: readonly number[];
   }) {
     return (
-      PEDAGOGICAL_MANAGER_LEVELS.includes(from) &&
-      !PEDAGOGICAL_MANAGER_LEVELS.includes(to)
+      hasAnyRole(from, PEDAGOGICAL_MANAGER_LEVELS) &&
+      !hasAnyRole(to, PEDAGOGICAL_MANAGER_LEVELS)
     );
   }
 
   // Quem passa a ser estudante entra no fim da fila. Quem deixa de ser tem o
-  // atendimento e o responsável pedagógico limpos, e o NAPNE que deixa o nível
-  // perde o limite, que só faz sentido no nível 5 (CHECK
+  // atendimento e o responsável pedagógico limpos, e quem perde o papel NAPNE
+  // perde o limite, que só faz sentido com o papel 5 (CHECK
   // User_service_capacity_chk).
-  private studentFieldsOnLevelChange(from: number, to: number) {
+  private studentFieldsOnRolesChange(
+    from: readonly number[],
+    to: readonly number[],
+  ) {
+    const wasStudent = from.includes(LEVELS.ALUNO_ESTUDANTE);
+    const isStudent = to.includes(LEVELS.ALUNO_ESTUDANTE);
+    const lostNapne =
+      from.includes(LEVELS.PROFISSIONAL_NAPNE) &&
+      !to.includes(LEVELS.PROFISSIONAL_NAPNE);
+
     return {
-      ...(to === LEVELS.ALUNO_ESTUDANTE ? enterQueue() : {}),
-      ...(from === LEVELS.ALUNO_ESTUDANTE
+      ...(isStudent && !wasStudent ? enterQueue() : {}),
+      ...(wasStudent && !isStudent
         ? { ...LEAVE_QUEUE, ...LEAVE_PEDAGOGICAL_MANAGER }
         : {}),
-      ...(from === LEVELS.PROFISSIONAL_NAPNE ? { service_capacity: null } : {}),
+      ...(lostNapne ? { service_capacity: null } : {}),
     };
   }
 
   private assertCapacityOnlyForNapne(
-    level: number | undefined,
+    roles: readonly number[] | undefined,
     serviceCapacity: number | undefined,
   ) {
     if (
       serviceCapacity !== undefined &&
-      level !== undefined &&
-      level !== LEVELS.PROFISSIONAL_NAPNE
+      roles !== undefined &&
+      !roles.includes(LEVELS.PROFISSIONAL_NAPNE)
     ) {
       throw new BadRequestException(
-        'O limite de atendimentos só pode ser informado para o nível Profissional NAPNE.',
+        'O limite de atendimentos só pode ser informado para quem tem o papel Profissional NAPNE.',
       );
     }
   }
@@ -614,14 +634,14 @@ export class UsersService {
     });
   }
 
-  // Mesma trava e mesma recusa do update: o NAPNE com estudantes em
-  // atendimento não é excluído até encerrar os atendimentos.
+  // Mesma trava e mesma recusa do update: quem tem o papel NAPNE e estudantes
+  // em atendimento não é excluído até encerrar os atendimentos.
   async remove(id: number) {
     return this.prisma.$transaction(async (tx) => {
-      const [target] = await tx.$queryRaw<{ id_level: number }[]>`
-        SELECT "id_level" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
+      const [target] = await tx.$queryRaw<{ roles: number[] }[]>`
+        SELECT "roles" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
 
-      if (target?.id_level === LEVELS.PROFISSIONAL_NAPNE) {
+      if (target?.roles.includes(LEVELS.PROFISSIONAL_NAPNE)) {
         await this.assertNoServiceInProgress(tx, id);
       }
 
