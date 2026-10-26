@@ -32,8 +32,8 @@ afterEach(() => {
 describe('getAllUsers', () => {
   it('lists every user from /users with a GET', async () => {
     const users = [
-      { id: 1, email: 'admin@edutrace.com', id_level: 1 },
-      { id: 3, email: 'estudante@edutrace.com', id_level: 2 },
+      { id: 1, email: 'admin@edutrace.com', roles: [1] },
+      { id: 3, email: 'estudante@edutrace.com', roles: [2] },
     ];
     respondWith(200, users);
 
@@ -95,13 +95,24 @@ describe('updateUser', () => {
   it('encodes the e-mail in the path', async () => {
     respondWith(200, {});
 
-    await updateUser('nome/sobrenome?x#y@edutrace.com', '3');
+    await updateUser('nome/sobrenome?x#y@edutrace.com', [3]);
 
     assert.equal(
       calls[0].url,
       `${API_URL}/users/nome%2Fsobrenome%3Fx%23y%40edutrace.com`,
     );
-    assert.equal(calls[0].init.body, JSON.stringify({ id_level: 3 }));
+    assert.equal(calls[0].init.body, JSON.stringify({ roles: [3] }));
+  });
+
+  it('sends the roles as a list of numbers and never an id_level', async () => {
+    respondWith(200, {});
+
+    await updateUser('napne@edutrace.com', [5, 6]);
+
+    const body = JSON.parse(String(calls[0].init.body));
+    assert.equal(calls[0].init.method, 'PATCH');
+    assert.deepEqual(body, { roles: [5, 6] });
+    assert.equal('id_level' in body, false);
   });
 });
 

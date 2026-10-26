@@ -5,11 +5,10 @@ export async function getAllUsers() {
   return apiRequest('/users');
 }
 
-// vai dar certo 2
-export async function updateUser(email: string, id_level: string): Promise<StudentData> {
+export async function updateUser(email: string, roles: number[]): Promise<StudentData> {
   return apiRequest(`/users/${encodeURIComponent(email)}`, {
     method: 'PATCH',
-    body: { id_level: Number(id_level) },
+    body: { roles },
   });
 }
 
