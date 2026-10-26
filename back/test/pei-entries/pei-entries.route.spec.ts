@@ -186,7 +186,7 @@ describe('PEI, rotas de /pei-entries', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: SUB,
-                user: { id_level: sessionLevel },
+                user: { roles: [sessionLevel] },
               }),
             ),
             registerUse: jest.fn(),

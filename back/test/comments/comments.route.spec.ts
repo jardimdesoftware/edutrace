@@ -176,7 +176,7 @@ describe('anotações, rotas de /comments', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: sessionSub,
-                user: { id_level: sessionLevel },
+                user: { roles: [sessionLevel] },
               }),
             ),
             registerUse: jest.fn(),

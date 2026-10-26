@@ -25,12 +25,12 @@ export class SessionsService {
     });
   }
 
-  // Traz o nível atual do dono da sessão: o AuthGuard decide a autorização por
-  // ele, e não pelo id_level gravado no token.
+  // Traz os papéis atuais do dono da sessão: o AuthGuard decide a autorização
+  // por eles, e o token não leva papel nenhum.
   async findActive(jti: string) {
     return this.prisma.session.findFirst({
       where: { jti: jti, revoked_at: null },
-      include: { user: { select: { id_level: true } } },
+      include: { user: { select: { roles: true } } },
     });
   }
 

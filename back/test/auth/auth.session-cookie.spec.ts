@@ -12,7 +12,7 @@ const payload = {
   sub: 1,
   email: 'user@test.com',
   name: 'Usuário',
-  id_level: 2,
+  roles: [2],
   jti: 'sessao-1',
 };
 
@@ -41,7 +41,7 @@ describe('Session cookie over HTTP', () => {
             findActive: jest.fn().mockResolvedValue({
               jti: 'sessao-1',
               id_user: 1,
-              user: { id_level: 2 },
+              user: { roles: [2] },
             }),
             registerUse: jest.fn(),
           },
@@ -98,7 +98,7 @@ describe('Session cookie over HTTP', () => {
       .set('Cookie', 'edutrace_session=token.emitido');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ ...payload, roles: [2] });
+    expect(response.body).toEqual(payload);
     expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.emitido', expect.any(Object));
   });
 

@@ -117,7 +117,7 @@ describe('estudo de caso, rotas de /case-studies', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: SUB,
-                user: { id_level: sessionLevel },
+                user: { roles: [sessionLevel] },
               }),
             ),
             registerUse: jest.fn(),

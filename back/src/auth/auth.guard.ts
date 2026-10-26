@@ -17,6 +17,7 @@ import {
 } from './decorators/allow-levels.decorator';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { sessionCookieName } from 'src/common/session-cookie';
+import { hasAnyRole } from './roles';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -50,22 +51,16 @@ export class AuthGuard implements CanActivate {
       // assinatura válida até vencer.
       const session = await this.sessionsService.findActive(payload.jti);
 
-      // O token precisa ser do dono da sessão, e o nível vem do banco. Assim,
-      // um token reassinado com outro sub ou outro id_level não passa, e a
-      // troca de nível vale na requisição seguinte (ASVS 5.0, 8.3.2).
+      // O token precisa ser do dono da sessão, e os papéis vêm do banco. Assim,
+      // um token reassinado com outro sub ou com papéis inventados não passa, e
+      // a troca de papéis vale na requisição seguinte (ASVS 5.0, 8.3.2).
       if (!session || session.id_user !== payload.sub) {
         throw new UnauthorizedException('Sessão encerrada');
       }
 
       await this.sessionsService.registerUse(session);
 
-      // Ponte da troca de nível por papéis: enquanto os serviços trocam a leitura
-      // do id_level pela de roles, a lista deriva do nível gravado no banco.
-      const user = {
-        ...payload,
-        id_level: session.user.id_level,
-        roles: [session.user.id_level],
-      };
+      const user = { ...payload, roles: session.user.roles };
       request['user'] = user;
 
       // Enquanto a troca do primeiro acesso não acontece, o token só abre as
@@ -103,7 +98,7 @@ export class AuthGuard implements CanActivate {
 
       if (
         allowedLevels !== ANY_LEVEL &&
-        !allowedLevels?.includes(user.id_level)
+        !hasAnyRole(user.roles, allowedLevels ?? [])
       ) {
         throw new ForbiddenException('Nível de acesso insuficiente');
       }
