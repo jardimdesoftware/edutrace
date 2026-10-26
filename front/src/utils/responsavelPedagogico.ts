@@ -1,9 +1,9 @@
 import {
   ADMIN,
   ESTUDANTE,
-  PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_NAPNE,
 } from '@/consts';
+import { ROTULO_DO_PAPEL, rotulosDosPapeis, temPapel, type Papeis } from '@/utils/papeis';
 import type {
   PedagogicalManagerOption,
   PedagogicalManagerPayload,
@@ -37,11 +37,6 @@ type ResponsavelDoEstudante = Pick<
   | 'external_manager_cpf'
 >;
 
-const ROTULO_DO_NIVEL: Partial<Record<number, string>> = {
-  [PROFISSIONAL_EDUCACAO]: 'Profissional da Educação',
-  [PROFISSIONAL_NAPNE]: 'Profissional NAPNE',
-};
-
 // Servidor ou pessoa externa; os dois não coexistem. Sem nenhum, o texto que as
 // telas já mostravam para o estudante sem responsável.
 export function nomeDoResponsavel(
@@ -58,19 +53,19 @@ export function nomeDoResponsavel(
 // seção aparece; o responsável é de estudante, e a lista do administrador
 // também traz os outros níveis.
 export function podeDefinirResponsavel(
-  usuario?: { id_level: number } | null,
-  estudante?: Pick<StudentData, 'id_level'> | null,
+  usuario?: { roles: Papeis } | null,
+  estudante?: Pick<StudentData, 'roles'> | null,
 ): boolean {
   return (
-    (usuario?.id_level === ADMIN || usuario?.id_level === PROFISSIONAL_NAPNE) &&
-    estudante?.id_level === ESTUDANTE
+    temPapel(usuario?.roles, ADMIN, PROFISSIONAL_NAPNE) &&
+    temPapel(estudante?.roles, ESTUDANTE)
   );
 }
 
-// Dois servidores podem ter o mesmo nome; o nível os distingue na lista.
+// Dois servidores podem ter o mesmo nome; os papéis os distinguem na lista.
 export function rotuloDaOpcao(opcao: PedagogicalManagerOption): string {
-  const nivel = ROTULO_DO_NIVEL[opcao.id_level];
-  return nivel ? `${opcao.full_name} (${nivel})` : opcao.full_name;
+  const papeis = rotulosDosPapeis(opcao.roles.filter((papel) => papel in ROTULO_DO_PAPEL)).join(", ");
+  return papeis ? `${opcao.full_name} (${papeis})` : opcao.full_name;
 }
 
 // O CPF do externo chega mascarado, então não volta para o campo: quem edita a

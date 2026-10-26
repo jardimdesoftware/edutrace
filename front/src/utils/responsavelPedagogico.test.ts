@@ -70,23 +70,29 @@ describe('podeDefinirResponsavel', () => {
   ] as const) {
     it(`${esperado ? 'allows' : 'denies'} the ${nome} on a student`, () => {
       assert.equal(
-        podeDefinirResponsavel({ id_level: nivel }, { id_level: ESTUDANTE }),
+        podeDefinirResponsavel({ roles: [nivel] }, { roles: [ESTUDANTE] }),
         esperado,
       );
     });
   }
 
+  it('keeps the NAPNE permission when the account also has the AEE role, and denies the AEE alone', () => {
+    assert.equal(podeDefinirResponsavel({ roles: [5, 6] }, { roles: [ESTUDANTE] }), true);
+    assert.equal(podeDefinirResponsavel({ roles: [6] }, { roles: [ESTUDANTE] }), false);
+    assert.equal(podeDefinirResponsavel({ roles: [3, 6] }, { roles: [ESTUDANTE] }), false);
+  });
+
   it('denies a session without user', () => {
-    assert.equal(podeDefinirResponsavel(null, { id_level: ESTUDANTE }), false);
-    assert.equal(podeDefinirResponsavel(undefined, { id_level: ESTUDANTE }), false);
+    assert.equal(podeDefinirResponsavel(null, { roles: [ESTUDANTE] }), false);
+    assert.equal(podeDefinirResponsavel(undefined, { roles: [ESTUDANTE] }), false);
   });
 
   it('denies when the record is not a student, which the administrator list also has', () => {
     assert.equal(
-      podeDefinirResponsavel({ id_level: ADMIN }, { id_level: PROFISSIONAL_NAPNE }),
+      podeDefinirResponsavel({ roles: [ADMIN] }, { roles: [PROFISSIONAL_NAPNE] }),
       false,
     );
-    assert.equal(podeDefinirResponsavel({ id_level: ADMIN }, null), false);
+    assert.equal(podeDefinirResponsavel({ roles: [ADMIN] }, null), false);
   });
 });
 
@@ -99,6 +105,13 @@ describe('rotuloDaOpcao', () => {
     assert.equal(
       rotuloDaOpcao({ id: 2, full_name: 'Ana Souza', id_level: PROFISSIONAL_NAPNE, roles: [PROFISSIONAL_NAPNE] }),
       'Ana Souza (Profissional NAPNE)',
+    );
+  });
+
+  it('lists every role of the server in order', () => {
+    assert.equal(
+      rotuloDaOpcao({ id: 4, full_name: 'Ana Souza', id_level: 5, roles: [6, 5] }),
+      'Ana Souza (Profissional NAPNE, Professor(a) do AEE)',
     );
   });
 
