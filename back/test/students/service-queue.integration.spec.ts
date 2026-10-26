@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
@@ -44,7 +48,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           cpf: `5${String(n).padStart(10, '0')}`,
           email: `aluno${n}${EMAIL_DOMAIN}`,
           password: 'x',
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
           id_current_phase: PHASES.TRIAGEM,
           service_status: status,
           queued_at: new Date(Date.now() - 60_000),
@@ -52,7 +56,11 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
       });
     }
 
-    async function createNapne(capacity: number | null, fullName?: string) {
+    async function createNapne(
+      capacity: number | null,
+      fullName?: string,
+      roles: number[] = [LEVELS.PROFISSIONAL_NAPNE],
+    ) {
       const n = nextNumber();
       return prisma.user.create({
         data: {
@@ -60,7 +68,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           cpf: `6${String(n).padStart(10, '0')}`,
           email: `napne${n}${EMAIL_DOMAIN}`,
           password: 'x',
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles,
           id_current_phase: PHASES.TRIAGEM,
           service_capacity: capacity,
         },
@@ -171,19 +179,6 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
     // INSERT ... ON CONFLICT DO NOTHING, que não falha para quem perde.
     beforeEach(async () => {
       await deleteFixtures();
-      await prisma.level.createMany({
-        data: [
-          { id: LEVELS.ADMIN, name: 'Administrador' },
-          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
-          {
-            id: LEVELS.PROFISSIONAL_EDUCACAO,
-            name: 'Profissional da Educação',
-          },
-          { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' },
-          { id: LEVELS.PROFISSIONAL_NAPNE, name: 'Profissional NAPNE' },
-        ],
-        skipDuplicates: true,
-      });
       await prisma.currentPhases.createMany({
         data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
         skipDuplicates: true,
@@ -262,14 +257,13 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
 
         const after = await prisma.user.findUniqueOrThrow({
           where: { id: napne.id },
-          select: { id_level: true, service_capacity: true },
+          select: { roles: true, service_capacity: true },
         });
         const inService = await inServiceOf(napne.id);
 
-        expect(
-          after.id_level === LEVELS.PROFISSIONAL_NAPNE || inService === 0,
-        ).toBe(true);
-        if (after.id_level !== LEVELS.PROFISSIONAL_NAPNE) {
+        const stillNapne = after.roles.includes(LEVELS.PROFISSIONAL_NAPNE);
+        expect(stillNapne || inService === 0).toBe(true);
+        if (!stillNapne) {
           expect(after.service_capacity).toBeNull();
         }
       });
@@ -319,7 +313,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           await expect(
             prisma.user.findUniqueOrThrow({ where: { id: napne.id } }),
           ).resolves.toMatchObject({
-            id_level: LEVELS.PROFISSIONAL_NAPNE,
+            roles: [LEVELS.PROFISSIONAL_NAPNE],
             service_capacity: 2,
           });
         },
@@ -340,7 +334,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
 
         await queue.close(student.email, {
           sub: napne.id,
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
         });
         const closed = await statusOf(student.email);
         expect(closed).toMatchObject({
@@ -352,7 +346,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         // O encerramento libera a vaga do NAPNE.
         await expect(inServiceOf(napne.id)).resolves.toBe(0);
 
-        await queue.reopen(student.email, LEVELS.ADMIN);
+        await queue.reopen(student.email, [LEVELS.ADMIN]);
         const reopened = await statusOf(student.email);
         expect(reopened).toMatchObject({
           service_status: ServiceStatus.WAITING,
@@ -362,6 +356,34 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         });
         expect(reopened.queued_at!.getTime()).toBeGreaterThan(
           student.queued_at!.getTime(),
+        );
+      });
+
+      it('should let an account that has the NAPNE role among others take a student, and refuse one that does not', async () => {
+        const student = await createStudent();
+        const combined = await createNapne(2, undefined, [
+          LEVELS.PROFISSIONAL_EDUCACAO,
+          LEVELS.PROFISSIONAL_NAPNE,
+          LEVELS.PROFESSOR_AEE,
+        ]);
+        const aeeOnly = await prisma.user.create({
+          data: {
+            full_name: 'Só AEE',
+            cpf: '69999999999',
+            email: `soaee${EMAIL_DOMAIN}`,
+            password: 'x',
+            roles: [LEVELS.PROFESSOR_AEE],
+            id_current_phase: PHASES.TRIAGEM,
+          },
+        });
+
+        await expect(queue.assume(student.email, aeeOnly.id)).rejects.toThrow(
+          ForbiddenException,
+        );
+        await queue.assume(student.email, combined.id);
+
+        expect((await statusOf(student.email)).napne_responsible_id).toBe(
+          combined.id,
         );
       });
 
@@ -398,7 +420,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         await queue.assume(closed.email, ana.id);
         await queue.close(closed.email, {
           sub: ana.id,
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
         });
         await prisma.user.update({
           where: { id: waitingOld.id },
@@ -518,14 +540,14 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         await expect(
           prisma.user.findUniqueOrThrow({ where: { id: napne.id } }),
         ).resolves.toMatchObject({
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
           service_capacity: 2,
         });
 
-        await queue.close(student.email, { sub: 1, id_level: LEVELS.ADMIN });
+        await queue.close(student.email, { sub: 1, roles: [LEVELS.ADMIN] });
         await expect(
           users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
-        ).resolves.toMatchObject({ id_level: LEVELS.PROFISSIONAL_SAUDE });
+        ).resolves.toMatchObject({ roles: [LEVELS.PROFISSIONAL_SAUDE] });
         await expect(
           prisma.user.findUniqueOrThrow({
             where: { id: napne.id },
@@ -610,7 +632,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
                       cpf: '70000000003',
                       email: `admin${EMAIL_DOMAIN}`,
                       password: 'x',
-                      id_level: LEVELS.ADMIN,
+                      roles: [LEVELS.ADMIN],
                       id_current_phase: PHASES.TRIAGEM,
                     },
                   });

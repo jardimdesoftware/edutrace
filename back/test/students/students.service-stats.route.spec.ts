@@ -129,7 +129,7 @@ describe('GET /students/service-stats', () => {
     expect(response.status).toBe(200);
     expect(studentsService.findOne).toHaveBeenCalledWith(
       'estudante@example.com',
-      LEVELS.ADMIN,
+      [LEVELS.ADMIN],
     );
     expect(statsService.getStats).not.toHaveBeenCalled();
   });

@@ -39,7 +39,7 @@ describe('StudentsService, responsável pedagógico', () => {
   // A leitura que trava a linha do servidor (FOR SHARE) devolve o nível dele,
   // ou nada quando a conta não existe.
   const serverLevel = (id_level: number | null) => {
-    serverRows = id_level === null ? [] : [{ id_level }];
+    serverRows = id_level === null ? [] : [{ roles: [id_level] }];
   };
 
   // A leitura que trava a linha do estudante (FOR UPDATE) só encontra quem
@@ -64,7 +64,7 @@ describe('StudentsService, responsável pedagógico', () => {
     service.setPedagogicalManager(
       EMAIL,
       dto as SetPedagogicalManagerDto,
-      requesterLevel,
+      [requesterLevel],
     );
 
   beforeEach(async () => {
@@ -101,7 +101,7 @@ describe('StudentsService, responsável pedagógico', () => {
   describe('findPedagogicalManagerOptions', () => {
     it('should list only the id, the name and the level of the Education and NAPNE professionals, by name', async () => {
       const options = [
-        { id: 4, full_name: 'Ana', id_level: LEVELS.PROFISSIONAL_NAPNE },
+        { id: 4, full_name: 'Ana', roles: [LEVELS.PROFISSIONAL_NAPNE] },
       ];
       prisma.user.findMany.mockResolvedValue(options);
 
@@ -110,11 +110,11 @@ describe('StudentsService, responsável pedagógico', () => {
       );
       expect(prisma.user.findMany).toHaveBeenCalledWith({
         where: {
-          id_level: {
-            in: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
+          roles: {
+            hasSome: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
           },
         },
-        select: { id: true, full_name: true, id_level: true },
+        select: { id: true, full_name: true, roles: true },
         orderBy: { full_name: 'asc' },
       });
     });
@@ -344,7 +344,7 @@ describe('StudentsService, responsável pedagógico', () => {
 
       const [studentLock] = locks();
       expect(studentLock.sql).toContain('FOR UPDATE');
-      expect(studentLock.sql).toContain('"id_level"');
+      expect(studentLock.sql).toContain('ANY("roles")');
       expect(studentLock.values).toEqual([EMAIL, LEVELS.ALUNO_ESTUDANTE]);
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });

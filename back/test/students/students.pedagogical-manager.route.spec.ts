@@ -15,7 +15,7 @@ import { StudentsService } from 'src/students/students.service';
 const SUB = 7;
 
 const OPTIONS = [
-  { id: 4, full_name: 'Ana', id_level: LEVELS.PROFISSIONAL_NAPNE },
+  { id: 4, full_name: 'Ana', roles: [LEVELS.PROFISSIONAL_NAPNE] },
 ];
 
 const STUDENT = {
@@ -152,7 +152,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       expect(response.status).toBe(200);
       expect(studentsService.findOne).toHaveBeenCalledWith(
         'estudante@example.com',
-        LEVELS.ADMIN,
+        [LEVELS.ADMIN],
       );
       expect(
         studentsService.findPedagogicalManagerOptions,
@@ -173,7 +173,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       expect(studentsService.setPedagogicalManager).toHaveBeenCalledWith(
         'estudante@example.com',
         expect.objectContaining(EXTERNAL_BODY),
-        level,
+        [level],
       );
     });
 
@@ -215,7 +215,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       expect(studentsService.setPedagogicalManager).toHaveBeenCalledWith(
         'estudante@example.com',
         expect.objectContaining({ phone: '81999998888', cpf: '01234567890' }),
-        LEVELS.ADMIN,
+        [LEVELS.ADMIN],
       );
     });
 
@@ -255,7 +255,7 @@ describe('responsável pedagógico, rotas de /students', () => {
         expect(studentsService.setPedagogicalManager).toHaveBeenCalledWith(
           'estudante@example.com',
           expect.objectContaining(body),
-          LEVELS.ADMIN,
+          [LEVELS.ADMIN],
         );
       },
     );

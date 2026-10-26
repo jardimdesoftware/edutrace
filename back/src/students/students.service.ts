@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS, PEDAGOGICAL_MANAGER_LEVELS } from 'src/constants';
 import { userSelectFor } from 'src/users/users.select';
+import { hasAnyRole } from 'src/auth/roles';
 import {
   MANAGER_KINDS,
   SetPedagogicalManagerDto,
@@ -31,24 +32,24 @@ const SELF_MANAGER_MESSAGE =
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  // O nível de quem pede decide o select (userSelectFor): o telefone e o CPF do
-  // responsável externo só saem do banco para quem os administra.
-  findAll(requesterLevel: number) {
+  // Os papéis de quem pede decidem o select (userSelectFor): o telefone e o CPF
+  // do responsável externo só saem do banco para quem os administra.
+  findAll(requesterRoles: readonly number[]) {
     return this.prisma.user.findMany({
       where: {
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: { has: LEVELS.ALUNO_ESTUDANTE },
       },
-      select: userSelectFor(requesterLevel),
+      select: userSelectFor(requesterRoles),
     });
   }
 
-  findOne(email: string, requesterLevel: number) {
+  findOne(email: string, requesterRoles: readonly number[]) {
     return this.prisma.user.findFirst({
       where: {
         email,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: { has: LEVELS.ALUNO_ESTUDANTE },
       },
-      select: userSelectFor(requesterLevel),
+      select: userSelectFor(requesterRoles),
     });
   }
 
@@ -57,7 +58,7 @@ export class StudentsService {
   // e-mail sem conta caem no mesmo 404.
   async findOneOrFail(where: { email: string } | { id: number }) {
     const student = await this.prisma.user.findFirst({
-      where: { ...where, id_level: LEVELS.ALUNO_ESTUDANTE },
+      where: { ...where, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
       select: { id: true, email: true },
     });
 
@@ -69,12 +70,12 @@ export class StudentsService {
   }
 
   // Servidores que podem ser escolhidos como responsável pedagógico. Só o id, o
-  // nome e o nível saem: a lista alimenta um seletor, e o resto do cadastro do
+  // nome e os papéis saem: a lista alimenta um seletor, e o resto do cadastro do
   // servidor não faz parte dela.
   findPedagogicalManagerOptions() {
     return this.prisma.user.findMany({
-      where: { id_level: { in: [...PEDAGOGICAL_MANAGER_LEVELS] } },
-      select: { id: true, full_name: true, id_level: true },
+      where: { roles: { hasSome: [...PEDAGOGICAL_MANAGER_LEVELS] } },
+      select: { id: true, full_name: true, roles: true },
       orderBy: { full_name: 'asc' },
     });
   }
@@ -86,7 +87,7 @@ export class StudentsService {
   //
   // O nível do estudante é conferido na própria trava da linha, dentro da
   // transação, e a gravação é pelo id dessa linha. Conferir antes, fora da
-  // transação, deixava a troca de nível do administrador passar entre a
+  // transação, deixava a troca de papéis do administrador passar entre a
   // conferência e a gravação, e uma conta que deixou de ser estudante ficava com
   // o vínculo. A troca de nível trava a mesma linha com FOR UPDATE: ela espera
   // este vínculo gravar e depois limpa o responsável, ou este vínculo espera a
@@ -99,7 +100,7 @@ export class StudentsService {
   async setPedagogicalManager(
     email: string,
     dto: SetPedagogicalManagerDto,
-    requesterLevel: number,
+    requesterRoles: readonly number[],
   ) {
     return this.prisma.$transaction(async (tx) => {
       const data = await this.pedagogicalManagerData(tx, dto);
@@ -112,7 +113,7 @@ export class StudentsService {
       return tx.user.update({
         where: { id: student.id },
         data,
-        select: userSelectFor(requesterLevel),
+        select: userSelectFor(requesterRoles),
       });
     });
   }
@@ -124,7 +125,7 @@ export class StudentsService {
   async lockStudent(tx: Prisma.TransactionClient, email: string) {
     const [student] = await tx.$queryRaw<{ id: number }[]>`
       SELECT "id" FROM "User"
-      WHERE "email" = ${email} AND "id_level" = ${LEVELS.ALUNO_ESTUDANTE}
+      WHERE "email" = ${email} AND ${LEVELS.ALUNO_ESTUDANTE} = ANY("roles")
       FOR UPDATE`;
 
     if (!student) {
@@ -167,25 +168,25 @@ export class StudentsService {
   }
 
   // A linha do servidor é travada com FOR SHARE antes de ler o nível. A troca
-  // de nível dele trava a mesma linha com FOR UPDATE, então ela espera este
+  // de papéis dele trava a mesma linha com FOR UPDATE, então ela espera este
   // vínculo gravar (e depois o desfaz), e o vínculo espera a troca terminar (e
-  // depois recusa o nível novo). Sem a trava, o estudante poderia ficar ligado a
-  // quem deixou os níveis 3 e 5 entre a conferência e a gravação.
+  // depois recusa o papel novo). Sem a trava, o estudante poderia ficar ligado a
+  // quem deixou os papéis 3 e 5 entre a conferência e a gravação.
   private async assertServerManager(
     tx: Prisma.TransactionClient,
     userId: number,
   ) {
-    const [server] = await tx.$queryRaw<{ id_level: number }[]>`
-      SELECT "id_level" FROM "User" WHERE "id" = ${userId} FOR SHARE`;
+    const [server] = await tx.$queryRaw<{ roles: number[] }[]>`
+      SELECT "roles" FROM "User" WHERE "id" = ${userId} FOR SHARE`;
 
-    if (!server || !PEDAGOGICAL_MANAGER_LEVELS.includes(server.id_level)) {
+    if (!server || !hasAnyRole(server.roles, PEDAGOGICAL_MANAGER_LEVELS)) {
       throw new BadRequestException(INVALID_SERVER_MESSAGE);
     }
   }
 
   async findAllEmails(): Promise<string[]> {
     const students = await this.prisma.user.findMany({
-      where: { id_level: LEVELS.ALUNO_ESTUDANTE },
+      where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
       select: { email: true },
     });
 

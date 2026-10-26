@@ -15,7 +15,7 @@ import { LEVELS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 const request = (id_level: number) =>
-  ({ user: { sub: 9, id_level } }) as AuthenticatedRequest;
+  ({ user: { sub: 9, roles: [id_level] } }) as AuthenticatedRequest;
 
 describe('PlansEducationController', () => {
   let controller: StudentsController;
@@ -66,9 +66,8 @@ describe('PlansEducationController', () => {
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
-          id_level: 2,
+          roles: [2],
           id_current_phase: 1,
-          level: { id: 2, name: 'Aluno/Estudante' },
           current_phase: { id: 1, name: 'Triagem' },
         },
         {
@@ -81,9 +80,8 @@ describe('PlansEducationController', () => {
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
-          id_level: 2,
+          roles: [2],
           id_current_phase: 1,
-          level: { id: 2, name: 'Aluno/Estudante' },
           current_phase: { id: 1, name: 'Triagem' },
         },
       ];
@@ -97,7 +95,7 @@ describe('PlansEducationController', () => {
       expect(
         await controller.findAll(request(LEVELS.PROFISSIONAL_SAUDE)),
       ).toEqual(masked);
-      expect(service.findAll).toHaveBeenCalledWith(LEVELS.PROFISSIONAL_SAUDE);
+      expect(service.findAll).toHaveBeenCalledWith([LEVELS.PROFISSIONAL_SAUDE]);
     });
   });
 
@@ -108,7 +106,7 @@ describe('PlansEducationController', () => {
         full_name: 'Luizin',
         cpf: '12345678910',
         email: 'luizin@hotmail.com',
-        id_level: 2,
+        roles: [2],
       };
       jest.spyOn(service, 'findOne').mockResolvedValue(student as never);
 
@@ -123,7 +121,7 @@ describe('PlansEducationController', () => {
       });
       expect(service.findOne).toHaveBeenCalledWith(
         'luizin@hotmail.com',
-        LEVELS.PROFISSIONAL_SAUDE,
+        [LEVELS.PROFISSIONAL_SAUDE],
       );
     });
 
@@ -147,6 +145,7 @@ describe('PlansEducationController', () => {
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
+          LEVELS.PROFESSOR_AEE,
         ]);
       },
     );
@@ -193,7 +192,7 @@ describe('PlansEducationController', () => {
       full_name: 'Luizin',
       cpf: '12345678910',
       email: 'luizin@hotmail.com',
-      id_level: 2,
+      roles: [2],
     };
     const masked = { ...student, cpf: '***.456.789-**' };
     it('should assume the student for the NAPNE of the session and mask the CPF', async () => {
@@ -220,7 +219,7 @@ describe('PlansEducationController', () => {
 
         expect(serviceQueue.close).toHaveBeenCalledWith('luizin@hotmail.com', {
           sub: 9,
-          id_level,
+          roles: [id_level],
         });
         expect(result).toEqual(masked);
       },
@@ -236,7 +235,7 @@ describe('PlansEducationController', () => {
 
       expect(serviceQueue.reopen).toHaveBeenCalledWith(
         'luizin@hotmail.com',
-        LEVELS.ADMIN,
+        [LEVELS.ADMIN],
       );
       expect(result).toEqual(masked);
     });
@@ -286,7 +285,7 @@ describe('PlansEducationController', () => {
       full_name: 'Luizin',
       cpf: '12345678910',
       email: 'luizin@hotmail.com',
-      id_level: 2,
+      roles: [2],
       pedagogical_manager: null,
       external_manager_name: 'Maria da Silva',
       external_manager_phone: '81999998888',
@@ -310,10 +309,10 @@ describe('PlansEducationController', () => {
         expect(
           await controller.findOne('luizin@hotmail.com', request(level)),
         ).toEqual(masked);
-        expect(service.findAll).toHaveBeenCalledWith(level);
+        expect(service.findAll).toHaveBeenCalledWith([level]);
         expect(service.findOne).toHaveBeenCalledWith(
           'luizin@hotmail.com',
-          level,
+          [level],
         );
       },
     );
@@ -347,7 +346,7 @@ describe('PlansEducationController', () => {
   describe('pedagogicalManagerOptions', () => {
     it('should return the options as they come from the service', async () => {
       const options = [
-        { id: 4, full_name: 'Ana', id_level: LEVELS.PROFISSIONAL_NAPNE },
+        { id: 4, full_name: 'Ana', roles: [LEVELS.PROFISSIONAL_NAPNE] },
       ];
       jest
         .spyOn(service, 'findPedagogicalManagerOptions')
@@ -411,7 +410,7 @@ describe('PlansEducationController', () => {
       expect(service.setPedagogicalManager).toHaveBeenCalledWith(
         'luizin@hotmail.com',
         dto,
-        LEVELS.PROFISSIONAL_NAPNE,
+        [LEVELS.PROFISSIONAL_NAPNE],
       );
       expect(result).toEqual({
         ...saved,
