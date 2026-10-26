@@ -9,10 +9,10 @@
  *   DELETE /anamnesis/:email
  *
  * ATENÇÃO: A API de anamnesis atualiza a fase do usuário (id_current_phase = 2).
- * Por isso, o titular precisa existir no banco como estudante (id_level 2); o
+ * Por isso, o titular precisa existir no banco como estudante (papel 2); o
  * script o cadastra no passo 0 e o remove no passo 6.
  *
- * Só o Profissional NAPNE (id_level 5) acessa as rotas de anamnese; o
+ * Só o Profissional NAPNE (papel 5) acessa as rotas de anamnese; o
  * administrador recebe 403. As chamadas de anamnese usam a conta NAPNE, e o
  * cadastro e a remoção do estudante continuam com a conta de administrador.
  */
@@ -193,7 +193,7 @@ export default function (data) {
       full_name: 'Estudante k6 Anamnese',
       cpf: randomCpf(),
       email: testEmail,
-      id_level: 2,
+      roles: [2],
       enrollment_number: randomEnrollmentNumber(),
       course: 'Curso k6 Teste',
     }),
