@@ -63,7 +63,7 @@ const EMAIL_DOMAIN = '@pei.test';
           cpf: `${isStudent ? 24 : 25}${String(n).padStart(9, '0')}`,
           email: `conta${n}${EMAIL_DOMAIN}`,
           password: 'x',
-          id_level,
+          roles: [id_level],
           id_current_phase: PHASES.TRIAGEM,
           ...(isStudent
             ? {
@@ -113,7 +113,7 @@ const EMAIL_DOMAIN = '@pei.test';
 
     const requestOf = (id: number, email: string, id_level: number) =>
       ({
-        user: { sub: id, id_level, email, name: 'Quem pede' },
+        user: { sub: id, roles: [id_level], email, name: 'Quem pede' },
       }) as AuthenticatedRequest;
 
     const list = (reader: { id: number; email: string }, email: string) =>
@@ -163,16 +163,6 @@ const EMAIL_DOMAIN = '@pei.test';
       // O banco do job nasce só com as migrations, sem o seed. O createMany
       // com skipDuplicates é um INSERT ... ON CONFLICT DO NOTHING, que não
       // falha para o spec que perde a corrida dos que rodam em paralelo.
-      await prisma.level.createMany({
-        data: [
-          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
-          {
-            id: LEVELS.PROFISSIONAL_EDUCACAO,
-            name: 'Profissional da Educação',
-          },
-        ],
-        skipDuplicates: true,
-      });
       await prisma.currentPhases.createMany({
         data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
         skipDuplicates: true,
