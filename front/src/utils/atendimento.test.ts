@@ -30,7 +30,6 @@ function usuario(id: number, extra: Partial<StudentData> = {}): StudentData {
     created_at: '2026-10-01T12:00:00.000Z',
     updated_at: '2026-10-01T12:00:00.000Z',
     deleted_at: null,
-    id_level: ESTUDANTE,
     roles: [ESTUDANTE],
     id_current_phase: 1,
     ...extra,
