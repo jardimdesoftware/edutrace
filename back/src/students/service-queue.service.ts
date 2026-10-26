@@ -7,12 +7,13 @@ import {
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { LEVELS } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from './students.service';
 
-// Quem pede o encerramento: o id da sessão (sub do token) e o nível atual.
+// Quem pede o encerramento: o id da sessão (sub do token) e os papéis atuais.
 export interface ServiceRequester {
   sub: number;
-  id_level: number;
+  roles: readonly number[];
 }
 
 @Injectable()
@@ -38,7 +39,7 @@ export class ServiceQueueService {
     const assumed = await this.prisma.$transaction(async (tx) => {
       const [napne] = await tx.$queryRaw<{ service_capacity: number | null }[]>`
         SELECT "service_capacity" FROM "User"
-        WHERE "id" = ${napneId} AND "id_level" = ${LEVELS.PROFISSIONAL_NAPNE}
+        WHERE "id" = ${napneId} AND ${LEVELS.PROFISSIONAL_NAPNE} = ANY("roles")
         FOR UPDATE`;
 
       if (!napne) {
@@ -63,7 +64,7 @@ export class ServiceQueueService {
       const { count } = await tx.user.updateMany({
         where: {
           email,
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: { has: LEVELS.ALUNO_ESTUDANTE },
           service_status: ServiceStatus.WAITING,
         },
         data: {
@@ -82,20 +83,20 @@ export class ServiceQueueService {
       throw new ConflictException('O estudante não está na fila de espera.');
     }
 
-    return this.readStudent(email, LEVELS.PROFISSIONAL_NAPNE);
+    return this.readStudent(email, [LEVELS.PROFISSIONAL_NAPNE]);
   }
 
   // O responsável continua gravado depois do encerramento, como histórico de
   // quem atendeu. A condição está no próprio UPDATE: só o administrador encerra
-  // sem filtro, qualquer outro nível só encerra quem ele atende, e o status é
+  // sem filtro, qualquer outro papel só encerra quem ele atende, e o status é
   // conferido na mesma operação.
   async close(email: string, requester: ServiceRequester) {
     const { count } = await this.prisma.user.updateMany({
       where: {
         email,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: { has: LEVELS.ALUNO_ESTUDANTE },
         service_status: ServiceStatus.IN_SERVICE,
-        ...(requester.id_level === LEVELS.ADMIN
+        ...(hasAnyRole(requester.roles, [LEVELS.ADMIN])
           ? {}
           : { napne_responsible_id: requester.sub }),
       },
@@ -114,15 +115,15 @@ export class ServiceQueueService {
         : new ConflictException('O estudante não está em atendimento.');
     }
 
-    return this.readStudent(email, requester.id_level);
+    return this.readStudent(email, requester.roles);
   }
 
   // O estudante volta ao fim da fila: queued_at novo e sem responsável.
-  async reopen(email: string, requesterLevel: number) {
+  async reopen(email: string, requesterRoles: readonly number[]) {
     const { count } = await this.prisma.user.updateMany({
       where: {
         email,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: { has: LEVELS.ALUNO_ESTUDANTE },
         service_status: ServiceStatus.CLOSED,
       },
       data: {
@@ -139,12 +140,12 @@ export class ServiceQueueService {
       throw new ConflictException('O estudante não está encerrado.');
     }
 
-    return this.readStudent(email, requesterLevel);
+    return this.readStudent(email, requesterRoles);
   }
 
   private async statusOf(email: string) {
     const student = await this.prisma.user.findFirst({
-      where: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+      where: { email, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
       select: { service_status: true },
     });
 
@@ -156,9 +157,9 @@ export class ServiceQueueService {
   }
 
   // O estudante excluído entre a transição e a leitura vira 404, e não uma
-  // resposta 200 sem corpo. O select vem do nível de quem fez a transição.
-  private async readStudent(email: string, requesterLevel: number) {
-    const student = await this.studentsService.findOne(email, requesterLevel);
+  // resposta 200 sem corpo. O select vem dos papéis de quem fez a transição.
+  private async readStudent(email: string, requesterRoles: readonly number[]) {
+    const student = await this.studentsService.findOne(email, requesterRoles);
 
     if (!student) {
       throw new NotFoundException('Estudante não encontrado');

@@ -54,7 +54,7 @@ const NO_MANAGER = {
           cpf: `${id_level === LEVELS.ALUNO_ESTUDANTE ? 8 : 9}${String(n).padStart(10, '0')}`,
           email: `conta${n}${EMAIL_DOMAIN}`,
           password: 'x',
-          id_level,
+          roles: [id_level],
           id_current_phase: PHASES.TRIAGEM,
           ...(id_level === LEVELS.ALUNO_ESTUDANTE
             ? { service_status: 'WAITING' as const, queued_at: new Date() }
@@ -82,7 +82,7 @@ const NO_MANAGER = {
       students.setPedagogicalManager(
         email,
         dto as SetPedagogicalManagerDto,
-        LEVELS.ADMIN,
+        [LEVELS.ADMIN],
       );
 
     // Espera até que alguma conexão esteja bloqueada pela transação cujo
@@ -158,19 +158,6 @@ const NO_MANAGER = {
     // quem perde a corrida contra os outros specs.
     beforeEach(async () => {
       await deleteFixtures();
-      await prisma.level.createMany({
-        data: [
-          { id: LEVELS.ADMIN, name: 'Administrador' },
-          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
-          {
-            id: LEVELS.PROFISSIONAL_EDUCACAO,
-            name: 'Profissional da Educação',
-          },
-          { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' },
-          { id: LEVELS.PROFISSIONAL_NAPNE, name: 'Profissional NAPNE' },
-        ],
-        skipDuplicates: true,
-      });
       await prisma.currentPhases.createMany({
         data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
         skipDuplicates: true,
@@ -395,7 +382,7 @@ const NO_MANAGER = {
           await waitUntilBlockedBy(pid);
           await tx.user.update({
             where: { id: server.id },
-            data: { id_level: LEVELS.PROFISSIONAL_SAUDE },
+            data: { roles: [LEVELS.PROFISSIONAL_SAUDE] },
           });
         });
 
@@ -440,7 +427,7 @@ const NO_MANAGER = {
             await waitUntilBlockedBy(pid);
             await tx.user.update({
               where: { id: student.id },
-              data: { id_level: LEVELS.PROFISSIONAL_SAUDE, ...LEAVE_QUEUE },
+              data: { roles: [LEVELS.PROFISSIONAL_SAUDE], ...LEAVE_QUEUE },
             });
           });
 
@@ -485,9 +472,9 @@ const NO_MANAGER = {
 
           const row = await prisma.user.findUniqueOrThrow({
             where: { id: student.id },
-            select: { id_level: true },
+            select: { roles: true },
           });
-          expect(row.id_level).toBe(LEVELS.PROFISSIONAL_SAUDE);
+          expect(row.roles).toEqual([LEVELS.PROFISSIONAL_SAUDE]);
           await expect(managerOf(student.id)).resolves.toEqual(NO_MANAGER);
         }
       });
@@ -525,7 +512,7 @@ const NO_MANAGER = {
           });
           await tx.user.update({
             where: { id: server.id },
-            data: { id_level: LEVELS.PROFISSIONAL_SAUDE },
+            data: { roles: [LEVELS.PROFISSIONAL_SAUDE] },
           });
         });
 
@@ -630,8 +617,8 @@ const NO_MANAGER = {
           list.find((item) => item.email === student.email);
 
         for (const level of [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]) {
-          const one = await students.findOne(student.email, level);
-          const listed = byEmail(await students.findAll(level));
+          const one = await students.findOne(student.email, [level]);
+          const listed = byEmail(await students.findAll([level]));
 
           for (const read of [one, listed]) {
             expect(read).toMatchObject(EXTERNAL);
@@ -643,8 +630,8 @@ const NO_MANAGER = {
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.ALUNO_ESTUDANTE,
         ]) {
-          const one = await students.findOne(student.email, level);
-          const listed = byEmail(await students.findAll(level));
+          const one = await students.findOne(student.email, [level]);
+          const listed = byEmail(await students.findAll([level]));
 
           for (const read of [one, listed]) {
             expect(read).toMatchObject({
@@ -668,12 +655,12 @@ const NO_MANAGER = {
         const forNapne = await students.setPedagogicalManager(
           student.email,
           dto,
-          LEVELS.PROFISSIONAL_NAPNE,
+          [LEVELS.PROFISSIONAL_NAPNE],
         );
         const forEducation = await students.setPedagogicalManager(
           student.email,
           dto,
-          LEVELS.PROFISSIONAL_EDUCACAO,
+          [LEVELS.PROFISSIONAL_EDUCACAO],
         );
 
         expect(forNapne).toMatchObject(EXTERNAL);

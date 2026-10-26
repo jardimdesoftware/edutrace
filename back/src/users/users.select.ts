@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { MANAGER_CONTACT_READERS } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 
 // Lista dos campos que podem sair na resposta da API. Por ser uma lista de
 // permissão, campo novo no model User fica de fora até ser incluído aqui, o que
@@ -29,8 +30,7 @@ export const PUBLIC_USER_SELECT = {
   deleted_at: true,
   email: true,
   id_current_phase: true,
-  id_level: true,
-  level: true,
+  roles: true,
   enrollment_number: true,
   course: true,
   service_status: true,
@@ -58,9 +58,9 @@ export type UserWithManagerContact = Prisma.UserGetPayload<{
 
 // Negação por padrão (ASVS 5.0 8.2.3; OWASP Authorization Cheat Sheet): o
 // contato do responsável externo sai só para a lista de MANAGER_CONTACT_READERS,
-// e o nível fora dela, ausente ou desconhecido recebe o select público.
-export function userSelectFor(idLevel: number) {
-  return MANAGER_CONTACT_READERS.includes(idLevel)
+// e quem tem papel fora dela, ausente ou desconhecido recebe o select público.
+export function userSelectFor(roles: readonly number[]) {
+  return hasAnyRole(roles, MANAGER_CONTACT_READERS)
     ? USER_WITH_MANAGER_CONTACT_SELECT
     : PUBLIC_USER_SELECT;
 }
