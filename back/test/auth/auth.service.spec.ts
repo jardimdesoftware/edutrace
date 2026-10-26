@@ -39,6 +39,7 @@ describe('AuthService', () => {
     password: 'hashedPassword',
     full_name: 'Test User',
     id_level: 2,
+    roles: [2],
     cpf: '12345678900',
     affliation: 'Test',
     pedagogical_manager_id: null,

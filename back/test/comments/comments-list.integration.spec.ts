@@ -511,7 +511,7 @@ const FIRST_INSTANT = Date.parse('2026-03-01T12:00:00.000Z');
           const comments = new Map<number, number>();
           for (const author of authors) {
             const created = await addComment({ student, author });
-            comments.set(author.id_level, created.id);
+            comments.set(author.id_level as number, created.id);
           }
 
           const page = await list(student.id, { area: `${area}` });
