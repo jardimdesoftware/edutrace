@@ -11,13 +11,24 @@ export const LEVELS = {
   PROFISSIONAL_EDUCACAO: 3,
   PROFISSIONAL_SAUDE: 4,
   PROFISSIONAL_NAPNE: 5,
+  PROFESSOR_AEE: 6,
 } as const;
+
+// Papéis de profissional: combinam livremente entre si na mesma conta. O
+// Administrador e o Estudante/Família ficam sozinhos.
+export const PROFESSIONAL_ROLES: readonly number[] = [
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_SAUDE,
+  LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
+];
 
 export const STUDENT_RECORD_READERS: readonly number[] = [
   LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
 ];
 
 export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
@@ -29,6 +40,7 @@ export const CASE_STUDY_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
 ];
 
 // Quem lê os PAEE de qualquer estudante. O estudante lê só os próprios, e quem
@@ -38,6 +50,7 @@ export const AEE_PLAN_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
 ];
 
 // Quem lê os registros do PEI de qualquer estudante. O estudante lê só os
@@ -47,6 +60,7 @@ export const PEI_ENTRY_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
 ];
 
 // Teto de registros do PEI ativos (não excluídos) de um estudante. O POST
