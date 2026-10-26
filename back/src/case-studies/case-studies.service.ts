@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { CASE_STUDY_READERS } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from 'src/students/students.service';
 import {
   CASE_STUDY_SECTIONS_SELECT,
@@ -75,7 +76,7 @@ export class CaseStudiesService {
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
-    const readsAnyStudent = CASE_STUDY_READERS.includes(request.user.id_level);
+    const readsAnyStudent = hasAnyRole(request.user.roles, CASE_STUDY_READERS);
     const isOwnRecord = request.user.email === email;
 
     // O 403 vem antes de consultar o banco, para que o estudante receba a
