@@ -33,6 +33,8 @@ export class PhasesController {
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @Get()
   findAll() {
@@ -44,6 +46,8 @@ export class PhasesController {
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @Get(':id')
   findOne(@Param('id') id: string) {
