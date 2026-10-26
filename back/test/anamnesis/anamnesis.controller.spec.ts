@@ -791,7 +791,7 @@ describe('AnamnesisController', () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(result);
 
       const request = {
-        user: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+        user: { email, roles: [LEVELS.ALUNO_ESTUDANTE] },
       } as any;
 
       expect(await controller.findOne(email, request)).toEqual(result);
