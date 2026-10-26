@@ -7,6 +7,7 @@ import { CreateScreeningDto } from './dto/create-screening.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { STUDENT_RECORD_READERS } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from 'src/students/students.service';
 
 @Injectable()
@@ -35,8 +36,9 @@ export class ScreeningsService {
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
-    const readsAnyStudent = STUDENT_RECORD_READERS.includes(
-      request.user.id_level,
+    const readsAnyStudent = hasAnyRole(
+      request.user.roles,
+      STUDENT_RECORD_READERS,
     );
     const isOwnRecord = request.user.email === email;
 
