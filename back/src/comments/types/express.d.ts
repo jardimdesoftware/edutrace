@@ -4,7 +4,6 @@ import { Request } from 'express';
 export interface AuthenticatedRequest extends Request {
   user: {
     sub: number;
-    id_level: number;
     roles: number[];
     email: string;
     name: string;
