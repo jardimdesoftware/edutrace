@@ -122,13 +122,13 @@ export class ListCommentsQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Nível atual do autor: 1 (Administrador), 3 (Educação), 4 (Saúde) ou 5 (NAPNE).',
+      'Papel atual do autor, entre os que ele tem: 1 (Administrador), 3 (Educação), 4 (Saúde), 5 (NAPNE) ou 6 (Professor do AEE).',
     enum: COMMENT_AUTHOR_AREAS,
     type: Number,
   })
   @OmittableField()
   @Transform(toCanonicalInteger)
-  @IsIn(COMMENT_AUTHOR_AREAS, { message: 'area deve ser 1, 3, 4 ou 5.' })
+  @IsIn(COMMENT_AUTHOR_AREAS, { message: 'area deve ser 1, 3, 4, 5 ou 6.' })
   area?: number;
 
   @ApiPropertyOptional({
