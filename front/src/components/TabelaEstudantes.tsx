@@ -22,6 +22,10 @@ import {
   textoDaContagem,
 } from "@/utils/atendimento";
 import { errorAlertOptions } from "@/utils/errorAlert";
+import {
+  rotulosDosPapeis,
+  temPapel,
+} from "@/utils/papeis";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { canAccessPage } from "@/utils/pageAccess";
 import {
@@ -37,6 +41,7 @@ import Swal from "sweetalert2";
 import AtendimentoEstudante from "./AtendimentoEstudante";
 import LimiteAtendimento from "./LimiteAtendimento";
 import Loading from "./Loading";
+import EditorDePapeis from "./EditorDePapeis";
 
 interface AcaoAtendimento {
   chamar: (email: string) => Promise<StudentData>;
@@ -82,7 +87,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
   const [ students, setStudents ] = useState<StudentData[] | null>(null);
   const { user, loading } = useAuth();
 
-  const isAdmin = user?.id_level === ADMIN;
+  const isAdmin = temPapel(user?.roles, ADMIN);
   const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.roles);
   const totalColunas = isAdmin ? 8 : 7;
 
@@ -119,11 +124,11 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
     }
   };
 
-  const handleAlterarNivel = async (estudante: StudentData, novoNivel: string) => {
+  const handleAlterarPapeis = async (estudante: StudentData, novosPapeis: number[]): Promise<void> => {
     const confirmacao = await Swal.fire({
       icon: "warning",
-      title: "Alterar nível de acesso",
-      text: `Tem certeza que deseja alterar o nível de acesso para "${getLevelName(Number(novoNivel))}"?`,
+      title: "Alterar papéis",
+      text: `Tem certeza que deseja alterar os papéis de "${estudante.full_name}" para "${rotulosDosPapeis(novosPapeis).join(", ")}"?`,
       showCancelButton: true,
       confirmButtonColor: "#047857",
       cancelButtonColor: "#6b7280",
@@ -134,12 +139,12 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
     if (!confirmacao.isConfirmed) return;
 
     try {
-      const atualizado = await updateUser(estudante.email, novoNivel);
+      const atualizado = await updateUser(estudante.email, novosPapeis);
       setStudents((prev) => prev && substituirUsuario(prev, atualizado));
       onAlteracao?.();
       Swal.fire({
         icon: "success",
-        title: "Nível de acesso atualizado com sucesso!",
+        title: "Papéis atualizados com sucesso!",
         confirmButtonColor: "#047857",
         confirmButtonText: "Ok",
       });
@@ -147,9 +152,9 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
       console.error(error);
       Swal.fire({
         ...errorAlertOptions(
-          "Falha ao atualizar o nível de acesso",
+          "Falha ao atualizar os papéis",
           error,
-          "Não foi possível atualizar o nível de acesso.",
+          "Não foi possível atualizar os papéis.",
         ),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
@@ -252,22 +257,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
     fetchData();
   }, [user?.roles]);
 
-  function getLevelName(id_level: number) {
-    switch(id_level) {
-      case 1:
-        return "Admin";
-      case 2:
-        return "Estudante/Família";
-      case 3:
-        return "Profissional da Educação";
-      case 4:
-        return "Profissional da Saúde";
-      case 5:
-        return "Profissional NAPNE";
-      default:
-        return "Nível desconhecido";
-    }
-  }
 
   const renderAtendimento = (estudante: StudentData) => (
     <AtendimentoEstudante
@@ -335,22 +324,15 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               <p className="break-all"><span className="font-semibold">E-mail:</span> {estudante.email}</p>
               <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavelDaLinha(estudante)}</p>
               {isAdmin ? (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Nível de Acesso:</span>
-                  <select
-                    className="border rounded px-2 py-1"
-                    value={String(estudante.id_level)}
-                    onChange={(e) => handleAlterarNivel(estudante, e.target.value)}
-                  >
-                    <option value="1">Admin</option>
-                    <option value="2">Estudante/Família</option>
-                    <option value="3">Profissional da Educação</option>
-                    <option value="4">Profissional da Saúde</option>
-                    <option value="5">Profissional NAPNE</option>
-                  </select>
-                </div>
+                <EditorDePapeis
+                  key={`m-${estudante.id}-${estudante.roles.join(",")}`}
+                  idBase={`papeis-m-${estudante.id}`}
+                  nome={estudante.full_name}
+                  gravado={estudante.roles}
+                  onSalvar={(papeis) => handleAlterarPapeis(estudante, papeis)}
+                />
               ) : (
-                <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(estudante.id_level)}</p>
+                <p><span className="font-semibold">Papéis:</span> {rotulosDosPapeis(estudante.roles).join(", ")}</p>
               )}
               {estudante.service_status && (
                 <div className="flex flex-wrap items-start gap-2">
@@ -358,7 +340,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                   {renderAtendimento(estudante)}
                 </div>
               )}
-              {isAdmin && estudante.id_level === PROFISSIONAL_NAPNE && (
+              {isAdmin && temPapel(estudante.roles, PROFISSIONAL_NAPNE) && (
                 <div>
                   <span className="font-semibold">Limite de atendimento:</span>
                   <LimiteAtendimento
@@ -405,7 +387,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               <th className="p-3">CPF</th>
               <th className="p-3">E-mail</th>
               <th className="p-3">Responsável Pedagógico</th>
-              <th className="p-3">Nível de Acesso</th>
+              <th className="p-3">Papéis</th>
               <th className="p-3">Atendimento</th>
               {isAdmin && <th className="p-3">Limite de atendimento</th>}
               <th className="p-3"></th>
@@ -420,25 +402,22 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                 <td className="p-3">{responsavelDaLinha(estudante)}</td>
                 <td className="p-3">
                   {isAdmin ? (
-                    <select
-                      className="border rounded px-2 py-1"
-                      value={String(estudante.id_level)}
-                      onChange={(e) => handleAlterarNivel(estudante, e.target.value)}
-                    >
-                      <option value="1">Admin</option>
-                      <option value="2">Estudante/Família</option>
-                      <option value="3">Profissional da Educação</option>
-                      <option value="4">Profissional da Saúde</option>
-                      <option value="5">Profissional NAPNE</option>
-                    </select>
+                    <EditorDePapeis
+                      key={`d-${estudante.id}-${estudante.roles.join(",")}`}
+                      idBase={`papeis-d-${estudante.id}`}
+                      nome={estudante.full_name}
+                      gravado={estudante.roles}
+                      legendaOculta
+                      onSalvar={(papeis) => handleAlterarPapeis(estudante, papeis)}
+                    />
                   ) : (
-                    getLevelName(estudante.id_level)
+                    rotulosDosPapeis(estudante.roles).join(", ")
                   )}
                 </td>
                 <td className="p-3">{renderAtendimento(estudante)}</td>
                 {isAdmin && (
                   <td className="p-3">
-                    {estudante.id_level === PROFISSIONAL_NAPNE && (
+                    {temPapel(estudante.roles, PROFISSIONAL_NAPNE) && (
                       <LimiteAtendimento
                         key={estudante.email}
                         nome={estudante.full_name}
