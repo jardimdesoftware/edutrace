@@ -3,6 +3,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { rotulosDosPapeis } from "@/utils/papeis";
 import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import ResponsavelPedagogico from "@/components/ResponsavelPedagogico";
@@ -51,24 +52,7 @@ function VisualizarEstudante() {
   const responsavel = nomeDoResponsavel(estudante);
   const matricula = estudante?.enrollment_number || NAO_INFORMADO;
   const curso = estudante?.course || NAO_INFORMADO;
-  const nivelAcesso = estudante?.id_level;
-
-  function getLevelName(id_level?: number) {
-    switch(id_level) {
-      case 1:
-        return "Admin";
-      case 2:
-        return "Estudante/Família";
-      case 3:
-        return "Profissional da Educação";
-      case 4:
-        return "Profissional da Saúde";
-      case 5:
-        return "Profissional NAPNE";
-      default:
-        return "Nível desconhecido";
-    }
-  }
+  const papeis = rotulosDosPapeis(estudante?.roles).join(", ") || "Papel desconhecido";
 
   if (carregando) {
     return <Loading />;
@@ -85,7 +69,7 @@ function VisualizarEstudante() {
             <p><span className="font-semibold">Matrícula:</span> {matricula}</p>
             <p><span className="font-semibold">Curso:</span> {curso}</p>
             <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavel}</p>
-            <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(nivelAcesso)}</p>
+            <p><span className="font-semibold">Papéis:</span> {papeis}</p>
           </div>
 
           <div className="hidden md:block overflow-auto">
@@ -98,7 +82,7 @@ function VisualizarEstudante() {
                   <th className="p-3 text-left">Matrícula</th>
                   <th className="p-3 text-left">Curso</th>
                   <th className="p-3 text-left">Responsável Pedagógico</th>
-                  <th className="p-3 text-left">Nível de Acesso</th>
+                  <th className="p-3 text-left">Papéis</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,7 +93,7 @@ function VisualizarEstudante() {
                   <td className="p-3">{matricula}</td>
                   <td className="p-3">{curso}</td>
                   <td className="p-3">{responsavel}</td>
-                  <td className="p-3">{getLevelName(nivelAcesso)}</td>
+                  <td className="p-3">{papeis}</td>
                 </tr>
               </tbody>
             </table>
