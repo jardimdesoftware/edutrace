@@ -409,7 +409,6 @@ export class AuthService {
       id: number;
       email: string;
       full_name: string;
-      id_level: number;
       cpf: string;
       must_change_password: boolean;
     },
@@ -430,7 +429,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       name: user.full_name,
-      id_level: user.id_level,
       must_change_password: user.must_change_password,
       must_complete_registration: hasPendingGoogleRegistration(user),
       jti: jti,
