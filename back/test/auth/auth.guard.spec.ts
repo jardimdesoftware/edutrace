@@ -162,7 +162,10 @@ describe('AuthGuard', () => {
       const result = await guard.canActivate(context);
 
       expect(result).toBe(true);
-      expect(mockRequest.user).toEqual(payload);
+      expect(mockRequest.user).toEqual({
+        ...payload,
+        roles: [payload.id_level],
+      });
     });
 
     it.each([
@@ -299,7 +302,10 @@ describe('AuthGuard', () => {
       const result = await guard.canActivate(context);
 
       expect(result).toBe(true);
-      expect(mockRequest.user).toEqual(payload);
+      expect(mockRequest.user).toEqual({
+        ...payload,
+        roles: [payload.id_level],
+      });
     });
 
     it('should block any route when the user still must change the password', async () => {
@@ -575,6 +581,20 @@ describe('AuthGuard', () => {
       await expect(guard.canActivate(context)).resolves.toBe(true);
       expect(request.user).toEqual(
         expect.objectContaining({ sub: 1, id_level: 2 }),
+      );
+    });
+
+    it('should expose in request.user the roles derived from the level stored in the database', async () => {
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+        sub: 1,
+        jti: 'sessao-valida',
+        email: 'estudante@test.com',
+        roles: [1, 3],
+      });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toEqual(
+        expect.objectContaining({ sub: 1, id_level: 2, roles: [2] }),
       );
     });
 
