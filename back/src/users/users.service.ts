@@ -316,25 +316,7 @@ export class UsersService {
     this.assertStudentOnlyFields(finalLevel, updateUserDto);
     this.assertCapacityOnlyForNapne(finalLevel, service_capacity);
 
-    // O DTO aceita o nível que a conta já tem: nesse caso nada muda.
-    const levelChange =
-      current && id_level !== undefined && id_level !== current.id_level
-        ? { from: current.id_level, to: id_level }
-        : null;
-
-    if (levelChange?.from === LEVELS.PROFISSIONAL_NAPNE) {
-      await this.assertNoServiceInProgress(tx, current.id);
-    }
-
-    // Quem deixa os níveis 3 e 5 deixa de ser responsável pedagógico. Com a
-    // linha dele travada, o vínculo que o PATCH do estudante grava ao mesmo
-    // tempo termina antes desta limpeza ou recusa o nível novo depois dela.
-    if (levelChange && this.leavesPedagogicalManagerLevels(levelChange)) {
-      await tx.user.updateMany({
-        where: { pedagogical_manager_id: current.id },
-        data: { pedagogical_manager_id: null },
-      });
-    }
+    const levelChange = await this.applyLevelChange(tx, current, id_level);
 
     const user = await tx.user.update({
       select: USER_WITH_MANAGER_CONTACT_SELECT,
@@ -352,6 +334,35 @@ export class UsersService {
     });
 
     return { user, levelChanged: levelChange !== null };
+  }
+
+  // O DTO aceita o nível que a conta já tem: nesse caso nada muda. Chamado com a
+  // linha da conta já travada (FOR UPDATE).
+  private async applyLevelChange(
+    tx: Prisma.TransactionClient,
+    current: { id: number; id_level: number } | undefined,
+    idLevel: number | undefined,
+  ) {
+    if (!current || idLevel === undefined || idLevel === current.id_level) {
+      return null;
+    }
+    const levelChange = { from: current.id_level, to: idLevel };
+
+    if (levelChange.from === LEVELS.PROFISSIONAL_NAPNE) {
+      await this.assertNoServiceInProgress(tx, current.id);
+    }
+
+    // Quem deixa os níveis 3 e 5 deixa de ser responsável pedagógico. Com a
+    // linha dele travada, o vínculo que o PATCH do estudante grava ao mesmo
+    // tempo termina antes desta limpeza ou recusa o nível novo depois dela.
+    if (this.leavesPedagogicalManagerLevels(levelChange)) {
+      await tx.user.updateMany({
+        where: { pedagogical_manager_id: current.id },
+        data: { pedagogical_manager_id: null },
+      });
+    }
+
+    return levelChange;
   }
 
   private leavesPedagogicalManagerLevels({
