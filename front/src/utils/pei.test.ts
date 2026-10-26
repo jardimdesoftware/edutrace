@@ -1034,7 +1034,7 @@ describe('podeCriarPei', () => {
   for (const nivel of NIVEIS) {
     const esperado = nivel === PROFISSIONAL_EDUCACAO;
     it(`${esperado ? 'shows' : 'hides'} the button to add an entry for level ${nivel}`, () => {
-      assert.equal(podeCriarPei(nivel), esperado);
+      assert.equal(podeCriarPei([nivel]), esperado);
     });
   }
 
@@ -1049,22 +1049,22 @@ describe('podeAlterarPei', () => {
   const OUTRO_ID = 8;
 
   it('shows edit only to the education professional who is the author of the entry', () => {
-    assert.equal(podeAlterarPei({ sub: ID_DO_AUTOR, id_level: PROFISSIONAL_EDUCACAO }, { id_author: ID_DO_AUTOR }), true);
+    assert.equal(podeAlterarPei({ sub: ID_DO_AUTOR, roles: [PROFISSIONAL_EDUCACAO] }, { id_author: ID_DO_AUTOR }), true);
   });
 
   it('hides edit from another education professional', () => {
-    assert.equal(podeAlterarPei({ sub: OUTRO_ID, id_level: PROFISSIONAL_EDUCACAO }, { id_author: ID_DO_AUTOR }), false);
+    assert.equal(podeAlterarPei({ sub: OUTRO_ID, roles: [PROFISSIONAL_EDUCACAO] }, { id_author: ID_DO_AUTOR }), false);
   });
 
   for (const nivel of NIVEIS.filter((n) => n !== PROFISSIONAL_EDUCACAO)) {
     it(`hides edit from level ${nivel}, even with the id of the author`, () => {
-      assert.equal(podeAlterarPei({ sub: ID_DO_AUTOR, id_level: nivel }, { id_author: ID_DO_AUTOR }), false);
+      assert.equal(podeAlterarPei({ sub: ID_DO_AUTOR, roles: [nivel] }, { id_author: ID_DO_AUTOR }), false);
     });
   }
 
   it('hides edit from everyone when the author was deleted', () => {
     for (const nivel of NIVEIS) {
-      assert.equal(podeAlterarPei({ sub: ID_DO_AUTOR, id_level: nivel }, { id_author: null }), false, String(nivel));
+      assert.equal(podeAlterarPei({ sub: ID_DO_AUTOR, roles: [nivel] }, { id_author: null }), false, String(nivel));
     }
   });
 
@@ -1080,23 +1080,23 @@ describe('podeExcluirPei', () => {
   const OUTRO_ID = 8;
 
   it('shows delete to the education professional who is the author of the entry', () => {
-    assert.equal(podeExcluirPei({ sub: ID_DO_AUTOR, id_level: PROFISSIONAL_EDUCACAO }, { id_author: ID_DO_AUTOR }), true);
+    assert.equal(podeExcluirPei({ sub: ID_DO_AUTOR, roles: [PROFISSIONAL_EDUCACAO] }, { id_author: ID_DO_AUTOR }), true);
   });
 
   it('shows delete to any education professional when the author was deleted (orphan entry)', () => {
     for (const sub of [ID_DO_AUTOR, OUTRO_ID]) {
-      assert.equal(podeExcluirPei({ sub, id_level: PROFISSIONAL_EDUCACAO }, { id_author: null }), true, String(sub));
+      assert.equal(podeExcluirPei({ sub, roles: [PROFISSIONAL_EDUCACAO] }, { id_author: null }), true, String(sub));
     }
   });
 
   it('hides delete from another education professional when the entry has an author', () => {
-    assert.equal(podeExcluirPei({ sub: OUTRO_ID, id_level: PROFISSIONAL_EDUCACAO }, { id_author: ID_DO_AUTOR }), false);
+    assert.equal(podeExcluirPei({ sub: OUTRO_ID, roles: [PROFISSIONAL_EDUCACAO] }, { id_author: ID_DO_AUTOR }), false);
   });
 
   for (const nivel of NIVEIS.filter((n) => n !== PROFISSIONAL_EDUCACAO)) {
     it(`hides delete from level ${nivel}, with the id of the author and also on an orphan entry`, () => {
-      assert.equal(podeExcluirPei({ sub: ID_DO_AUTOR, id_level: nivel }, { id_author: ID_DO_AUTOR }), false);
-      assert.equal(podeExcluirPei({ sub: ID_DO_AUTOR, id_level: nivel }, { id_author: null }), false);
+      assert.equal(podeExcluirPei({ sub: ID_DO_AUTOR, roles: [nivel] }, { id_author: ID_DO_AUTOR }), false);
+      assert.equal(podeExcluirPei({ sub: ID_DO_AUTOR, roles: [nivel] }, { id_author: null }), false);
     });
   }
 
@@ -1109,7 +1109,7 @@ describe('podeExcluirPei', () => {
 
   it('keeps the edit with the author only: the orphan entry is deletable but never editable', () => {
     const orfao = { id_author: null };
-    const sessao = { sub: ID_DO_AUTOR, id_level: PROFISSIONAL_EDUCACAO };
+    const sessao = { sub: ID_DO_AUTOR, roles: [PROFISSIONAL_EDUCACAO] };
 
     assert.equal(podeExcluirPei(sessao, orfao), true);
     assert.equal(podeAlterarPei(sessao, orfao), false);
@@ -1129,5 +1129,15 @@ describe('caminhoDoParDe', () => {
   it('is the key of the error the form clears when the teacher edits that side', () => {
     assert.equal(caminhoDoParDe(0, 'syllabus_content'), 'syllabus_adaptations.0.syllabus_content');
     assert.equal(caminhoDoParDe(12, 'adaptation'), 'syllabus_adaptations.12.adaptation');
+  });
+});
+
+describe('PEI buttons with several roles', () => {
+  it('shows the write to an Education professional who also has other roles', () => {
+    assert.equal(podeCriarPei([PROFISSIONAL_EDUCACAO, 6]), true);
+  });
+
+  it('hides the write from the AEE teacher alone', () => {
+    assert.equal(podeCriarPei([6]), false);
   });
 });
