@@ -75,9 +75,6 @@ model User {
   pei_entries          PeiEntry[] @relation("PeiEntryStudent")
   authored_pei_entries PeiEntry[] @relation("PeiEntryAuthor")
 
-  id_level Int?
-  level    Level? @relation(fields: [id_level], references: [id])
-
   roles Int[]
 
   id_current_phase Int
@@ -109,8 +106,6 @@ model Level {
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
   deleted_at DateTime?
-
-  users User[]
 }
 
 model Screening {

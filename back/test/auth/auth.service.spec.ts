@@ -38,7 +38,6 @@ describe('AuthService', () => {
     email: 'user@test.com',
     password: 'hashedPassword',
     full_name: 'Test User',
-    id_level: 2,
     roles: [2],
     cpf: '12345678900',
     affliation: 'Test',
@@ -173,10 +172,10 @@ describe('AuthService', () => {
       expect(result).toEqual({ access_token: 'mock.jwt.token' });
     });
 
-    it('should not put the level or the roles in the token, which the guard reads from the database', async () => {
+    it('should not put the roles in the token, which the guard reads from the database', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue({
         ...mockUser,
-        id_level: 3,
+        roles: [3, 6],
       });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
@@ -544,7 +543,7 @@ describe('AuthService', () => {
         jest.spyOn(usersService, 'findOne').mockResolvedValue({
           ...mockUser,
           email: 'admin@edutrace.com',
-          id_level: 1,
+          roles: [1],
         });
 
         await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
@@ -579,7 +578,7 @@ describe('AuthService', () => {
         jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
           ...mockUser,
           google_sub: 'google-sub',
-          id_level: 3,
+          roles: [3],
         });
 
         const result = await service.signInWithGoogle('credencial');

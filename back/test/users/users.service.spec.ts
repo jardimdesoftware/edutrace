@@ -71,7 +71,6 @@ describe('UsersService', () => {
     service_closed_at: null,
     service_capacity: null,
     napne_responsible_id: null,
-    id_level: LEVELS.ALUNO_ESTUDANTE,
     roles: [LEVELS.ALUNO_ESTUDANTE],
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
