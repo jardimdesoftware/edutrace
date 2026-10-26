@@ -82,7 +82,7 @@ export default function (data) {
       full_name: 'Estudante k6 Triagem',
       cpf: randomCpf(),
       email: testEmail,
-      id_level: 2,
+      roles: [2],
       enrollment_number: randomEnrollmentNumber(),
       course: 'Curso k6 Teste',
     }),
