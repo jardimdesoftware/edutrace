@@ -218,7 +218,7 @@ describe('ScreeningsService', () => {
     it('should return the student own screening', async () => {
       const email = 'test@example.com';
       const request = {
-        user: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+        user: { email, roles: [LEVELS.ALUNO_ESTUDANTE] },
       } as any;
       const screening = {
         id: 1,
@@ -277,7 +277,7 @@ describe('ScreeningsService', () => {
       const request = {
         user: {
           email: 'student@example.com',
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
         },
       } as any;
 
@@ -294,7 +294,7 @@ describe('ScreeningsService', () => {
 
     it("should throw ForbiddenException if a level outside the readers views another student's screening", async () => {
       const request = {
-        user: { email: 'nivel7@example.com', id_level: 7 },
+        user: { email: 'nivel7@example.com', roles: [7] },
       } as any;
 
       await expect(
@@ -317,7 +317,7 @@ describe('ScreeningsService', () => {
       async (id_level) => {
         const email = 'other@example.com';
         const request = {
-          user: { email: 'professional@example.com', id_level },
+          user: { email: 'professional@example.com', roles: [id_level] },
         } as any;
         const screening = { id: 1, email } as any;
         jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(screening);
@@ -427,7 +427,7 @@ describe('ScreeningsService', () => {
       const request = {
         user: {
           sub: 3,
-          id_level: LEVELS.PROFISSIONAL_SAUDE,
+          roles: [LEVELS.PROFISSIONAL_SAUDE],
           email: 'saude@example.com',
           name: 'Saúde',
         },
