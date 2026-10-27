@@ -20,7 +20,7 @@ const NO_EXTERNAL_MANAGER = {
 };
 
 const INVALID_SERVER_MESSAGE =
-  'O responsável pedagógico precisa ser um Profissional da Educação ou um Profissional NAPNE.';
+  'O responsável pedagógico precisa ser um Profissional da Educação, um Profissional NAPNE ou um Professor do AEE.';
 
 const INCOMPLETE_BODY_MESSAGE =
   'O corpo não tem os campos que o kind informado exige.';

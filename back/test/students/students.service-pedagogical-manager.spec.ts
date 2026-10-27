@@ -19,7 +19,7 @@ const NO_EXTERNAL = {
 };
 
 const INVALID_SERVER_MESSAGE =
-  'O responsável pedagógico precisa ser um Profissional da Educação ou um Profissional NAPNE.';
+  'O responsável pedagógico precisa ser um Profissional da Educação, um Profissional NAPNE ou um Professor do AEE.';
 
 const SELF_MANAGER_MESSAGE =
   'O estudante não pode ser o próprio responsável pedagógico.';
@@ -61,11 +61,9 @@ describe('StudentsService, responsável pedagógico', () => {
     dto: Partial<SetPedagogicalManagerDto>,
     requesterLevel: number = LEVELS.ADMIN,
   ) =>
-    service.setPedagogicalManager(
-      EMAIL,
-      dto as SetPedagogicalManagerDto,
-      [requesterLevel],
-    );
+    service.setPedagogicalManager(EMAIL, dto as SetPedagogicalManagerDto, [
+      requesterLevel,
+    ]);
 
   beforeEach(async () => {
     serverRows = [];
@@ -99,7 +97,7 @@ describe('StudentsService, responsável pedagógico', () => {
   });
 
   describe('findPedagogicalManagerOptions', () => {
-    it('should list only the id, the name and the level of the Education and NAPNE professionals, by name', async () => {
+    it('should list only the id, the name and the level of the Education, NAPNE and AEE professionals, by name', async () => {
       const options = [
         { id: 4, full_name: 'Ana', roles: [LEVELS.PROFISSIONAL_NAPNE] },
       ];
@@ -111,7 +109,11 @@ describe('StudentsService, responsável pedagógico', () => {
       expect(prisma.user.findMany).toHaveBeenCalledWith({
         where: {
           roles: {
-            hasSome: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
+            hasSome: [
+              LEVELS.PROFISSIONAL_EDUCACAO,
+              LEVELS.PROFISSIONAL_NAPNE,
+              LEVELS.PROFESSOR_AEE,
+            ],
           },
         },
         select: { id: true, full_name: true, roles: true },
@@ -121,7 +123,11 @@ describe('StudentsService, responsável pedagógico', () => {
   });
 
   describe('setPedagogicalManager, kind SERVER', () => {
-    it.each([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE])(
+    it.each([
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
+    ])(
       'should link a server of the level %s and clear the external manager',
       async (id_level) => {
         serverLevel(id_level);
