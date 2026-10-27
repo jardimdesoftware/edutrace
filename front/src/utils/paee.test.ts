@@ -5,6 +5,7 @@ import {
   ADMIN,
   ESTUDANTE,
   PROFISSIONAL_EDUCACAO,
+  PROFESSOR_AEE,
   PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
 } from '../consts';
@@ -461,9 +462,9 @@ describe('validarPlanoNovo', () => {
 });
 
 describe('podeEditarPaee', () => {
-  it('lets only the NAPNE professional write, as POST, PATCH and DELETE in the API', () => {
-    assert.equal(podeEditarPaee([PROFISSIONAL_NAPNE]), true);
-    for (const nivel of [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]) {
+  it('lets only the AEE teacher write, as POST, PATCH and DELETE in the API', () => {
+    assert.equal(podeEditarPaee([PROFESSOR_AEE]), true);
+    for (const nivel of [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]) {
       assert.equal(podeEditarPaee([nivel]), false, String(nivel));
     }
   });
@@ -593,11 +594,13 @@ describe('secoesDoPlanoParaLeitura', () => {
 });
 
 describe('podeEditarPaee with several roles', () => {
-  it('keeps the write with the NAPNE role, alone or together with the AEE role', () => {
-    assert.equal(podeEditarPaee([PROFISSIONAL_NAPNE, 6]), true);
+  it('lets the AEE role write alone or together with another role', () => {
+    assert.equal(podeEditarPaee([PROFISSIONAL_NAPNE, PROFESSOR_AEE]), true);
+    assert.equal(podeEditarPaee([PROFISSIONAL_EDUCACAO, PROFESSOR_AEE]), true);
   });
 
-  it('gives the AEE teacher alone only the read', () => {
-    assert.equal(podeEditarPaee([6]), false);
+  it('gives the NAPNE professional only the read, with or without another non-AEE role', () => {
+    assert.equal(podeEditarPaee([PROFISSIONAL_NAPNE]), false);
+    assert.equal(podeEditarPaee([PROFISSIONAL_EDUCACAO, PROFISSIONAL_NAPNE]), false);
   });
 });
