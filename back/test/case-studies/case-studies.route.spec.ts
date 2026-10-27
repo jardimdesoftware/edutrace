@@ -29,7 +29,7 @@ const STUDENT_ID = 2;
 
 const STORED = {
   ...validSections(),
-  author: { id: SUB, full_name: 'Profissional NAPNE' },
+  author: { id: SUB, full_name: 'Professor do AEE' },
   student: { full_name: 'Estudante', course: 'Informática' },
   created_at: '2026-10-17T10:00:00.000Z',
   updated_at: '2026-10-17T10:00:00.000Z',
@@ -40,9 +40,11 @@ const READERS = [
   ['Profissional da Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional da Saúde', LEVELS.PROFISSIONAL_SAUDE],
   ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
+  ['Professor do AEE', LEVELS.PROFESSOR_AEE],
 ] as const;
 
-const NOT_NAPNE = [
+const NOT_AEE = [
+  ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
   ['Administrador', LEVELS.ADMIN],
   ['Profissional da Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional da Saúde', LEVELS.PROFISSIONAL_SAUDE],
@@ -74,8 +76,8 @@ describe('estudo de caso, rotas de /case-studies', () => {
   let studentsService: { findOneOrFail: jest.Mock };
 
   beforeEach(async () => {
-    sessionLevel = LEVELS.PROFISSIONAL_NAPNE;
-    sessionEmail = 'napne@example.com';
+    sessionLevel = LEVELS.PROFESSOR_AEE;
+    sessionEmail = 'professor.aee@example.com';
     prisma = {
       caseStudy: {
         create: jest.fn().mockResolvedValue(STORED),
@@ -148,7 +150,7 @@ describe('estudo de caso, rotas de /case-studies', () => {
     call('delete', `/case-studies/${email}`);
 
   describe('POST /case-studies', () => {
-    it('should answer 201 to the NAPNE and record the session as the author', async () => {
+    it('should answer 201 to the AEE teacher and record the session as the author', async () => {
       const response = await post(validBody());
 
       expect(response.status).toBe(201);
@@ -163,7 +165,7 @@ describe('estudo de caso, rotas de /case-studies', () => {
       );
     });
 
-    it.each(NOT_NAPNE)('should answer 403 to the %s', async (_, level) => {
+    it.each(NOT_AEE)('should answer 403 to the %s', async (_, level) => {
       sessionLevel = level;
 
       const response = await post(validBody());
@@ -315,7 +317,7 @@ describe('estudo de caso, rotas de /case-studies', () => {
   });
 
   describe('PATCH /case-studies/:email', () => {
-    it('should answer 200 to the NAPNE with the sections that were sent', async () => {
+    it('should answer 200 to the AEE teacher with the sections that were sent', async () => {
       const response = await patch({ barriers: 'Novas barreiras' });
 
       expect(response.status).toBe(200);
@@ -343,15 +345,15 @@ describe('estudo de caso, rotas de /case-studies', () => {
       expect(response.status).toBe(200);
     });
 
-    it('should let any NAPNE edit, whoever wrote the case study', async () => {
-      sessionEmail = 'outro.napne@example.com';
+    it('should let any AEE teacher edit, whoever wrote the case study', async () => {
+      sessionEmail = 'outro.aee@example.com';
 
       const response = await patch({ barriers: 'Novas barreiras' });
 
       expect(response.status).toBe(200);
     });
 
-    it.each(NOT_NAPNE)('should answer 403 to the %s', async (_, level) => {
+    it.each(NOT_AEE)('should answer 403 to the %s', async (_, level) => {
       sessionLevel = level;
 
       const response = await patch({ barriers: 'Novas barreiras' });
@@ -375,7 +377,7 @@ describe('estudo de caso, rotas de /case-studies', () => {
   });
 
   describe('DELETE /case-studies/:email', () => {
-    it('should answer 200 to the NAPNE', async () => {
+    it('should answer 200 to the AEE teacher', async () => {
       const response = await del();
 
       expect(response.status).toBe(200);
@@ -384,7 +386,7 @@ describe('estudo de caso, rotas de /case-studies', () => {
       });
     });
 
-    it.each(NOT_NAPNE)('should answer 403 to the %s', async (_, level) => {
+    it.each(NOT_AEE)('should answer 403 to the %s', async (_, level) => {
       sessionLevel = level;
 
       const response = await del();

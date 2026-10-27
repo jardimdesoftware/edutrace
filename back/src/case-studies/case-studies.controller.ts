@@ -21,7 +21,7 @@ export class CaseStudiesController {
   constructor(private readonly caseStudiesService: CaseStudiesService) {}
 
   // O autor é quem está na sessão, e não um campo do corpo.
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @Post()
   create(
     @Body() createCaseStudyDto: CreateCaseStudyDto,
@@ -47,13 +47,13 @@ export class CaseStudiesController {
     return this.caseStudiesService.findOne(email, request);
   }
 
-  // Qualquer Profissional NAPNE edita, não só o autor: o NAPNE atua como equipe.
+  // Qualquer Professor do AEE edita, não só o autor: o AEE atua como equipe.
   @ApiOperation({
     summary: 'Edita o estudo de caso do estudante',
     description:
       'Cada seção enviada substitui a seção inteira, e por isso vai completa; as seções que não vão no corpo ficam como estão. O autor não muda.',
   })
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @Patch(':email')
   update(
     @Param('email') email: string,
@@ -62,7 +62,7 @@ export class CaseStudiesController {
     return this.caseStudiesService.update(email, updateCaseStudyDto);
   }
 
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @Delete(':email')
   remove(@Param('email') email: string) {
     return this.caseStudiesService.remove(email);
