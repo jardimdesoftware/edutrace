@@ -35,8 +35,8 @@ describe('getServiceStats', () => {
     const stats: ServiceStats = {
       totals: { WAITING: 3, IN_SERVICE: 4, CLOSED: 5 },
       professionals: [
-        { id: 7, full_name: 'Ana NAPNE', in_service: 2, capacity: 5, free: 3 },
-        { id: 8, full_name: 'Bia NAPNE', in_service: 0, capacity: null, free: null },
+        { id: 7, full_name: 'Ana AEE', in_service: 2, capacity: 15, free: 13 },
+        { id: 8, full_name: 'Bia AEE', in_service: 15, capacity: 15, free: 0 },
       ],
       queue: { size: 3, oldest_queued_at: '2026-10-01T09:30:00.000Z' },
     };
