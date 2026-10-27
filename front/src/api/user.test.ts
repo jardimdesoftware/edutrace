@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getAllUsers, updateProfile, updateServiceCapacity, updateUser } from './user';
+import { getAllUsers, updateProfile, updateUser } from './user';
 
 const API_URL = 'http://api.test';
 
@@ -113,34 +113,5 @@ describe('updateUser', () => {
     assert.equal(calls[0].init.method, 'PATCH');
     assert.deepEqual(body, { roles: [5, 6] });
     assert.equal('id_level' in body, false);
-  });
-});
-
-describe('updateServiceCapacity', () => {
-  it('sends the capacity as a number in a PATCH to the user path', async () => {
-    respondWith(200, { service_capacity: 12 });
-
-    const result = await updateServiceCapacity('napne@edutrace.com', 12);
-
-    assert.deepEqual(result, { service_capacity: 12 });
-    assert.equal(calls[0].url, `${API_URL}/users/napne%40edutrace.com`);
-    assert.equal(calls[0].init.method, 'PATCH');
-    assert.equal(calls[0].init.body, JSON.stringify({ service_capacity: 12 }));
-  });
-
-  it('keeps the zero capacity in the body', async () => {
-    respondWith(200, {});
-
-    await updateServiceCapacity('napne@edutrace.com', 0);
-
-    assert.equal(calls[0].init.body, JSON.stringify({ service_capacity: 0 }));
-  });
-
-  it('rejects with the API message when the user is not NAPNE', async () => {
-    respondWith(400, { message: 'O limite de atendimento só vale para o Profissional NAPNE' });
-
-    await assert.rejects(updateServiceCapacity('aluno@edutrace.com', 5), {
-      message: 'O limite de atendimento só vale para o Profissional NAPNE',
-    });
   });
 });
