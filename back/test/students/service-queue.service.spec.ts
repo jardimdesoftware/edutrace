@@ -6,13 +6,14 @@ import {
 } from '@nestjs/common';
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
-import { LEVELS } from 'src/constants';
+import { AEE_SERVICE_CAPACITY, LEVELS } from 'src/constants';
 import { ServiceQueueService } from 'src/students/service-queue.service';
 import { StudentsService } from 'src/students/students.service';
 
 const NOW = new Date('2026-10-16T12:00:00.000Z');
 const EMAIL = 'estudante@example.com';
-const NAPNE_ID = 9;
+const AEE_ID = 9;
+const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
 const STUDENT = { id: 2, email: EMAIL, service_status: 'IN_SERVICE' };
 
 describe('ServiceQueueService', () => {
@@ -28,14 +29,11 @@ describe('ServiceQueueService', () => {
   let students: { findOne: jest.Mock; findOneOrFail: jest.Mock };
   let events: string[];
 
-  const napne = (service_capacity: number | null) =>
-    tx.$queryRaw.mockResolvedValue([{ service_capacity }]);
-
   beforeEach(async () => {
     jest.useFakeTimers().setSystemTime(NOW);
     events = [];
     tx = {
-      $queryRaw: jest.fn().mockResolvedValue([{ service_capacity: 3 }]),
+      $queryRaw: jest.fn().mockResolvedValue([{ id: AEE_ID }]),
       user: {
         count: jest.fn().mockResolvedValue(0),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -79,7 +77,7 @@ describe('ServiceQueueService', () => {
     beforeEach(() => students.findOne.mockResolvedValue(null));
 
     it.each([
-      ['assume', () => service.assume(EMAIL, NAPNE_ID)],
+      ['assume', () => service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE])],
       ['close', () => service.close(EMAIL, { sub: 1, roles: [LEVELS.ADMIN] })],
       ['reopen', () => service.reopen(EMAIL, [LEVELS.ADMIN])],
     ])('should answer 404 from %s when the student is gone', async (_, run) => {
@@ -90,19 +88,19 @@ describe('ServiceQueueService', () => {
   });
 
   describe('assume', () => {
-    it('should lock the NAPNE row with FOR UPDATE, filtered by id and by the NAPNE role', async () => {
-      await service.assume(EMAIL, NAPNE_ID);
+    it('should lock the teacher row with FOR UPDATE, filtered by id and by the AEE role', async () => {
+      await service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]);
 
       const [strings, ...values] = tx.$queryRaw.mock.calls[0] as [
         TemplateStringsArray,
         ...unknown[],
       ];
       expect(strings.join('?')).toContain('FOR UPDATE');
-      expect(values).toEqual([NAPNE_ID, LEVELS.PROFISSIONAL_NAPNE]);
+      expect(values).toEqual([AEE_ID, LEVELS.PROFESSOR_AEE]);
     });
 
     it('should lock before counting and count before assigning', async () => {
-      await service.assume(EMAIL, NAPNE_ID);
+      await service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]);
 
       expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
         tx.user.count.mock.invocationCallOrder[0],
@@ -112,19 +110,19 @@ describe('ServiceQueueService', () => {
       );
     });
 
-    it('should count the students in service of that NAPNE', async () => {
-      await service.assume(EMAIL, NAPNE_ID);
+    it('should count the students in service of that teacher', async () => {
+      await service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]);
 
       expect(tx.user.count).toHaveBeenCalledWith({
         where: {
-          napne_responsible_id: NAPNE_ID,
+          aee_responsible_id: AEE_ID,
           service_status: ServiceStatus.IN_SERVICE,
         },
       });
     });
 
     it('should move only a waiting student to IN_SERVICE in a single conditional update', async () => {
-      await service.assume(EMAIL, NAPNE_ID);
+      await service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]);
 
       expect(tx.user.updateMany).toHaveBeenCalledWith({
         where: {
@@ -134,73 +132,57 @@ describe('ServiceQueueService', () => {
         },
         data: {
           service_status: ServiceStatus.IN_SERVICE,
-          napne_responsible_id: NAPNE_ID,
+          aee_responsible_id: AEE_ID,
           service_started_at: NOW,
           service_closed_at: null,
         },
       });
     });
 
-    it('should return the record of the student read for the NAPNE level, which the transaction proved', async () => {
-      await expect(service.assume(EMAIL, NAPNE_ID)).resolves.toBe(STUDENT);
-      expect(students.findOne).toHaveBeenCalledWith(
-        EMAIL,
-        [LEVELS.PROFISSIONAL_NAPNE],
-      );
+    it('should read the returned student with the real roles of who asked, like close', async () => {
+      const roles = [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE];
+
+      await expect(service.assume(EMAIL, AEE_ID, roles)).resolves.toBe(STUDENT);
+      expect(students.findOne).toHaveBeenCalledWith(EMAIL, roles);
     });
 
     it('should use the default isolation level of the transaction', async () => {
-      await service.assume(EMAIL, NAPNE_ID);
+      await service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]);
 
       expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
     });
 
-    it('should take the last free slot', async () => {
-      napne(3);
-      tx.user.count.mockResolvedValue(2);
+    it('should have a fixed capacity of 15', () => {
+      expect(AEE_SERVICE_CAPACITY).toBe(15);
+    });
 
-      await service.assume(EMAIL, NAPNE_ID);
+    it('should take the last free slot', async () => {
+      tx.user.count.mockResolvedValue(AEE_SERVICE_CAPACITY - 1);
+
+      await service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]);
 
       expect(tx.user.updateMany).toHaveBeenCalledTimes(1);
     });
 
-    it('should answer 409 and assign nothing when the capacity was never defined', async () => {
-      napne(null);
+    it.each([
+      ['at the limit', 15],
+      ['above the limit', 20],
+    ])('should answer 409 and assign nothing %s', async (_, inService) => {
+      tx.user.count.mockResolvedValue(inService);
 
-      await expect(service.assume(EMAIL, NAPNE_ID)).rejects.toThrow(
-        new ConflictException(
-          'Seu limite de atendimentos ainda não foi definido pelo administrador.',
-        ),
-      );
+      await expect(
+        service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]),
+      ).rejects.toThrow(new ConflictException(LIMIT_MESSAGE));
 
-      expect(tx.user.count).not.toHaveBeenCalled();
       expect(tx.user.updateMany).not.toHaveBeenCalled();
     });
 
-    it.each([
-      ['at the limit', 3, 3],
-      ['above the limit, after the capacity was reduced', 5, 3],
-      ['with capacity zero', 0, 0],
-    ])(
-      'should answer 409 and assign nothing %s',
-      async (_, inService, capacity) => {
-        napne(capacity);
-        tx.user.count.mockResolvedValue(inService);
-
-        await expect(service.assume(EMAIL, NAPNE_ID)).rejects.toThrow(
-          new ConflictException('Você atingiu o limite de atendimentos.'),
-        );
-
-        expect(tx.user.updateMany).not.toHaveBeenCalled();
-      },
-    );
-
-    it('should answer 403 when the account stopped being a NAPNE', async () => {
+    it('should answer 403 when the account does not have the AEE role', async () => {
       tx.$queryRaw.mockResolvedValue([]);
 
-      await expect(service.assume(EMAIL, NAPNE_ID)).rejects.toBeInstanceOf(
-        ForbiddenException,
-      );
+      await expect(
+        service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]),
+      ).rejects.toBeInstanceOf(ForbiddenException);
 
       expect(tx.user.updateMany).not.toHaveBeenCalled();
     });
@@ -208,7 +190,9 @@ describe('ServiceQueueService', () => {
     it('should answer 409 when the student is not waiting', async () => {
       tx.user.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.assume(EMAIL, NAPNE_ID)).rejects.toThrow(
+      await expect(
+        service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]),
+      ).rejects.toThrow(
         new ConflictException('O estudante não está na fila de espera.'),
       );
 
@@ -221,9 +205,9 @@ describe('ServiceQueueService', () => {
         new NotFoundException('Estudante não encontrado'),
       );
 
-      await expect(service.assume(EMAIL, NAPNE_ID)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     // Quem decide entre 404 e 409 usa outra conexão do pool. Dentro da
@@ -232,9 +216,9 @@ describe('ServiceQueueService', () => {
     it('should tell 404 from 409 only after the transaction ended', async () => {
       tx.user.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.assume(EMAIL, NAPNE_ID)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE]),
+      ).rejects.toBeInstanceOf(ConflictException);
 
       expect(events).toEqual(['commit', 'findOneOrFail']);
     });
@@ -242,7 +226,7 @@ describe('ServiceQueueService', () => {
 
   describe('close', () => {
     const admin = { sub: 1, roles: [LEVELS.ADMIN] };
-    const responsible = { sub: NAPNE_ID, roles: [LEVELS.PROFISSIONAL_NAPNE] };
+    const responsible = { sub: AEE_ID, roles: [LEVELS.PROFESSOR_AEE] };
 
     it('should let the administrator close any student in service', async () => {
       await service.close(EMAIL, admin);
@@ -257,7 +241,7 @@ describe('ServiceQueueService', () => {
       });
     });
 
-    it('should restrict the NAPNE to the students it is responsible for', async () => {
+    it('should restrict the AEE teacher to the students it is responsible for', async () => {
       await service.close(EMAIL, responsible);
 
       expect(prisma.user.updateMany).toHaveBeenCalledWith({
@@ -265,7 +249,7 @@ describe('ServiceQueueService', () => {
           email: EMAIL,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
           service_status: ServiceStatus.IN_SERVICE,
-          napne_responsible_id: NAPNE_ID,
+          aee_responsible_id: AEE_ID,
         },
         data: { service_status: ServiceStatus.CLOSED, service_closed_at: NOW },
       });
@@ -277,6 +261,7 @@ describe('ServiceQueueService', () => {
       LEVELS.ALUNO_ESTUDANTE,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
     ])('should restrict level %i to its own students', async (id_level) => {
       await service.close(EMAIL, { sub: 7, roles: [id_level] });
 
@@ -285,7 +270,7 @@ describe('ServiceQueueService', () => {
           email: EMAIL,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
           service_status: ServiceStatus.IN_SERVICE,
-          napne_responsible_id: 7,
+          aee_responsible_id: 7,
         },
         data: { service_status: ServiceStatus.CLOSED, service_closed_at: NOW },
       });
@@ -295,7 +280,7 @@ describe('ServiceQueueService', () => {
       await service.close(EMAIL, admin);
 
       const { data } = prisma.user.updateMany.mock.calls[0][0];
-      expect(data).not.toHaveProperty('napne_responsible_id');
+      expect(data).not.toHaveProperty('aee_responsible_id');
       expect(data).not.toHaveProperty('service_started_at');
     });
 
@@ -304,10 +289,9 @@ describe('ServiceQueueService', () => {
       expect(students.findOne).toHaveBeenCalledWith(EMAIL, [LEVELS.ADMIN]);
 
       await service.close(EMAIL, responsible);
-      expect(students.findOne).toHaveBeenLastCalledWith(
-        EMAIL,
-        [LEVELS.PROFISSIONAL_NAPNE],
-      );
+      expect(students.findOne).toHaveBeenLastCalledWith(EMAIL, [
+        LEVELS.PROFESSOR_AEE,
+      ]);
     });
 
     it.each([ServiceStatus.WAITING, ServiceStatus.CLOSED])(
@@ -325,7 +309,7 @@ describe('ServiceQueueService', () => {
       },
     );
 
-    it('should answer 403 when another NAPNE is the responsible', async () => {
+    it('should answer 403 when another teacher is the responsible', async () => {
       prisma.user.updateMany.mockResolvedValue({ count: 0 });
       prisma.user.findFirst.mockResolvedValue({
         service_status: ServiceStatus.IN_SERVICE,
@@ -363,14 +347,14 @@ describe('ServiceQueueService', () => {
         data: {
           service_status: ServiceStatus.WAITING,
           queued_at: NOW,
-          napne_responsible_id: null,
+          aee_responsible_id: null,
           service_started_at: null,
           service_closed_at: null,
         },
       });
     });
 
-    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])(
+    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE])(
       'should return the record of the student read for the level %s of who reopens',
       async (level) => {
         await expect(service.reopen(EMAIL, [level])).resolves.toBe(STUDENT);

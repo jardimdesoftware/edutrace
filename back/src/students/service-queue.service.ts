@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
-import { LEVELS } from 'src/constants';
+import { AEE_SERVICE_CAPACITY, LEVELS } from 'src/constants';
 import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from './students.service';
 
@@ -24,41 +24,42 @@ export class ServiceQueueService {
   ) {}
 
   // Duas garantias, cada uma com o seu mecanismo:
-  //  - o limite do NAPNE: a linha dele é travada com FOR UPDATE antes de contar
-  //    os atendimentos. "Assumir" simultâneos do mesmo NAPNE se enfileiram nessa
-  //    linha, e a contagem de cada um enxerga o que o anterior confirmou
-  //    (READ COMMITTED, o padrão). Sem a trava, todos contariam antes do primeiro
+  //  - o limite do Professor do AEE (AEE_SERVICE_CAPACITY): a linha dele é
+  //    travada com FOR UPDATE antes de contar os atendimentos. "Assumir"
+  //    simultâneos do mesmo professor se enfileiram nessa linha, e a contagem
+  //    de cada um enxerga o que o anterior confirmou (READ COMMITTED, o padrão). Sem a trava, todos contariam antes do primeiro
   //    commit e passariam do limite;
-  //  - o estudante: o UPDATE só casa com quem ainda está WAITING. Dois NAPNEs
+  //  - o estudante: o UPDATE só casa com quem ainda está WAITING. Dois professores
   //    disputando o mesmo estudante travam a mesma linha dele, e o segundo
   //    reavalia a condição depois do commit do primeiro e não casa com nada.
   // O 404 e o 409 do estudante são decididos depois da transação: a consulta
   // usa outra conexão do pool, e dentro da transação, com o pool inteiro ocupado
   // por transações iguais, esperaria uma conexão que só volta quando elas acabam.
-  async assume(email: string, napneId: number) {
+  async assume(
+    email: string,
+    aeeId: number,
+    requesterRoles: readonly number[],
+  ) {
     const assumed = await this.prisma.$transaction(async (tx) => {
-      const [napne] = await tx.$queryRaw<{ service_capacity: number | null }[]>`
-        SELECT "service_capacity" FROM "User"
-        WHERE "id" = ${napneId} AND ${LEVELS.PROFISSIONAL_NAPNE} = ANY("roles")
+      const [teacher] = await tx.$queryRaw<{ id: number }[]>`
+        SELECT "id" FROM "User"
+        WHERE "id" = ${aeeId} AND ${LEVELS.PROFESSOR_AEE} = ANY("roles")
         FOR UPDATE`;
 
-      if (!napne) {
+      if (!teacher) {
         throw new ForbiddenException('Nível de acesso insuficiente');
-      }
-      if (napne.service_capacity === null) {
-        throw new ConflictException(
-          'Seu limite de atendimentos ainda não foi definido pelo administrador.',
-        );
       }
 
       const inService = await tx.user.count({
         where: {
-          napne_responsible_id: napneId,
+          aee_responsible_id: aeeId,
           service_status: ServiceStatus.IN_SERVICE,
         },
       });
-      if (inService >= napne.service_capacity) {
-        throw new ConflictException('Você atingiu o limite de atendimentos.');
+      if (inService >= AEE_SERVICE_CAPACITY) {
+        throw new ConflictException(
+          `Você já atende o limite de ${AEE_SERVICE_CAPACITY} estudantes.`,
+        );
       }
 
       const { count } = await tx.user.updateMany({
@@ -69,7 +70,7 @@ export class ServiceQueueService {
         },
         data: {
           service_status: ServiceStatus.IN_SERVICE,
-          napne_responsible_id: napneId,
+          aee_responsible_id: aeeId,
           service_started_at: new Date(),
           service_closed_at: null,
         },
@@ -83,12 +84,12 @@ export class ServiceQueueService {
       throw new ConflictException('O estudante não está na fila de espera.');
     }
 
-    return this.readStudent(email, [LEVELS.PROFISSIONAL_NAPNE]);
+    return this.readStudent(email, requesterRoles);
   }
 
   // O responsável continua gravado depois do encerramento, como histórico de
   // quem atendeu. A condição está no próprio UPDATE: só o administrador encerra
-  // sem filtro, qualquer outro papel só encerra quem ele atende, e o status é
+  // sem filtro, o Professor do AEE só encerra quem ele atende, e o status é
   // conferido na mesma operação.
   async close(email: string, requester: ServiceRequester) {
     const { count } = await this.prisma.user.updateMany({
@@ -98,7 +99,7 @@ export class ServiceQueueService {
         service_status: ServiceStatus.IN_SERVICE,
         ...(hasAnyRole(requester.roles, [LEVELS.ADMIN])
           ? {}
-          : { napne_responsible_id: requester.sub }),
+          : { aee_responsible_id: requester.sub }),
       },
       data: {
         service_status: ServiceStatus.CLOSED,
@@ -110,7 +111,7 @@ export class ServiceQueueService {
       const status = await this.statusOf(email);
       throw status === ServiceStatus.IN_SERVICE
         ? new ForbiddenException(
-            'Apenas o profissional NAPNE responsável ou o administrador encerra o atendimento.',
+            'Apenas o Professor do AEE responsável ou o administrador encerra o atendimento.',
           )
         : new ConflictException('O estudante não está em atendimento.');
     }
@@ -129,7 +130,7 @@ export class ServiceQueueService {
       data: {
         service_status: ServiceStatus.WAITING,
         queued_at: new Date(),
-        napne_responsible_id: null,
+        aee_responsible_id: null,
         service_started_at: null,
         service_closed_at: null,
       },

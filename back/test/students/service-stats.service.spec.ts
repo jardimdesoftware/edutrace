@@ -8,17 +8,11 @@ const OLDEST = new Date('2026-10-01T09:30:00.000Z');
 
 // Linha de profissional como o Prisma devolve: o IN_SERVICE vem da contagem
 // filtrada da relação, e o password só está aqui para provar que não sai.
-const napne = (
-  id: number,
-  full_name: string,
-  service_capacity: number | null,
-  inService: number,
-) => ({
+const teacher = (id: number, full_name: string, inService: number) => ({
   id,
   full_name,
-  service_capacity,
   password: 'hash-que-nao-pode-sair',
-  _count: { napne_students: inService },
+  _count: { aee_students: inService },
 });
 
 describe('ServiceStatsService', () => {
@@ -87,68 +81,44 @@ describe('ServiceStatsService', () => {
   });
 
   describe('professionals', () => {
-    it('should report the occupation and the free slots of each NAPNE', async () => {
+    it('should report the occupation of each AEE teacher over the fixed capacity of 15', async () => {
       prisma.user.findMany.mockResolvedValue([
-        napne(10, 'Ana', 3, 2),
-        napne(11, 'Bruno', 5, 0),
-        napne(12, 'Carla', 4, 4),
+        teacher(10, 'Ana', 2),
+        teacher(11, 'Bruno', 0),
+        teacher(12, 'Carla', 15),
       ]);
 
       const { professionals } = await service.getStats();
 
       expect(professionals).toEqual([
-        { id: 10, full_name: 'Ana', in_service: 2, capacity: 3, free: 1 },
-        { id: 11, full_name: 'Bruno', in_service: 0, capacity: 5, free: 5 },
-        { id: 12, full_name: 'Carla', in_service: 4, capacity: 4, free: 0 },
+        { id: 10, full_name: 'Ana', in_service: 2, capacity: 15, free: 13 },
+        { id: 11, full_name: 'Bruno', in_service: 0, capacity: 15, free: 15 },
+        { id: 12, full_name: 'Carla', in_service: 15, capacity: 15, free: 0 },
       ]);
     });
 
-    it('should report free null when the capacity was never defined', async () => {
-      prisma.user.findMany.mockResolvedValue([napne(10, 'Ana', null, 1)]);
-
-      const { professionals } = await service.getStats();
-
-      expect(professionals).toEqual([
-        { id: 10, full_name: 'Ana', in_service: 1, capacity: null, free: null },
-      ]);
-    });
-
-    it('should report zero free slots when the capacity was reduced below the occupation', async () => {
-      prisma.user.findMany.mockResolvedValue([napne(10, 'Ana', 2, 5)]);
+    it('should report zero free slots above the capacity, never a negative number', async () => {
+      prisma.user.findMany.mockResolvedValue([teacher(10, 'Ana', 17)]);
 
       const { professionals } = await service.getStats();
 
       expect(professionals[0]).toEqual({
         id: 10,
         full_name: 'Ana',
-        in_service: 5,
-        capacity: 2,
+        in_service: 17,
+        capacity: 15,
         free: 0,
       });
     });
 
-    it('should report zero free slots for the capacity zero', async () => {
-      prisma.user.findMany.mockResolvedValue([napne(10, 'Ana', 0, 0)]);
-
-      const { professionals } = await service.getStats();
-
-      expect(professionals[0]).toEqual({
-        id: 10,
-        full_name: 'Ana',
-        in_service: 0,
-        capacity: 0,
-        free: 0,
-      });
-    });
-
-    it('should return an empty list when there is no NAPNE professional', async () => {
+    it('should return an empty list when there is no AEE teacher', async () => {
       const { professionals } = await service.getStats();
 
       expect(professionals).toEqual([]);
     });
 
     it('should expose only id, name, occupation, capacity and free slots, never the password', async () => {
-      prisma.user.findMany.mockResolvedValue([napne(10, 'Ana', 3, 1)]);
+      prisma.user.findMany.mockResolvedValue([teacher(10, 'Ana', 1)]);
 
       const { professionals } = await service.getStats();
 
@@ -161,19 +131,18 @@ describe('ServiceStatsService', () => {
       ]);
     });
 
-    it('should read the NAPNE level ordered by name, with an explicit select and the IN_SERVICE count of each one', async () => {
+    it('should read the AEE role ordered by name, with an explicit select and the IN_SERVICE count of each one', async () => {
       await service.getStats();
 
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { roles: { has: LEVELS.PROFISSIONAL_NAPNE } },
+        where: { roles: { has: LEVELS.PROFESSOR_AEE } },
         orderBy: [{ full_name: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
           full_name: true,
-          service_capacity: true,
           _count: {
             select: {
-              napne_students: {
+              aee_students: {
                 where: { service_status: ServiceStatus.IN_SERVICE },
               },
             },

@@ -74,9 +74,7 @@ describe('contato do responsável externo, rotas de /students', () => {
     };
     const tx = {
       user,
-      $queryRaw: jest
-        .fn()
-        .mockResolvedValue([{ id: 2, roles: [3], service_capacity: 3 }]),
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 2, roles: [3] }]),
     };
     const prisma = {
       user,
@@ -149,11 +147,13 @@ describe('contato do responsável externo, rotas de /students', () => {
   const contactOf = (body: unknown) => (Array.isArray(body) ? body[0] : body);
 
   describe.each(CONTACT_READERS)('%s', (_, level) => {
-    // O NAPNE é o único nível de assume, e o Administrador não o chama.
+    // Assumir é só do Professor do AEE, e encerrar é dele e do Administrador:
+    // o NAPNE e o Administrador não chamam essas rotas.
     const routes = Object.entries(responses).filter(
       ([route]) =>
-        level === LEVELS.PROFISSIONAL_NAPNE ||
-        route !== 'POST /students/:email/service/assume',
+        route !== 'POST /students/:email/service/assume' &&
+        (level === LEVELS.ADMIN ||
+          route !== 'POST /students/:email/service/close'),
     );
 
     it.each(routes)(
@@ -210,6 +210,27 @@ describe('contato do responsável externo, rotas de /students', () => {
         /external_manager_(phone|cpf)|81999998888|98765432100/,
       );
     });
+  });
+
+  describe('Professor do AEE', () => {
+    it.each([
+      ['POST /students/:email/service/assume'],
+      ['POST /students/:email/service/close'],
+      ['POST /students/:email/service/reopen'],
+    ] as const)(
+      'should receive only the name of the external manager in %s',
+      async (route) => {
+        sessionLevel = LEVELS.PROFESSOR_AEE;
+
+        const response = await responses[route]();
+        const student = contactOf(response.body);
+
+        expect(response.status).toBe(200);
+        expect(student.external_manager_name).toBe('Maria da Silva');
+        expect(student).not.toHaveProperty('external_manager_phone');
+        expect(student).not.toHaveProperty('external_manager_cpf');
+      },
+    );
   });
 
   describe('Estudante', () => {

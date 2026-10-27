@@ -12,23 +12,23 @@ import { UsersService } from 'src/users/users.service';
 import { ServiceQueueService } from 'src/students/service-queue.service';
 import { ServiceStatsService } from 'src/students/service-stats.service';
 import { StudentsService } from 'src/students/students.service';
-import { LEVELS, PHASES } from 'src/constants';
+import { AEE_SERVICE_CAPACITY, LEVELS, PHASES } from 'src/constants';
 import { requireIntegrationDatabaseUrl } from '../users/integration-database';
 
 // Roda contra um PostgreSQL real e só quando INTEGRATION_DATABASE_URL existe,
 // então o npm test comum pula este arquivo. A garantia de que dois "assumir"
-// simultâneos não passam do limite do NAPNE nem atribuem o mesmo estudante a
-// dois profissionais vem do bloqueio de linha e do UPDATE condicional, e um
+// simultâneos não passam do limite do Professor do AEE nem atribuem o mesmo
+// estudante a dois professores vem do bloqueio de linha e do UPDATE condicional, e um
 // Prisma mockado não executa nenhum dos dois.
 // Os specs de integração rodam em paralelo no mesmo banco, então este apaga só
 // as contas do próprio domínio de e-mail, e nunca a tabela inteira.
 const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
 
 const EMAIL_DOMAIN = '@fila.test';
-const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
+const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
 
 (integrationDatabaseUrl ? describe : describe.skip)(
-  'Fila de atendimento do NAPNE contra o PostgreSQL',
+  'Fila de atendimento do Professor do AEE contra o PostgreSQL',
   () => {
     let prisma: PrismaService;
     let queue: ServiceQueueService;
@@ -56,29 +56,27 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
       });
     }
 
-    async function createNapne(
-      capacity: number | null,
+    async function createTeacher(
       fullName?: string,
-      roles: number[] = [LEVELS.PROFISSIONAL_NAPNE],
+      roles: number[] = [LEVELS.PROFESSOR_AEE],
     ) {
       const n = nextNumber();
       return prisma.user.create({
         data: {
-          full_name: fullName ?? `NAPNE ${n}`,
+          full_name: fullName ?? `Professor ${n}`,
           cpf: `6${String(n).padStart(10, '0')}`,
-          email: `napne${n}${EMAIL_DOMAIN}`,
+          email: `professor${n}${EMAIL_DOMAIN}`,
           password: 'x',
           roles,
           id_current_phase: PHASES.TRIAGEM,
-          service_capacity: capacity,
         },
       });
     }
 
-    const inServiceOf = (napneId: number) =>
+    const inServiceOf = (teacherId: number) =>
       prisma.user.count({
         where: {
-          napne_responsible_id: napneId,
+          aee_responsible_id: teacherId,
           service_status: ServiceStatus.IN_SERVICE,
         },
       });
@@ -88,7 +86,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         where: { email },
         select: {
           service_status: true,
-          napne_responsible_id: true,
+          aee_responsible_id: true,
           service_started_at: true,
           service_closed_at: true,
           queued_at: true,
@@ -186,24 +184,28 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
     });
 
     describe('concorrência', () => {
-      it('should put exactly the capacity in service when ten assumes run at once', async () => {
-        const napne = await createNapne(3);
+      it('should put exactly 15 in service when twenty assumes run at once', async () => {
+        const teacher = await createTeacher();
         const students = await Promise.all(
-          Array.from({ length: 10 }, () => createStudent()),
+          Array.from({ length: 20 }, () => createStudent()),
         );
 
         const results = await Promise.allSettled(
-          students.map((student) => queue.assume(student.email, napne.id)),
+          students.map((student) =>
+            queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]),
+          ),
         );
 
         const rejected = results.filter((r) => r.status === 'rejected');
-        expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(3);
-        expect(rejected).toHaveLength(7);
+        expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(
+          AEE_SERVICE_CAPACITY,
+        );
+        expect(rejected).toHaveLength(5);
         for (const { reason } of rejected) {
           expect(reason).toBeInstanceOf(ConflictException);
           expect((reason as ConflictException).message).toBe(LIMIT_MESSAGE);
         }
-        await expect(inServiceOf(napne.id)).resolves.toBe(3);
+        await expect(inServiceOf(teacher.id)).resolves.toBe(15);
         await expect(
           prisma.user.count({
             where: {
@@ -211,20 +213,47 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
               service_status: ServiceStatus.WAITING,
             },
           }),
-        ).resolves.toBe(7);
+        ).resolves.toBe(5);
       });
 
-      it('should give each student to exactly one NAPNE when two of them take the same students at once', async () => {
-        const first = await createNapne(20);
-        const second = await createNapne(20);
+      it('should accept one and refuse one when two assumes race for the last slot', async () => {
+        const teacher = await createTeacher();
+        const taken = await Promise.all(
+          Array.from({ length: 14 }, () => createStudent()),
+        );
+        for (const student of taken) {
+          await queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]);
+        }
+        const [first, second] = await Promise.all([
+          createStudent(),
+          createStudent(),
+        ]);
+
+        const results = await Promise.allSettled([
+          queue.assume(first.email, teacher.id, [LEVELS.PROFESSOR_AEE]),
+          queue.assume(second.email, teacher.id, [LEVELS.PROFESSOR_AEE]),
+        ]);
+
+        expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+        const [rejected] = results.filter((r) => r.status === 'rejected');
+        expect(rejected.reason).toBeInstanceOf(ConflictException);
+        expect((rejected.reason as ConflictException).message).toBe(
+          LIMIT_MESSAGE,
+        );
+        await expect(inServiceOf(teacher.id)).resolves.toBe(15);
+      });
+
+      it('should give each student to exactly one teacher when two of them take the same students at once', async () => {
+        const first = await createTeacher();
+        const second = await createTeacher();
         const students = await Promise.all(
           Array.from({ length: 8 }, () => createStudent()),
         );
 
         const results = await Promise.allSettled(
           students.flatMap((student) => [
-            queue.assume(student.email, first.id),
-            queue.assume(student.email, second.id),
+            queue.assume(student.email, first.id, [LEVELS.PROFESSOR_AEE]),
+            queue.assume(student.email, second.id, [LEVELS.PROFESSOR_AEE]),
           ]),
         );
 
@@ -244,57 +273,56 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         expect(taken[0] + taken[1]).toBe(8);
       });
 
-      it('should never leave a NAPNE with students in service at another level', async () => {
-        const napne = await createNapne(5);
+      it('should never leave an AEE teacher with students in service without the role', async () => {
+        const teacher = await createTeacher();
         const students = await Promise.all(
           Array.from({ length: 5 }, () => createStudent()),
         );
 
         await Promise.allSettled([
-          ...students.map((student) => queue.assume(student.email, napne.id)),
-          users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
+          ...students.map((student) =>
+            queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]),
+          ),
+          users.update(teacher.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ]);
 
         const after = await prisma.user.findUniqueOrThrow({
-          where: { id: napne.id },
-          select: { roles: true, service_capacity: true },
+          where: { id: teacher.id },
+          select: { roles: true },
         });
-        const inService = await inServiceOf(napne.id);
+        const inService = await inServiceOf(teacher.id);
 
-        const stillNapne = after.roles.includes(LEVELS.PROFISSIONAL_NAPNE);
-        expect(stillNapne || inService === 0).toBe(true);
-        if (!stillNapne) {
-          expect(after.service_capacity).toBeNull();
-        }
+        const stillTeacher = after.roles.includes(LEVELS.PROFESSOR_AEE);
+        expect(stillTeacher || inService === 0).toBe(true);
       });
 
       // Determinístico: o "assumir" é simulado por uma transação que trava a
-      // linha do NAPNE, e a troca de nível (ou a exclusão) chega no meio dela.
-      // Sem o FOR UPDATE, a operação contaria os atendimentos antes do commit,
-      // enxergaria zero e trocaria o nível de um NAPNE que passou a ter um
-      // estudante em atendimento.
+      // linha do professor, e a troca de papéis (ou a exclusão) chega no meio
+      // dela. Sem o FOR UPDATE, a operação contaria os atendimentos antes do
+      // commit, enxergaria zero e tiraria o papel de um professor que passou a
+      // ter um estudante em atendimento.
       it.each([
         [
-          'the level change',
-          (napne: { id: number; email: string }) =>
-            users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
+          'the role change',
+          (teacher: { id: number; email: string }) =>
+            users.update(teacher.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ],
         [
           'the deletion',
-          (napne: { id: number; email: string }) => users.remove(napne.id),
+          (teacher: { id: number; email: string }) => users.remove(teacher.id),
         ],
       ])(
         'should make %s wait for an assume in flight and then answer 409',
         async (_, operation) => {
-          const napne = await createNapne(2);
+          const teacher = await createTeacher();
           const student = await createStudent();
           let outcome: Promise<unknown> | undefined;
 
           await prisma.$transaction(async (tx) => {
             const [{ pid }] = await tx.$queryRaw<{ pid: number }[]>`
               SELECT pg_backend_pid() AS pid FROM "User"
-              WHERE "id" = ${napne.id} FOR UPDATE`;
-            outcome = operation(napne).then(
+              WHERE "id" = ${teacher.id} FOR UPDATE`;
+            outcome = operation(teacher).then(
               () => 'done',
               (error: unknown) => error,
             );
@@ -303,7 +331,7 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
               where: { id: student.id },
               data: {
                 service_status: ServiceStatus.IN_SERVICE,
-                napne_responsible_id: napne.id,
+                aee_responsible_id: teacher.id,
                 service_started_at: new Date(),
               },
             });
@@ -311,46 +339,43 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
 
           await expect(outcome).resolves.toBeInstanceOf(ConflictException);
           await expect(
-            prisma.user.findUniqueOrThrow({ where: { id: napne.id } }),
-          ).resolves.toMatchObject({
-            roles: [LEVELS.PROFISSIONAL_NAPNE],
-            service_capacity: 2,
-          });
+            prisma.user.findUniqueOrThrow({ where: { id: teacher.id } }),
+          ).resolves.toMatchObject({ roles: [LEVELS.PROFESSOR_AEE] });
         },
       );
     });
 
     describe('transições', () => {
       it('should take a student from waiting to in service, closed and back to the end of the queue', async () => {
-        const napne = await createNapne(1);
+        const teacher = await createTeacher();
         const student = await createStudent();
 
-        await queue.assume(student.email, napne.id);
+        await queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]);
         await expect(statusOf(student.email)).resolves.toMatchObject({
           service_status: ServiceStatus.IN_SERVICE,
-          napne_responsible_id: napne.id,
+          aee_responsible_id: teacher.id,
           service_closed_at: null,
         });
 
         await queue.close(student.email, {
-          sub: napne.id,
-          roles: [LEVELS.PROFISSIONAL_NAPNE],
+          sub: teacher.id,
+          roles: [LEVELS.PROFESSOR_AEE],
         });
         const closed = await statusOf(student.email);
         expect(closed).toMatchObject({
           service_status: ServiceStatus.CLOSED,
-          napne_responsible_id: napne.id,
+          aee_responsible_id: teacher.id,
         });
         expect(closed.service_closed_at).toBeInstanceOf(Date);
 
-        // O encerramento libera a vaga do NAPNE.
-        await expect(inServiceOf(napne.id)).resolves.toBe(0);
+        // O encerramento libera a vaga do professor.
+        await expect(inServiceOf(teacher.id)).resolves.toBe(0);
 
         await queue.reopen(student.email, [LEVELS.ADMIN]);
         const reopened = await statusOf(student.email);
         expect(reopened).toMatchObject({
           service_status: ServiceStatus.WAITING,
-          napne_responsible_id: null,
+          aee_responsible_id: null,
           service_started_at: null,
           service_closed_at: null,
         });
@@ -359,68 +384,126 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         );
       });
 
-      it('should let an account that has the NAPNE role among others take a student, and refuse one that does not', async () => {
+      it('should let the Administrator close a student of any teacher, and keep another teacher out', async () => {
+        const teacher = await createTeacher();
+        const other = await createTeacher();
         const student = await createStudent();
-        const combined = await createNapne(2, undefined, [
+        await queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]);
+
+        await expect(
+          queue.close(student.email, {
+            sub: other.id,
+            roles: [LEVELS.PROFESSOR_AEE],
+          }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(statusOf(student.email)).resolves.toMatchObject({
+          service_status: ServiceStatus.IN_SERVICE,
+        });
+
+        await queue.close(student.email, { sub: 1, roles: [LEVELS.ADMIN] });
+        await expect(statusOf(student.email)).resolves.toMatchObject({
+          service_status: ServiceStatus.CLOSED,
+        });
+      });
+
+      it.each([
+        [[LEVELS.PROFESSOR_AEE], false],
+        [[LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE], true],
+      ])(
+        'should answer the assume of an account with roles %j with the external manager contact only if it is %s',
+        async (roles, seesContact) => {
+          const student = await createStudent();
+          await prisma.user.update({
+            where: { id: student.id },
+            data: {
+              external_manager_name: 'Maria',
+              external_manager_phone: '11999990000',
+              external_manager_cpf: '52998224725',
+            },
+          });
+          const teacher = await createTeacher(undefined, roles);
+
+          const result = await queue.assume(student.email, teacher.id, roles);
+
+          expect(result?.external_manager_name).toBe('Maria');
+          if (seesContact) {
+            expect(result).toMatchObject({
+              external_manager_phone: '11999990000',
+              external_manager_cpf: '52998224725',
+            });
+          } else {
+            expect(result).not.toHaveProperty('external_manager_phone');
+          }
+        },
+      );
+
+      it('should let an account that has the AEE role among others take a student, and refuse one that does not', async () => {
+        const student = await createStudent();
+        const combined = await createTeacher(undefined, [
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_NAPNE,
           LEVELS.PROFESSOR_AEE,
         ]);
-        const aeeOnly = await prisma.user.create({
-          data: {
-            full_name: 'Só AEE',
-            cpf: '69999999999',
-            email: `soaee${EMAIL_DOMAIN}`,
-            password: 'x',
-            roles: [LEVELS.PROFESSOR_AEE],
-            id_current_phase: PHASES.TRIAGEM,
-          },
-        });
+        const napneOnly = await createTeacher('Só NAPNE', [
+          LEVELS.PROFISSIONAL_NAPNE,
+        ]);
 
-        await expect(queue.assume(student.email, aeeOnly.id)).rejects.toThrow(
-          ForbiddenException,
-        );
-        await queue.assume(student.email, combined.id);
+        await expect(
+          queue.assume(student.email, napneOnly.id, [LEVELS.PROFESSOR_AEE]),
+        ).rejects.toThrow(ForbiddenException);
+        await queue.assume(student.email, combined.id, [LEVELS.PROFESSOR_AEE]);
 
-        expect((await statusOf(student.email)).napne_responsible_id).toBe(
+        expect((await statusOf(student.email)).aee_responsible_id).toBe(
           combined.id,
         );
       });
 
-      it('should answer 409 to a NAPNE with no capacity defined', async () => {
-        const napne = await createNapne(null);
-        const student = await createStudent();
+      it('should answer 409 with the fixed limit to the 16th student', async () => {
+        const teacher = await createTeacher();
+        for (let i = 0; i < AEE_SERVICE_CAPACITY; i++) {
+          await queue.assume((await createStudent()).email, teacher.id, [
+            LEVELS.PROFESSOR_AEE,
+          ]);
+        }
+        const extra = await createStudent();
 
-        await expect(queue.assume(student.email, napne.id)).rejects.toThrow(
-          'Seu limite de atendimentos ainda não foi definido pelo administrador.',
-        );
+        await expect(
+          queue.assume(extra.email, teacher.id, [LEVELS.PROFESSOR_AEE]),
+        ).rejects.toThrow(LIMIT_MESSAGE);
+        await expect(statusOf(extra.email)).resolves.toMatchObject({
+          service_status: ServiceStatus.WAITING,
+        });
       });
     });
 
     // Os specs de integração dividem o banco, então os totais gerais incluem
     // contas de outros specs e só valem como piso. A ocupação é conferida por
-    // profissional, e esses profissionais são só deste teste.
+    // professor, e esses professores são só deste teste.
     describe('estatísticas do atendimento', () => {
       const OLDEST = new Date('2000-01-01T00:00:00.000Z');
 
-      it('should count the totals, the occupation per NAPNE and the oldest waiting student', async () => {
+      it('should count the totals, the occupation per AEE teacher over 15 and the oldest waiting student', async () => {
         // Criados fora da ordem alfabética, para provar a ordenação por nome.
-        const carla = await createNapne(1, 'Zz Estatística Carla');
-        const bruno = await createNapne(null, 'Zz Estatística Bruno');
-        const ana = await createNapne(3, 'Zz Estatística Ana');
+        const carla = await createTeacher('Zz Estatística Carla');
+        const bruno = await createTeacher('Zz Estatística Bruno');
+        const ana = await createTeacher('Zz Estatística Ana');
+        // O NAPNE sem o papel 6 não entra na lista.
+        const napne = await createTeacher('Zz Estatística Napne', [
+          LEVELS.PROFISSIONAL_NAPNE,
+        ]);
         // O sexto segue na fila, ao lado do waitingOld.
         const [first, second, third, closed, waitingOld] = await Promise.all(
           Array.from({ length: 6 }, () => createStudent()),
         );
 
-        await queue.assume(first.email, ana.id);
-        await queue.assume(second.email, ana.id);
-        await queue.assume(third.email, carla.id);
+        await queue.assume(first.email, ana.id, [LEVELS.PROFESSOR_AEE]);
+        await queue.assume(second.email, ana.id, [LEVELS.PROFESSOR_AEE]);
+        await queue.assume(third.email, carla.id, [LEVELS.PROFESSOR_AEE]);
         // O encerrado mantém o responsável, mas libera a vaga de Ana.
-        await queue.assume(closed.email, ana.id);
+        await queue.assume(closed.email, ana.id, [LEVELS.PROFESSOR_AEE]);
         await queue.close(closed.email, {
           sub: ana.id,
-          roles: [LEVELS.PROFISSIONAL_NAPNE],
+          roles: [LEVELS.PROFESSOR_AEE],
         });
         await prisma.user.update({
           where: { id: waitingOld.id },
@@ -432,11 +515,6 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           where: { id: closed.id },
           data: { queued_at: new Date('1999-01-01T00:00:00.000Z') },
         });
-        // Capacidade reduzida abaixo da ocupação: as vagas ficam em zero.
-        await prisma.user.update({
-          where: { id: carla.id },
-          data: { service_capacity: 0 },
-        });
 
         const result = await stats.getStats();
 
@@ -446,29 +524,29 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         expect(result.queue.oldest_queued_at).toEqual(OLDEST);
 
         const ours = result.professionals.filter(({ id }) =>
-          [ana.id, bruno.id, carla.id].includes(id),
+          [ana.id, bruno.id, carla.id, napne.id].includes(id),
         );
         expect(ours).toEqual([
           {
             id: ana.id,
             full_name: ana.full_name,
             in_service: 2,
-            capacity: 3,
-            free: 1,
+            capacity: 15,
+            free: 13,
           },
           {
             id: bruno.id,
             full_name: bruno.full_name,
             in_service: 0,
-            capacity: null,
-            free: null,
+            capacity: 15,
+            free: 15,
           },
           {
             id: carla.id,
             full_name: carla.full_name,
             in_service: 1,
-            capacity: 0,
-            free: 0,
+            capacity: 15,
+            free: 14,
           },
         ]);
       });
@@ -509,8 +587,8 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
         expect(student.service_status).toBe(ServiceStatus.WAITING);
         expect(student.queued_at).toBeInstanceOf(Date);
 
-        const napne = await createNapne(1);
-        await queue.assume(student.email, napne.id);
+        const teacher = await createTeacher();
+        await queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]);
         const professional = await users.update(student.email, {
           roles: [LEVELS.PROFISSIONAL_EDUCACAO],
         });
@@ -520,64 +598,69 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           queued_at: null,
           service_started_at: null,
           service_closed_at: null,
-          napne_responsible: null,
+          aee_responsible: null,
         });
-        await expect(inServiceOf(napne.id)).resolves.toBe(0);
+        await expect(inServiceOf(teacher.id)).resolves.toBe(0);
       });
 
-      it('should answer 409 and keep the NAPNE when it has students in service', async () => {
-        const napne = await createNapne(2);
+      it('should answer 409 and keep the AEE teacher when it has students in service', async () => {
+        const teacher = await createTeacher();
         const student = await createStudent();
-        await queue.assume(student.email, napne.id);
+        await queue.assume(student.email, teacher.id, [LEVELS.PROFESSOR_AEE]);
 
         await expect(
-          users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
+          users.update(teacher.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ).rejects.toBeInstanceOf(ConflictException);
-        await expect(users.remove(napne.id)).rejects.toBeInstanceOf(
+        await expect(users.remove(teacher.id)).rejects.toBeInstanceOf(
           ConflictException,
         );
 
         await expect(
-          prisma.user.findUniqueOrThrow({ where: { id: napne.id } }),
-        ).resolves.toMatchObject({
-          roles: [LEVELS.PROFISSIONAL_NAPNE],
-          service_capacity: 2,
-        });
+          prisma.user.findUniqueOrThrow({ where: { id: teacher.id } }),
+        ).resolves.toMatchObject({ roles: [LEVELS.PROFESSOR_AEE] });
 
         await queue.close(student.email, { sub: 1, roles: [LEVELS.ADMIN] });
         await expect(
-          users.update(napne.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
+          users.update(teacher.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ).resolves.toMatchObject({ roles: [LEVELS.PROFISSIONAL_SAUDE] });
-        await expect(
-          prisma.user.findUniqueOrThrow({
-            where: { id: napne.id },
-            select: { service_capacity: true },
-          }),
-        ).resolves.toEqual({ service_capacity: null });
       });
 
-      it('should accept a capacity below the students already in service and unassign nobody', async () => {
-        const napne = await createNapne(2);
-        const students = await Promise.all([createStudent(), createStudent()]);
-        for (const student of students) {
-          await queue.assume(student.email, napne.id);
-        }
+      it('should let a NAPNE account that is not an AEE teacher lose the role and be removed', async () => {
+        const napne = await createTeacher(undefined, [
+          LEVELS.PROFISSIONAL_NAPNE,
+        ]);
 
-        await users.update(napne.email, { service_capacity: 1 });
-
-        await expect(inServiceOf(napne.id)).resolves.toBe(2);
-        const other = await createStudent();
-        await expect(queue.assume(other.email, napne.id)).rejects.toThrow(
-          LIMIT_MESSAGE,
-        );
+        await expect(users.remove(napne.id)).resolves.toMatchObject({
+          id: napne.id,
+        });
       });
 
-      it('should answer 400 to a capacity for an account that is not a NAPNE', async () => {
-        const student = await createStudent();
+      it('should rename the responsible column and drop service_capacity with the migration', async () => {
+        const [{ columns }] = await prisma.$queryRaw<{ columns: string[] }[]>`
+          SELECT array_agg(column_name::text ORDER BY column_name) AS columns
+          FROM information_schema.columns
+          WHERE table_name = 'User'
+            AND column_name IN
+              ('aee_responsible_id', 'napne_responsible_id', 'service_capacity')`;
+        const constraints = await prisma.$queryRaw<{ conname: string }[]>`
+          SELECT conname::text FROM pg_constraint
+          WHERE conrelid = '"User"'::regclass
+            AND conname IN ('User_in_service_has_aee_chk',
+              'User_in_service_has_aee_chk', 'User_service_capacity_chk',
+              'User_aee_responsible_id_fkey', 'User_napne_responsible_id_fkey')
+          ORDER BY conname`;
+        const indexes = await prisma.$queryRaw<{ indexname: string }[]>`
+          SELECT indexname::text FROM pg_indexes
+          WHERE tablename = 'User' AND indexname LIKE '%responsible_id%'`;
 
-        await expect(
-          users.update(student.email, { service_capacity: 3 }),
-        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(columns).toEqual(['aee_responsible_id']);
+        expect(constraints.map(({ conname }) => conname)).toEqual([
+          'User_aee_responsible_id_fkey',
+          'User_in_service_has_aee_chk',
+        ]);
+        expect(indexes.map(({ indexname }) => indexname)).toEqual([
+          'User_aee_responsible_id_service_status_idx',
+        ]);
       });
 
       // Os CHECKs valem para toda gravação, também a que não passa pela API.
@@ -595,47 +678,27 @@ const LIMIT_MESSAGE = 'Você atingiu o limite de atendimentos.';
           'student',
         ],
         [
-          'User_in_service_has_napne_chk',
+          'User_in_service_has_aee_chk',
           'a student in service with no responsible',
           'UPDATE "User" SET service_status = \'IN_SERVICE\' WHERE email = $1',
           'student',
-        ],
-        [
-          'User_service_capacity_chk',
-          'a capacity on an account that is not a NAPNE',
-          'UPDATE "User" SET service_capacity = 3 WHERE email = $1',
-          'student',
-        ],
-        [
-          'User_service_capacity_chk',
-          'a capacity above 200',
-          'UPDATE "User" SET service_capacity = 201 WHERE email = $1',
-          'napne',
-        ],
-        [
-          'User_service_capacity_chk',
-          'a negative capacity',
-          'UPDATE "User" SET service_capacity = -1 WHERE email = $1',
-          'napne',
         ],
       ])(
         'should enforce %s against %s',
         async (constraint, _, statement, kind) => {
           const account =
-            kind === 'napne'
-              ? await createNapne(1)
-              : kind === 'student'
-                ? await createStudent()
-                : await prisma.user.create({
-                    data: {
-                      full_name: 'Admin',
-                      cpf: '70000000003',
-                      email: `admin${EMAIL_DOMAIN}`,
-                      password: 'x',
-                      roles: [LEVELS.ADMIN],
-                      id_current_phase: PHASES.TRIAGEM,
-                    },
-                  });
+            kind === 'student'
+              ? await createStudent()
+              : await prisma.user.create({
+                  data: {
+                    full_name: 'Admin',
+                    cpf: '70000000003',
+                    email: `admin${EMAIL_DOMAIN}`,
+                    password: 'x',
+                    roles: [LEVELS.ADMIN],
+                    id_current_phase: PHASES.TRIAGEM,
+                  },
+                });
 
           await expect(
             prisma.$executeRawUnsafe(statement, account.email),

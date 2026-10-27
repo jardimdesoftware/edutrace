@@ -10,7 +10,7 @@ import { hasAnyRole } from 'src/auth/roles';
 // da conta, os contadores de bloqueio de login e as anotações sobre o usuário,
 // que têm rota própria (GET /comments/:id_user) com o controle de acesso delas.
 //
-// O Profissional NAPNE responsável e o responsável pedagógico são relações, e
+// O Professor do AEE responsável e o responsável pedagógico são relações, e
 // relação com `true` ou `include` devolveria o registro inteiro do servidor, com
 // o hash da senha. Por isso só o id e o nome saem. O responsável pedagógico
 // externo sai pelo nome. O telefone e o CPF dele, dados de quem não usa o
@@ -37,8 +37,7 @@ export const PUBLIC_USER_SELECT = {
   queued_at: true,
   service_started_at: true,
   service_closed_at: true,
-  service_capacity: true,
-  napne_responsible: { select: { id: true, full_name: true } },
+  aee_responsible: { select: { id: true, full_name: true } },
   updated_at: true,
 } satisfies Prisma.UserSelect;
 
