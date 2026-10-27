@@ -15,6 +15,7 @@ import {
   ADMIN,
   ESTUDANTE,
   PROFISSIONAL_EDUCACAO,
+  PROFESSOR_AEE,
   PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
 } from '../consts';
@@ -40,7 +41,7 @@ function estudante(id: number, status: ServiceStatus | null, extra: Partial<Stud
   return usuario(id, { service_status: status, ...extra });
 }
 
-const NAPNE_RESPONSAVEL = { id: 7, full_name: 'Maria NAPNE' };
+const AEE_RESPONSAVEL = { id: 7, full_name: 'Maria AEE' };
 
 describe('rotuloDoStatus', () => {
   for (const [status, rotulo] of [
@@ -60,13 +61,13 @@ describe('rotuloDoStatus', () => {
 });
 
 describe('rotuloDoResponsavel', () => {
-  it('calls the NAPNE of a closed service "Atendido por"', () => {
+  it('calls the AEE teacher of a closed service "Atendido por"', () => {
     assert.equal(rotuloDoResponsavel('CLOSED'), 'Atendido por');
   });
 
   for (const status of ['WAITING', 'IN_SERVICE'] as const) {
-    it(`calls the NAPNE of a ${status} row "Responsável"`, () => {
-      assert.equal(rotuloDoResponsavel(status), 'Responsável');
+    it(`calls the AEE teacher of a ${status} row "Professor(a) do AEE responsável"`, () => {
+      assert.equal(rotuloDoResponsavel(status), 'Professor(a) do AEE responsável');
     });
   }
 });
@@ -85,10 +86,10 @@ describe('OPCOES_FILTRO_STATUS', () => {
 describe('filtrarPorStatus', () => {
   const lista = [
     estudante(1, 'CLOSED'),
-    estudante(2, 'IN_SERVICE', { napne_responsible: NAPNE_RESPONSAVEL }),
+    estudante(2, 'IN_SERVICE', { aee_responsible: AEE_RESPONSAVEL }),
     usuario(3, { roles: [PROFISSIONAL_SAUDE], service_status: null }),
     estudante(4, 'WAITING', { queued_at: '2026-10-10T12:00:00.000Z' }),
-    estudante(5, 'IN_SERVICE', { napne_responsible: NAPNE_RESPONSAVEL }),
+    estudante(5, 'IN_SERVICE', { aee_responsible: AEE_RESPONSAVEL }),
   ];
 
   it('keeps every row, including the ones without status, for "TODOS"', () => {
@@ -237,29 +238,30 @@ describe('textoDaContagem', () => {
 });
 
 describe('podeAssumirAtendimento', () => {
-  const napne = { sub: 7, roles: [PROFISSIONAL_NAPNE] };
+  const aee = { sub: 7, roles: [PROFESSOR_AEE] };
 
-  it('lets the NAPNE take a student of the queue', () => {
-    assert.equal(podeAssumirAtendimento(estudante(1, 'WAITING'), napne), true);
+  it('lets the AEE teacher take a student of the queue', () => {
+    assert.equal(podeAssumirAtendimento(estudante(1, 'WAITING'), aee), true);
   });
 
   for (const status of ['IN_SERVICE', 'CLOSED', null] as const) {
-    it(`does not let the NAPNE take a row with status ${status}`, () => {
-      assert.equal(podeAssumirAtendimento(estudante(1, status), napne), false);
+    it(`does not let the AEE teacher take a row with status ${status}`, () => {
+      assert.equal(podeAssumirAtendimento(estudante(1, status), aee), false);
     });
   }
 
-  for (const [nome, nivel] of [
-    ['administrator', ADMIN],
-    ['education professional', PROFISSIONAL_EDUCACAO],
-    ['health professional', PROFISSIONAL_SAUDE],
-    ['student', ESTUDANTE],
+  for (const [nome, roles, esperado] of [
+    ['AEE alone', [PROFESSOR_AEE], true],
+    ['NAPNE alone', [PROFISSIONAL_NAPNE], false],
+    ['NAPNE plus AEE', [PROFISSIONAL_NAPNE, PROFESSOR_AEE], true],
+    ['education plus AEE', [PROFISSIONAL_EDUCACAO, PROFESSOR_AEE], true],
+    ['administrator', [ADMIN], false],
+    ['education professional', [PROFISSIONAL_EDUCACAO], false],
+    ['health professional', [PROFISSIONAL_SAUDE], false],
+    ['student', [ESTUDANTE], false],
   ] as const) {
-    it(`does not let the ${nome} take a student of the queue`, () => {
-      assert.equal(
-        podeAssumirAtendimento(estudante(1, 'WAITING'), { sub: 7, roles: [nivel] }),
-        false,
-      );
+    it(`take button with ${nome}: ${esperado}`, () => {
+      assert.equal(podeAssumirAtendimento(estudante(1, 'WAITING'), { sub: 7, roles }), esperado);
     });
   }
 
@@ -270,55 +272,46 @@ describe('podeAssumirAtendimento', () => {
 });
 
 describe('podeEncerrarAtendimento', () => {
-  const napne = { sub: 7, roles: [PROFISSIONAL_NAPNE] };
-  const emAtendimento = estudante(1, 'IN_SERVICE', { napne_responsible: NAPNE_RESPONSAVEL });
+  const aee = { sub: 7, roles: [PROFESSOR_AEE] };
+  const emAtendimento = estudante(1, 'IN_SERVICE', { aee_responsible: AEE_RESPONSAVEL });
 
-  it('lets the NAPNE close the service of a student that is theirs', () => {
-    assert.equal(podeEncerrarAtendimento(emAtendimento, napne), true);
+  it('lets the AEE teacher close the service of a student that is theirs', () => {
+    assert.equal(podeEncerrarAtendimento(emAtendimento, aee), true);
   });
 
-  it('does not let the NAPNE close the service of another NAPNE', () => {
-    assert.equal(
-      podeEncerrarAtendimento(emAtendimento, { sub: 8, roles: [PROFISSIONAL_NAPNE] }),
-      false,
-    );
+  it('does not let the AEE teacher close the service of another teacher', () => {
+    assert.equal(podeEncerrarAtendimento(emAtendimento, { sub: 8, roles: [PROFESSOR_AEE] }), false);
   });
 
-  it('does not let the NAPNE close a student without responsible', () => {
-    const semResponsavel = estudante(1, 'IN_SERVICE', { napne_responsible: null });
+  it('does not let the AEE teacher close a student without responsible', () => {
+    const semResponsavel = estudante(1, 'IN_SERVICE', { aee_responsible: null });
 
-    assert.equal(podeEncerrarAtendimento(semResponsavel, napne), false);
-    assert.equal(
-      podeEncerrarAtendimento(estudante(1, 'IN_SERVICE'), napne),
-      false,
-    );
+    assert.equal(podeEncerrarAtendimento(semResponsavel, aee), false);
+    assert.equal(podeEncerrarAtendimento(estudante(1, 'IN_SERVICE'), aee), false);
   });
 
   for (const status of ['WAITING', 'CLOSED', null] as const) {
-    it(`does not let the NAPNE close a row with status ${status}`, () => {
-      const linha = estudante(1, status, { napne_responsible: NAPNE_RESPONSAVEL });
+    it(`does not let the AEE teacher close a row with status ${status}`, () => {
+      const linha = estudante(1, status, { aee_responsible: AEE_RESPONSAVEL });
 
-      assert.equal(podeEncerrarAtendimento(linha, napne), false);
+      assert.equal(podeEncerrarAtendimento(linha, aee), false);
     });
   }
 
-  it('does not show the close action to a user that is not NAPNE, even with the same id', () => {
-    assert.equal(
-      podeEncerrarAtendimento(emAtendimento, { sub: 7, roles: [ADMIN] }),
-      false,
-    );
-  });
+  for (const [nome, roles, esperado] of [
+    ['AEE alone', [PROFESSOR_AEE], true],
+    ['NAPNE alone, even with the same id', [PROFISSIONAL_NAPNE], false],
+    ['NAPNE plus AEE', [PROFISSIONAL_NAPNE, PROFESSOR_AEE], true],
+    ['education plus AEE', [PROFISSIONAL_EDUCACAO, PROFESSOR_AEE], true],
+    ['administrator with the same id', [ADMIN], false],
+  ] as const) {
+    it(`close button with ${nome}: ${esperado}`, () => {
+      assert.equal(podeEncerrarAtendimento(emAtendimento, { sub: 7, roles }), esperado);
+    });
+  }
 
   it('does not let a session without user close a service', () => {
     assert.equal(podeEncerrarAtendimento(emAtendimento, null), false);
     assert.equal(podeEncerrarAtendimento(emAtendimento, undefined), false);
-  });
-});
-
-describe('queue actions with several roles', () => {
-  it('keeps the NAPNE actions for an account that is also AEE teacher, and gives none to the AEE alone', () => {
-    const espera = estudante(1, 'WAITING');
-    assert.equal(podeAssumirAtendimento(espera, { sub: 7, roles: [PROFISSIONAL_NAPNE, 6] }), true);
-    assert.equal(podeAssumirAtendimento(espera, { sub: 7, roles: [6] }), false);
   });
 });

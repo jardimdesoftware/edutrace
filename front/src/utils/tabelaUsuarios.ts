@@ -13,8 +13,7 @@ export function listarUsuariosDaTabela(roles?: Papeis) {
 
 // Troca na lista o usuário que a API devolveu depois de uma alteração. A
 // resposta é o registro inteiro (mesmo select e CPF mascarado do GET /users),
-// então a linha mostra também o que o back mexeu sozinho, como o limite de
-// atendimento que some quando o NAPNE perde o papel ou os campos da fila
+// então a linha mostra também o que o back mexeu sozinho, como os campos da fila
 // quando o papel de estudante entra ou sai. Quem não está na lista não entra.
 export function substituirUsuario(
   usuarios: StudentData[],
