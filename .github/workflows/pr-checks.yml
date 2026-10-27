@@ -671,6 +671,132 @@ jobs:
 
           echo "OK: a migration dos papéis converte as contas dos 5 níveis antigos (o NAPNE vira 5 e 6), recusa e desfaz tudo para a conta de um nível sem papel, inclusive o já chamado Professor do AEE no id 6, reserva o id 6, renomeia o Professor do AEE de outro id e remove id_level."
 
+      # A migration do atendimento do Professor do AEE RENOMEIA
+      # User.napne_responsible_id para aee_responsible_id (com o índice, a chave
+      # estrangeira e o CHECK) e só remove service_capacity. Um DROP COLUMN
+      # seguido de ADD COLUMN no lugar do RENAME apagaria o responsável dos
+      # atendimentos em andamento. O banco do job nasce vazio, então no migrate
+      # deploy não há atendimento para perder. Este passo monta o caso real num
+      # edutrace_aee_resp à parte: aplica as migrations anteriores a ela, insere o
+      # professor com um estudante IN_SERVICE, um CLOSED (o responsável fica como
+      # histórico) e um WAITING, aplica a migration e confere que o responsável
+      # de cada um se mantém, que as colunas e os nomes novos existem e que o
+      # CHECK que exige responsável em IN_SERVICE continua valendo.
+      - name: Verificar que o responsável do atendimento se mantém depois do rename
+        working-directory: ./back
+        run: |
+          aee=20261027100000_aee_responsible_drop_service_capacity
+          ar_url=postgresql://test:test@localhost:5432/edutrace_aee_resp
+
+          campo() {
+            psql "$ar_url" -tA -c "SELECT $1 FROM \"User\" WHERE email = '$2'"
+          }
+          contar() {
+            psql "$ar_url" -tA -c "$1"
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_aee_resp'
+
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$aee" ]; then
+              break
+            fi
+            if ! psql "$ar_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou ao ser aplicada antes do rename do responsável."
+              exit 1
+            fi
+          done
+
+          psql "$ar_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"CurrentPhases\" (id, name, updated_at) VALUES (1, 'Triagem', now()); INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, service_capacity, updated_at) VALUES ('Professor antigo', '11111111201', 'professor@example.test', 'x', ARRAY[5, 6], 1, 7, now()); INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, service_status, queued_at, napne_responsible_id, service_started_at, updated_at) SELECT 'Em atendimento', '11111111202', 'atendimento@example.test', 'x', ARRAY[2], 1, 'IN_SERVICE', now(), id, now(), now() FROM \"User\" WHERE email = 'professor@example.test'; INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, service_status, queued_at, napne_responsible_id, service_started_at, service_closed_at, updated_at) SELECT 'Encerrado', '11111111203', 'encerrado@example.test', 'x', ARRAY[2], 1, 'CLOSED', now(), id, now(), now(), now() FROM \"User\" WHERE email = 'professor@example.test'; INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, service_status, queued_at, updated_at) VALUES ('Na fila', '11111111204', 'fila@example.test', 'x', ARRAY[2], 1, 'WAITING', now(), now())"
+
+          professor=$(campo id professor@example.test)
+
+          if ! psql "$ar_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$aee/migration.sql" > /dev/null; then
+            echo "ERRO: a migration $aee falhou num banco que já tem atendimentos."
+            exit 1
+          fi
+
+          if [ "$(campo aee_responsible_id atendimento@example.test)" != "$professor" ]; then
+            echo "ERRO: o estudante IN_SERVICE terminou com aee_responsible_id='$(campo aee_responsible_id atendimento@example.test)'; o esperado é o professor ($professor), o responsável que ele já tinha."
+            exit 1
+          fi
+          if [ "$(campo service_status atendimento@example.test)" != "IN_SERVICE" ]; then
+            echo "ERRO: o estudante em atendimento terminou com service_status='$(campo service_status atendimento@example.test)'; o esperado é IN_SERVICE."
+            exit 1
+          fi
+          if [ "$(campo aee_responsible_id encerrado@example.test)" != "$professor" ]; then
+            echo "ERRO: o estudante CLOSED perdeu o responsável de histórico; aee_responsible_id='$(campo aee_responsible_id encerrado@example.test)', o esperado é $professor."
+            exit 1
+          fi
+          if [ "$(campo "aee_responsible_id IS NULL" fila@example.test)" != "t" ]; then
+            echo "ERRO: o estudante da fila recebeu um responsável."
+            exit 1
+          fi
+
+          if [ "$(contar "SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'User' AND column_name IN ('napne_responsible_id', 'service_capacity')")" != "0" ]; then
+            echo "ERRO: napne_responsible_id ou service_capacity continuam no banco; a migration devia renomear a primeira e remover a segunda."
+            exit 1
+          fi
+          nomes=$(contar "SELECT string_agg(conname, ',' ORDER BY conname) FROM pg_constraint WHERE conrelid = '\"User\"'::regclass AND (conname LIKE '%aee%' OR conname LIKE '%napne%' OR conname = 'User_service_capacity_chk')")
+          if [ "$nomes" != "User_aee_responsible_id_fkey,User_in_service_has_aee_chk" ]; then
+            echo "ERRO: os constraints do responsável terminaram como '$nomes'; o esperado é 'User_aee_responsible_id_fkey,User_in_service_has_aee_chk', sem os nomes napne e sem User_service_capacity_chk."
+            exit 1
+          fi
+          if [ "$(contar "SELECT count(*) FROM pg_indexes WHERE tablename = 'User' AND indexname = 'User_aee_responsible_id_service_status_idx'")" != "1" ]; then
+            echo "ERRO: o índice User_aee_responsible_id_service_status_idx não existe depois do rename."
+            exit 1
+          fi
+
+          if psql "$ar_url" -q -v ON_ERROR_STOP=1 -c "UPDATE \"User\" SET aee_responsible_id = NULL WHERE email = 'atendimento@example.test'" > /dev/null 2>&1; then
+            echo "ERRO: o banco aceitou um estudante IN_SERVICE sem responsável; o CHECK User_in_service_has_aee_chk devia continuar valendo."
+            exit 1
+          fi
+
+          echo "OK: a migration renomeia o responsável sem perder o vínculo dos atendimentos em andamento nem o histórico dos encerrados, renomeia o índice, a chave estrangeira e o CHECK, remove service_capacity e mantém o CHECK de IN_SERVICE."
+
+      # A migration recusa o RENAME quando um estudante IN_SERVICE tem como
+      # responsável uma conta que perdeu o papel 6 (deploy isolado da migration
+      # dos papéis): o CHECK da chave estrangeira não deixaria essa conta ser
+      # tratada depois. O caso monta o banco à parte, com o responsável só {5}, e
+      # exige que a migration falhe com a mensagem de como resolver e deixe o
+      # nome napne_responsible_id intacto.
+      - name: Verificar que a migration recusa responsável de atendimento sem o papel 6
+        working-directory: ./back
+        run: |
+          aee=20261027100000_aee_responsible_drop_service_capacity
+          rr_url=postgresql://test:test@localhost:5432/edutrace_aee_sem_papel
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_aee_sem_papel'
+
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$aee" ]; then
+              break
+            fi
+            if ! psql "$rr_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou ao ser aplicada antes do caso do responsável sem o papel 6."
+              exit 1
+            fi
+          done
+
+          psql "$rr_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"CurrentPhases\" (id, name, updated_at) VALUES (1, 'Triagem', now()); INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, updated_at) VALUES ('Sem o papel', '11111111301', 'sempapel@example.test', 'x', ARRAY[5], 1, now()); INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, service_status, queued_at, napne_responsible_id, service_started_at, updated_at) SELECT 'Em atendimento', '11111111302', 'atendimento2@example.test', 'x', ARRAY[2], 1, 'IN_SERVICE', now(), id, now(), now() FROM \"User\" WHERE email = 'sempapel@example.test'"
+
+          saida=$(psql "$rr_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$aee/migration.sql" 2>&1) && {
+            echo "ERRO: a migration $aee passou com um estudante IN_SERVICE cujo responsável não tem o papel 6; ela devia falhar."
+            exit 1
+          }
+          if ! echo "$saida" | grep -q "sempapel@example.test" || ! echo "$saida" | grep -q "migrate resolve --rolled-back $aee"; then
+            echo "ERRO: a migration falhou, mas a mensagem não nomeia a conta nem diz como resolver: $saida"
+            exit 1
+          fi
+          if [ "$(psql "$rr_url" -tA -c "SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'User' AND column_name = 'napne_responsible_id'")" != "1" ]; then
+            echo "ERRO: a migration recusada deixou alterações no banco; ela precisa desfazer tudo."
+            exit 1
+          fi
+
+          echo "OK: a migration recusa e desfaz tudo quando o responsável de um atendimento em andamento não tem o papel 6, com a mensagem de como resolver."
+
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
 # --------------------------------------------------------------------
