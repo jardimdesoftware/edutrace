@@ -189,7 +189,7 @@ function EstudoDeCasoPage() {
             <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
               <p className="text-gray-700">
                 {quemSemEstudo} ainda não tem estudo de caso.
-                {!podeEditar && ' Ele é elaborado pelo professor do AEE do NAPNE.'}
+                {!podeEditar && ' Ele é elaborado pelo Professor(a) do AEE.'}
               </p>
               {podeEditar && (
                 <button type="button" className={BOTAO_PRIMARIO} onClick={() => setEditando(true)}>
