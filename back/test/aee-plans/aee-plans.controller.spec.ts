@@ -18,9 +18,9 @@ import { STUDENT_EMAIL, validBody, validSections } from './aee-plan.fixtures';
 const request = {
   user: {
     sub: 7,
-    roles: [LEVELS.PROFISSIONAL_NAPNE],
-    email: 'napne@example.com',
-    name: 'Profissional NAPNE',
+    roles: [LEVELS.PROFESSOR_AEE],
+    email: 'professor.aee@example.com',
+    name: 'Professor do AEE',
   },
 } as AuthenticatedRequest;
 
@@ -121,11 +121,11 @@ describe('AeePlansController', () => {
       );
     });
 
-    it('should open POST /aee-plans only to the NAPNE', () => {
+    it('should open POST /aee-plans only to the AEE teacher', () => {
       expect(route(controller.create)).toEqual({
         method: RequestMethod.POST,
         path: '/',
-        levels: [LEVELS.PROFISSIONAL_NAPNE],
+        levels: [LEVELS.PROFESSOR_AEE],
       });
     });
 
@@ -144,19 +144,19 @@ describe('AeePlansController', () => {
       });
     });
 
-    it('should open PATCH /aee-plans/:id only to the NAPNE', () => {
+    it('should open PATCH /aee-plans/:id only to the AEE teacher', () => {
       expect(route(controller.update)).toEqual({
         method: RequestMethod.PATCH,
         path: ':id',
-        levels: [LEVELS.PROFISSIONAL_NAPNE],
+        levels: [LEVELS.PROFESSOR_AEE],
       });
     });
 
-    it('should open DELETE /aee-plans/:id only to the NAPNE', () => {
+    it('should open DELETE /aee-plans/:id only to the AEE teacher', () => {
       expect(route(controller.remove)).toEqual({
         method: RequestMethod.DELETE,
         path: ':id',
-        levels: [LEVELS.PROFISSIONAL_NAPNE],
+        levels: [LEVELS.PROFESSOR_AEE],
       });
     });
 

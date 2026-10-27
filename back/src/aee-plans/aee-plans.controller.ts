@@ -25,7 +25,7 @@ export class AeePlansController {
   constructor(private readonly aeePlansService: AeePlansService) {}
 
   // O autor é quem está na sessão, e não um campo do corpo.
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @Post()
   create(
     @Body() createAeePlanDto: CreateAeePlanDto,
@@ -56,14 +56,14 @@ export class AeePlansController {
     return this.aeePlansService.findByStudent(email, request);
   }
 
-  // Qualquer Profissional NAPNE edita, não só o autor: o NAPNE atua como equipe.
+  // Qualquer Professor do AEE edita, não só o autor: o AEE atua como equipe.
   @ApiOperation({
     summary: 'Edita o PAEE',
     description:
       'Cada seção enviada substitui a seção inteira, e por isso vai completa; as seções que não vão no corpo ficam como estão. O autor, o estudante e o período letivo não mudam.',
   })
   @ApiParam({ name: 'id', type: Number })
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @Patch(':id')
   update(
     @PositiveIdParam('id', ParsePositiveIdPipe) id: number,
@@ -73,7 +73,7 @@ export class AeePlansController {
   }
 
   @ApiParam({ name: 'id', type: Number })
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @Delete(':id')
   remove(@PositiveIdParam('id', ParsePositiveIdPipe) id: number) {
     return this.aeePlansService.remove(id);
