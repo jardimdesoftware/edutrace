@@ -1,4 +1,4 @@
-import { PROFISSIONAL_NAPNE } from '@/consts';
+import { PROFESSOR_AEE } from '@/consts';
 import { temPapel, type Papeis } from '@/utils/papeis';
 import type {
   CaseStudyAuthor,
@@ -253,10 +253,10 @@ export function validarFormulario(form: EstudoDeCasoForm): ErrosDoFormulario {
   return validarFormularioDe(SECOES, form);
 }
 
-// A regra definitiva é do back (POST, PATCH e DELETE só do NAPNE). Aqui só
+// A regra definitiva é do back (POST, PATCH e DELETE só do Professor do AEE). Aqui só
 // decide se os botões de escrita aparecem.
 export function podeEditarEstudoDeCaso(roles?: Papeis): boolean {
-  return temPapel(roles, PROFISSIONAL_NAPNE);
+  return temPapel(roles, PROFESSOR_AEE);
 }
 
 type EstudoParaLeitura = CaseStudySections & {
