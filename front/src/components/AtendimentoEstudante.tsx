@@ -40,9 +40,9 @@ export default function AtendimentoEstudante({
       >
         {rotuloDoStatus(status)}
       </span>
-      {estudante.napne_responsible && (
+      {estudante.aee_responsible && (
         <span className="text-xs text-gray-700">
-          {rotuloDoResponsavel(status)}: {estudante.napne_responsible.full_name}
+          {rotuloDoResponsavel(status)}: {estudante.aee_responsible.full_name}
         </span>
       )}
       {podeAssumir && (
