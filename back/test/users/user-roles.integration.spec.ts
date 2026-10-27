@@ -220,7 +220,7 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
     describe('UsersService', () => {
       const base = {
         full_name: 'Conta combinada',
-        cpf: '01234567890',
+        cpf: '39053344705',
         email: 'combinada@roles.edutrace.test',
       };
 
@@ -241,7 +241,7 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
         });
         const student = await service.create({
           ...base,
-          cpf: '11144477735',
+          cpf: '15350946056',
           email: 'estudante@roles.edutrace.test',
           enrollment_number: 'ROLES0001',
           course: 'ADS',
