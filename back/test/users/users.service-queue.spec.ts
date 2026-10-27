@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { SessionsService } from 'src/sessions/sessions.service';
@@ -18,7 +18,7 @@ const CLEARED = {
   queued_at: null,
   service_started_at: null,
   service_closed_at: null,
-  napne_responsible_id: null,
+  aee_responsible_id: null,
 };
 
 // O responsável pedagógico (servidor ou pessoa externa) é dado do estudante.
@@ -31,10 +31,10 @@ const MANAGER_CLEARED = {
   external_manager_cpf: null,
 };
 
-const BUSY_NAPNE_MESSAGE =
-  'Encerre os atendimentos do Profissional NAPNE antes de tirar esse papel ou excluir a conta.';
+const BUSY_AEE_MESSAGE =
+  'Encerre os atendimentos do Professor do AEE antes de tirar esse papel ou excluir a conta.';
 
-describe('UsersService, fila de atendimento do NAPNE', () => {
+describe('UsersService, fila de atendimento do Professor do AEE', () => {
   let service: UsersService;
   let prisma: { user: { create: jest.Mock }; $transaction: jest.Mock };
   let tx: {
@@ -197,15 +197,14 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       }
     });
 
-    it('should clear the service fields of a student that becomes the NAPNE', async () => {
+    it('should clear the service fields of a student that becomes an AEE teacher', async () => {
       lockedAccount(LEVELS.ALUNO_ESTUDANTE);
 
       await service.update('novo@test.com', {
-        roles: [LEVELS.PROFISSIONAL_NAPNE],
-        service_capacity: 3,
+        roles: [LEVELS.PROFESSOR_AEE],
       });
 
-      expect(updateData()).toMatchObject({ ...CLEARED, service_capacity: 3 });
+      expect(updateData()).toMatchObject(CLEARED);
     });
   });
 
@@ -273,7 +272,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     );
   });
 
-  // O servidor que deixa os níveis 3 e 5 não pode continuar como responsável
+  // O servidor que deixa os níveis 3, 5 e 6 não pode continuar como responsável
   // pedagógico. A limpeza roda na transação do update, com a linha dele já
   // travada, para que um vínculo gravado ao mesmo tempo não escape dela.
   describe('update, estudantes do responsável pedagógico', () => {
@@ -285,6 +284,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     it.each([
       ['Profissional de Educação', LEVELS.PROFISSIONAL_EDUCACAO],
       ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
+      ['Professor do AEE', LEVELS.PROFESSOR_AEE],
     ])(
       'should unlink the students when the %s leaves the manager levels',
       async (_, from) => {
@@ -328,6 +328,8 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     it.each([
       [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
       [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFISSIONAL_EDUCACAO],
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+      [LEVELS.PROFESSOR_AEE, LEVELS.PROFISSIONAL_NAPNE],
     ])(
       'should keep the students linked when the level %s changes to %s, which is still a manager level',
       async (from, to) => {
@@ -340,10 +342,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     );
 
     it.each([
-      [
-        LEVELS.PROFISSIONAL_EDUCACAO,
-        { roles: [LEVELS.PROFISSIONAL_EDUCACAO] },
-      ],
+      [LEVELS.PROFISSIONAL_EDUCACAO, { roles: [LEVELS.PROFISSIONAL_EDUCACAO] }],
       [LEVELS.PROFISSIONAL_EDUCACAO, { full_name: 'Outro nome' }],
       [LEVELS.PROFISSIONAL_NAPNE, { roles: [LEVELS.PROFISSIONAL_NAPNE] }],
     ])(
@@ -373,15 +372,15 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       },
     );
 
-    it('should unlink nothing when a NAPNE with students in service is refused', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
+    it('should unlink nothing when an AEE teacher with students in service is refused', async () => {
+      lockedAccount(LEVELS.PROFESSOR_AEE);
       tx.user.count.mockResolvedValue(2);
 
       await expect(
         service.update('novo@test.com', {
           roles: [LEVELS.PROFISSIONAL_SAUDE],
         }),
-      ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
+      ).rejects.toThrow(new ConflictException(BUSY_AEE_MESSAGE));
 
       expect(tx.user.updateMany).not.toHaveBeenCalled();
     });
@@ -447,21 +446,21 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     });
   });
 
-  describe('update, NAPNE com atendimentos', () => {
-    beforeEach(() => lockedAccount(LEVELS.PROFISSIONAL_NAPNE));
+  describe('update, Professor do AEE com atendimentos', () => {
+    beforeEach(() => lockedAccount(LEVELS.PROFESSOR_AEE));
 
-    it('should answer 409 and change nothing when a NAPNE with students in service changes level', async () => {
+    it('should answer 409 and change nothing when an AEE teacher with students in service loses the role', async () => {
       tx.user.count.mockResolvedValue(2);
 
       await expect(
         service.update('novo@test.com', {
           roles: [LEVELS.PROFISSIONAL_SAUDE],
         }),
-      ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
+      ).rejects.toThrow(new ConflictException(BUSY_AEE_MESSAGE));
 
       expect(tx.user.count).toHaveBeenCalledWith({
         where: {
-          napne_responsible_id: 7,
+          aee_responsible_id: 7,
           service_status: ServiceStatus.IN_SERVICE,
         },
       });
@@ -469,107 +468,30 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       expect(sessions.revokeAllFromUser).not.toHaveBeenCalled();
     });
 
-    it('should clear the capacity of a NAPNE with no students in service that leaves the level', async () => {
+    it('should let an AEE teacher with no students in service lose the role', async () => {
       await service.update('novo@test.com', {
         roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
-      expect(updateData()).toMatchObject({ service_capacity: null });
+      expect(updateData().roles).toEqual([LEVELS.PROFISSIONAL_SAUDE]);
+      expect(updateData()).not.toHaveProperty('service_capacity');
     });
 
-    it('should let a NAPNE with students in service keep the level it already has', async () => {
+    it('should let an AEE teacher with students in service keep the role it already has', async () => {
       tx.user.count.mockResolvedValue(2);
 
       await service.update('novo@test.com', {
-        roles: [LEVELS.PROFISSIONAL_NAPNE],
+        roles: [LEVELS.PROFESSOR_AEE],
       });
 
       expect(tx.user.count).not.toHaveBeenCalled();
       expect(tx.user.update).toHaveBeenCalledTimes(1);
     });
 
-    it('should let a NAPNE with students in service change the name', async () => {
+    it('should let an AEE teacher with students in service change the name', async () => {
       tx.user.count.mockResolvedValue(2);
 
       await service.update('novo@test.com', { full_name: 'Outro nome' });
-
-      expect(tx.user.update).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('update, service_capacity', () => {
-    it('should store the capacity of a NAPNE', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
-
-      await service.update('novo@test.com', { service_capacity: 5 });
-
-      expect(updateData()).toMatchObject({ service_capacity: 5 });
-    });
-
-    it('should accept zero, which stops the NAPNE from taking students', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
-
-      await service.update('novo@test.com', { service_capacity: 0 });
-
-      expect(updateData()).toMatchObject({ service_capacity: 0 });
-    });
-
-    it('should accept a capacity below the students already in service and unassign nobody', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
-      tx.user.count.mockResolvedValue(4);
-
-      await service.update('novo@test.com', { service_capacity: 1 });
-
-      expect(updateData()).toMatchObject({ service_capacity: 1 });
-      expect(updateData().napne_responsible_id).toBeUndefined();
-    });
-
-    it('should accept the capacity when the same request makes the account a NAPNE', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_SAUDE);
-
-      await service.update('novo@test.com', {
-        roles: [LEVELS.PROFISSIONAL_NAPNE],
-        service_capacity: 2,
-      });
-
-      expect(updateData()).toMatchObject({
-        roles: [LEVELS.PROFISSIONAL_NAPNE],
-        service_capacity: 2,
-      });
-    });
-
-    it.each([
-      LEVELS.ADMIN,
-      LEVELS.ALUNO_ESTUDANTE,
-      LEVELS.PROFISSIONAL_EDUCACAO,
-      LEVELS.PROFISSIONAL_SAUDE,
-    ])('should answer 400 for an account of the level %s', async (level) => {
-      lockedAccount(level);
-
-      await expect(
-        service.update('novo@test.com', { service_capacity: 3 }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-
-      expect(tx.user.update).not.toHaveBeenCalled();
-    });
-
-    it('should answer 400 when the same request takes the NAPNE out of its level', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
-
-      await expect(
-        service.update('novo@test.com', {
-          roles: [LEVELS.PROFISSIONAL_SAUDE],
-          service_capacity: 3,
-        }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-
-      expect(tx.user.update).not.toHaveBeenCalled();
-    });
-
-    it('should leave a missing account to the update itself', async () => {
-      lockedAccount(null);
-
-      await service.update('ninguem@test.com', { service_capacity: 3 });
 
       expect(tx.user.update).toHaveBeenCalledTimes(1);
     });
@@ -590,38 +512,48 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       expect(tx.user.delete).toHaveBeenCalledTimes(1);
     });
 
-    it('should answer 409 and delete nothing for a NAPNE with students in service', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
+    it('should answer 409 and delete nothing for an AEE teacher with students in service', async () => {
+      lockedAccount(LEVELS.PROFESSOR_AEE);
       tx.user.count.mockResolvedValue(1);
 
       await expect(service.remove(7)).rejects.toThrow(
-        new ConflictException(BUSY_NAPNE_MESSAGE),
+        new ConflictException(BUSY_AEE_MESSAGE),
       );
 
       expect(tx.user.count).toHaveBeenCalledWith({
         where: {
-          napne_responsible_id: 7,
+          aee_responsible_id: 7,
           service_status: ServiceStatus.IN_SERVICE,
         },
       });
       expect(tx.user.delete).not.toHaveBeenCalled();
     });
 
-    it('should delete a NAPNE with no students in service', async () => {
-      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
+    it('should delete an AEE teacher with no students in service', async () => {
+      lockedAccount(LEVELS.PROFESSOR_AEE);
 
       await service.remove(7);
 
       expect(tx.user.delete).toHaveBeenCalledTimes(1);
     });
 
-    it('should not count anything for an account that is not a NAPNE', async () => {
-      lockedAccount(LEVELS.ALUNO_ESTUDANTE);
+    it.each([
+      LEVELS.ALUNO_ESTUDANTE,
+      LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+    ])(
+      'should answer 409 and delete nothing for an account of the level %s, which has no AEE role anymore, with students in service',
+      async (level) => {
+        lockedAccount(level);
+        tx.user.count.mockResolvedValue(1);
 
-      await service.remove(7);
+        await expect(service.remove(7)).rejects.toThrow(
+          new ConflictException(BUSY_AEE_MESSAGE),
+        );
 
-      expect(tx.user.count).not.toHaveBeenCalled();
-    });
+        expect(tx.user.delete).not.toHaveBeenCalled();
+      },
+    );
 
     it('should leave a missing account to the delete itself', async () => {
       lockedAccount(null);
@@ -651,19 +583,21 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       expect(data).not.toHaveProperty('service_status');
     });
 
-    it('should answer 409 when the account loses the NAPNE role and keeps the AEE one while it has students in service', async () => {
+    it('should answer 409 when the account loses the AEE role and keeps the NAPNE one while it has students in service', async () => {
       lockedAccount(NAPNE_AEE);
       tx.user.count.mockResolvedValue(2);
 
       await expect(
-        service.update('novo@test.com', { roles: [LEVELS.PROFESSOR_AEE] }),
-      ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
+        service.update('novo@test.com', {
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
+        }),
+      ).rejects.toThrow(new ConflictException(BUSY_AEE_MESSAGE));
 
       expect(tx.user.update).not.toHaveBeenCalled();
     });
 
-    it('should answer 409 when an Education + NAPNE account becomes only Education', async () => {
-      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
+    it('should answer 409 when an Education + AEE account becomes only Education', async () => {
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
       tx.user.count.mockResolvedValue(1);
 
       await expect(
@@ -673,34 +607,23 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should let the NAPNE with students in service lose only the AEE role, keeping the capacity', async () => {
+    it('should let the AEE teacher with students in service lose only the NAPNE role', async () => {
       lockedAccount(NAPNE_AEE);
       tx.user.count.mockResolvedValue(2);
-
-      await service.update('novo@test.com', {
-        roles: [LEVELS.PROFISSIONAL_NAPNE],
-      });
-
-      expect(updateData().roles).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
-      expect(updateData().service_capacity).toBeUndefined();
-      expect(tx.user.count).not.toHaveBeenCalled();
-    });
-
-    it('should clear the capacity of the account that loses the NAPNE role', async () => {
-      lockedAccount(NAPNE_AEE);
 
       await service.update('novo@test.com', {
         roles: [LEVELS.PROFESSOR_AEE],
       });
 
-      expect(updateData().service_capacity).toBeNull();
+      expect(updateData().roles).toEqual([LEVELS.PROFESSOR_AEE]);
+      expect(tx.user.count).not.toHaveBeenCalled();
     });
 
     it('should unlink the students when the account loses every manager role', async () => {
       lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
 
       await service.update('novo@test.com', {
-        roles: [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFESSOR_AEE],
+        roles: [LEVELS.PROFISSIONAL_SAUDE],
       });
 
       expect(tx.user.updateMany).toHaveBeenCalledWith({
@@ -710,10 +633,10 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
     });
 
     it('should keep the students linked while one manager role remains', async () => {
-      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
+      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
 
       await service.update('novo@test.com', {
-        roles: [LEVELS.PROFISSIONAL_NAPNE],
+        roles: [LEVELS.PROFESSOR_AEE],
       });
 
       expect(tx.user.updateMany).not.toHaveBeenCalled();
@@ -733,24 +656,8 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       expect(sessions.revokeAllFromUser).toHaveBeenCalledWith(7);
     });
 
-    it('should answer 400 for a capacity on an account without the NAPNE role', async () => {
+    it('should answer 409 and delete nothing for an Education + AEE account with students in service', async () => {
       lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
-
-      await expect(
-        service.update('novo@test.com', { service_capacity: 3 }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('should accept a capacity on an account that has the NAPNE role among others', async () => {
-      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
-
-      await service.update('novo@test.com', { service_capacity: 3 });
-
-      expect(updateData().service_capacity).toBe(3);
-    });
-
-    it('should answer 409 and delete nothing for an Education + NAPNE account with students in service', async () => {
-      lockedAccount([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]);
       tx.user.count.mockResolvedValue(1);
 
       await expect(service.remove(7)).rejects.toThrow(ConflictException);

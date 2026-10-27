@@ -28,7 +28,7 @@ const STATS = {
 // controller de verdade, com o AuthGuard real, e olha qual handler foi chamado.
 describe('GET /students/service-stats', () => {
   let app: INestApplication;
-  let sessionLevel: number;
+  let sessionLevel: number | readonly number[];
   let studentsService: { findAll: jest.Mock; findOne: jest.Mock };
   let statsService: { getStats: jest.Mock };
 
@@ -61,7 +61,7 @@ describe('GET /students/service-stats', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: SUB,
-                user: { roles: [sessionLevel] },
+                user: { roles: [sessionLevel].flat() },
               }),
             ),
             registerUse: jest.fn(),
@@ -84,6 +84,10 @@ describe('GET /students/service-stats', () => {
   it.each([
     ['Administrador', LEVELS.ADMIN],
     ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
+    [
+      'NAPNE com Professor do AEE',
+      [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE],
+    ],
   ])(
     'should answer 200 with the statistics to the %s, through the stats handler',
     async (_, level) => {
@@ -106,6 +110,11 @@ describe('GET /students/service-stats', () => {
   it.each([
     ['Profissional de Educação', LEVELS.PROFISSIONAL_EDUCACAO],
     ['Profissional de Saúde', LEVELS.PROFISSIONAL_SAUDE],
+    ['Professor do AEE', LEVELS.PROFESSOR_AEE],
+    [
+      'Educação com Professor do AEE',
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+    ],
     ['Estudante', LEVELS.ALUNO_ESTUDANTE],
   ])('should answer 403 to the %s', async (_, level) => {
     sessionLevel = level;

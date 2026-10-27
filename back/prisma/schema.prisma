@@ -49,14 +49,13 @@ model User {
   updated_at              DateTime?  @updatedAt
   deleted_at              DateTime?
 
-  service_status       ServiceStatus?
-  queued_at            DateTime?
-  service_started_at   DateTime?
-  service_closed_at    DateTime?
-  service_capacity     Int?
-  napne_responsible_id Int?
-  napne_responsible    User?          @relation("NapneStudents", fields: [napne_responsible_id], references: [id], onDelete: SetNull)
-  napne_students       User[]         @relation("NapneStudents")
+  service_status     ServiceStatus?
+  queued_at          DateTime?
+  service_started_at DateTime?
+  service_closed_at  DateTime?
+  aee_responsible_id Int?
+  aee_responsible    User?          @relation("AeeStudents", fields: [aee_responsible_id], references: [id], onDelete: SetNull)
+  aee_students       User[]         @relation("AeeStudents")
 
   pedagogical_manager_id     Int?
   pedagogical_manager        User?   @relation("PedagogicalManager", fields: [pedagogical_manager_id], references: [id], onDelete: SetNull)
@@ -80,7 +79,7 @@ model User {
   id_current_phase Int
   current_phase    CurrentPhases @relation(fields: [id_current_phase], references: [id])
 
-  @@index([napne_responsible_id, service_status])
+  @@index([aee_responsible_id, service_status])
   @@index([service_status, queued_at])
   @@index([pedagogical_manager_id])
 }

@@ -1,19 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
-  Max,
   MaxLength,
-  Min,
   ValidateIf,
 } from 'class-validator';
 import { sortRoles } from '../roles';
 import { IsRoles } from './is-roles.validator';
-import { SERVICE_CAPACITY_MAX, SERVICE_CAPACITY_MIN } from '../service-queue';
 import {
   COURSE_MAX_LENGTH,
   COURSE_PATTERN,
@@ -89,22 +85,4 @@ export class UpdateUserDto {
     message: 'O campo course não deve ter caracteres de controle.',
   })
   course?: string;
-
-  @ApiProperty({
-    description:
-      'Limite de estudantes que o Profissional NAPNE atende ao mesmo tempo. Só para conta de nível Profissional NAPNE. Reduzir abaixo da quantidade em atendimento vale para as novas atribuições, e ninguém é desatribuído.',
-    example: 5,
-    required: false,
-    minimum: SERVICE_CAPACITY_MIN,
-    maximum: SERVICE_CAPACITY_MAX,
-  })
-  @ValidateIf((dto: UpdateUserDto) => dto.service_capacity !== undefined)
-  @IsInt({ message: 'O campo service_capacity deve ser um inteiro.' })
-  @Min(SERVICE_CAPACITY_MIN, {
-    message: `O campo service_capacity deve ser no mínimo ${SERVICE_CAPACITY_MIN}.`,
-  })
-  @Max(SERVICE_CAPACITY_MAX, {
-    message: `O campo service_capacity deve ser no máximo ${SERVICE_CAPACITY_MAX}.`,
-  })
-  service_capacity?: number;
 }
