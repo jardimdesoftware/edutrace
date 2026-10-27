@@ -11,12 +11,11 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
 // qualquer máquina.
 const FUSO_DO_SISTEMA = 'America/Sao_Paulo';
 
-export type SituacaoDoProfissional = 'COM_VAGAS' | 'NO_LIMITE' | 'SEM_LIMITE';
+export type SituacaoDoProfissional = 'COM_VAGAS' | 'NO_LIMITE';
 
 const ROTULOS_DA_SITUACAO: Record<SituacaoDoProfissional, string> = {
   COM_VAGAS: 'Com vagas',
   NO_LIMITE: 'No limite',
-  SEM_LIMITE: 'Aguardando limite',
 };
 
 export interface TotalDoPainel {
@@ -33,7 +32,7 @@ export interface OcupacaoDoProfissional {
   vagas: string;
   situacao: SituacaoDoProfissional;
   rotuloSituacao: string;
-  percentual: number | null;
+  percentual: number;
 }
 
 export interface PainelDeAtendimento {
@@ -69,28 +68,17 @@ export function textoDaEsperaMaisAntiga(fila: ServiceQueue, agora: Date): string
 
 export function ocupacaoDoProfissional(profissional: ProfessionalLoad): OcupacaoDoProfissional {
   const { id, full_name: nome, in_service: emAtendimento, capacity, free } = profissional;
+  const vagas = Math.max(0, free);
 
-  if (capacity === null || free === null) {
-    return {
-      id,
-      nome,
-      ocupacao: 'Limite não definido',
-      vagas: 'Não definidas',
-      situacao: 'SEM_LIMITE',
-      rotuloSituacao: ROTULOS_DA_SITUACAO.SEM_LIMITE,
-      percentual: null,
-    };
-  }
-
-  const situacao = free === 0 ? 'NO_LIMITE' : 'COM_VAGAS';
+  const situacao = vagas === 0 ? 'NO_LIMITE' : 'COM_VAGAS';
   return {
     id,
     nome,
     ocupacao: `${emAtendimento} de ${capacity}`,
-    vagas: String(free),
+    vagas: String(vagas),
     situacao,
     rotuloSituacao: ROTULOS_DA_SITUACAO[situacao],
-    percentual: capacity === 0 ? 100 : Math.min(100, Math.round((emAtendimento / capacity) * 100)),
+    percentual: Math.min(100, Math.round((emAtendimento / capacity) * 100)),
   };
 }
 

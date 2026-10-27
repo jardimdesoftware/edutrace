@@ -44,12 +44,6 @@ const ESTILO_DA_SITUACAO: Record<
     trilho: "bg-amber-100",
     linha: "bg-amber-50",
   },
-  SEM_LIMITE: {
-    selo: "border-gray-300 bg-gray-100 text-gray-800",
-    preenchimento: "bg-gray-400",
-    trilho: "bg-gray-200",
-    linha: "",
-  },
 };
 
 function Totais({ totais }: { totais: TotalDoPainel[] }) {
@@ -82,17 +76,15 @@ function LinhaDoProfissional({ profissional }: { profissional: OcupacaoDoProfiss
       </td>
       <td>
         <span className="text-gray-900">{profissional.ocupacao}</span>
-        {profissional.percentual !== null && (
+        <div
+          aria-hidden="true"
+          className={`mt-1 h-1.5 w-28 overflow-hidden rounded-full ${estilo.trilho}`}
+        >
           <div
-            aria-hidden="true"
-            className={`mt-1 h-1.5 w-28 overflow-hidden rounded-full ${estilo.trilho}`}
-          >
-            <div
-              className={`h-full rounded-full ${estilo.preenchimento}`}
-              style={{ width: `${profissional.percentual}%` }}
-            />
-          </div>
-        )}
+            className={`h-full rounded-full ${estilo.preenchimento}`}
+            style={{ width: `${profissional.percentual}%` }}
+          />
+        </div>
       </td>
       <td>
         <span className="text-gray-900">{profissional.vagas}</span>
@@ -113,18 +105,18 @@ function LinhaDoProfissional({ profissional }: { profissional: OcupacaoDoProfiss
 
 function Profissionais({ profissionais }: { profissionais: OcupacaoDoProfissional[] }) {
   if (profissionais.length === 0) {
-    return <div className="mt-6 text-sm text-gray-700">Nenhum profissional NAPNE cadastrado.</div>;
+    return <div className="mt-6 text-sm text-gray-700">Nenhum Professor do AEE cadastrado.</div>;
   }
 
   return (
     <div className="mt-6 overflow-x-auto">
       <table className="min-w-full table-auto text-sm text-left">
         <caption className="mb-2 text-left text-base font-semibold text-gray-900">
-          Profissionais NAPNE
+          Professores do AEE
         </caption>
         <thead className="bg-gray-100 text-gray-700">
           <tr>
-            <th scope="col">Profissional</th>
+            <th scope="col">Professor(a)</th>
             <th scope="col">Ocupação</th>
             <th scope="col">Vagas livres</th>
             <th scope="col">Situação</th>

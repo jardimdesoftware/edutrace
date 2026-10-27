@@ -4,8 +4,8 @@ export interface ProfessionalLoad {
   id: number;
   full_name: string;
   in_service: number;
-  capacity: number | null;
-  free: number | null;
+  capacity: number;
+  free: number;
 }
 
 export interface ServiceQueue {
