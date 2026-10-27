@@ -7,8 +7,8 @@ import {
   encerrarAtendimento,
   getStudentByEmail,
 } from "@/api/students";
-import { updateServiceCapacity, updateUser } from "@/api/user";
-import { ADMIN, PROFISSIONAL_NAPNE } from "@/consts";
+import { updateUser } from "@/api/user";
+import { ADMIN } from "@/consts";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
 import { exportStudentReportPdf } from "@/lib/exportStudentReport";
@@ -39,7 +39,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import AtendimentoEstudante from "./AtendimentoEstudante";
-import LimiteAtendimento from "./LimiteAtendimento";
 import Loading from "./Loading";
 import EditorDePapeis from "./EditorDePapeis";
 
@@ -89,7 +88,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
 
   const isAdmin = temPapel(user?.roles, ADMIN);
   const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.roles);
-  const totalColunas = isAdmin ? 8 : 7;
+  const totalColunas = 7;
 
   const filtrados = students && filtrarPorStatus(
     students.filter(e => e.full_name.toLowerCase().includes(busca.toLowerCase())),
@@ -159,33 +158,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
-    }
-  };
-
-  const handleAlterarLimite = async (estudante: StudentData, limite: number) => {
-    try {
-      const atualizado = await updateServiceCapacity(estudante.email, limite);
-      setStudents((prev) => prev && substituirUsuario(prev, atualizado));
-      onAlteracao?.();
-      Swal.fire({
-        icon: "success",
-        title: "Limite de atendimento atualizado com sucesso!",
-        confirmButtonColor: "#047857",
-        confirmButtonText: "Ok",
-      });
-      return true;
-    } catch (error) {
-      console.error(error);
-      Swal.fire({
-        ...errorAlertOptions(
-          "Falha ao atualizar o limite de atendimento",
-          error,
-          "Não foi possível atualizar o limite de atendimento.",
-        ),
-        confirmButtonColor: "#047857",
-        confirmButtonText: "Entendi",
-      });
-      return false;
     }
   };
 
@@ -340,17 +312,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                   {renderAtendimento(estudante)}
                 </div>
               )}
-              {isAdmin && temPapel(estudante.roles, PROFISSIONAL_NAPNE) && (
-                <div>
-                  <span className="font-semibold">Limite de atendimento:</span>
-                  <LimiteAtendimento
-                    key={estudante.email}
-                    nome={estudante.full_name}
-                    limiteAtual={estudante.service_capacity}
-                    onSalvar={(limite) => handleAlterarLimite(estudante, limite)}
-                  />
-                </div>
-              )}
             </div>
             <div className="mt-3 flex gap-2">
               <button
@@ -389,7 +350,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               <th className="p-3">Responsável Pedagógico</th>
               <th className="p-3">Papéis</th>
               <th className="p-3">Atendimento</th>
-              {isAdmin && <th className="p-3">Limite de atendimento</th>}
               <th className="p-3"></th>
             </tr>
           </thead>
@@ -415,18 +375,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                   )}
                 </td>
                 <td className="p-3">{renderAtendimento(estudante)}</td>
-                {isAdmin && (
-                  <td className="p-3">
-                    {temPapel(estudante.roles, PROFISSIONAL_NAPNE) && (
-                      <LimiteAtendimento
-                        key={estudante.email}
-                        nome={estudante.full_name}
-                        limiteAtual={estudante.service_capacity}
-                        onSalvar={(limite) => handleAlterarLimite(estudante, limite)}
-                      />
-                    )}
-                  </td>
-                )}
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-2">
                     <button
