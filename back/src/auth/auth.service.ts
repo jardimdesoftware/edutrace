@@ -12,6 +12,7 @@ import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import { randomInt, randomUUID } from 'node:crypto';
+import { get as httpsGet } from 'node:https';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { hashActivationToken } from './activation-token';
 import { CompromisedPasswordService } from './compromised-password.service';
@@ -37,6 +38,8 @@ const GOOGLE_DISCENTE_HOSTED_DOMAIN = 'discente.ifpe.edu.br';
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 const GOOGLE_NOT_LINKED_MESSAGE =
   'Conta Google não vinculada. Entre com e-mail e senha e vincule a conta em Alterar meus dados.';
+const GOOGLE_TOKENINFO_TIMEOUT_MS = 10_000;
+const GOOGLE_TOKENINFO_MAX_RESPONSE_BYTES = 32 * 1024;
 
 // Hash bcrypt (custo 10, o mesmo usado nas senhas reais) de uma senha aleatória
 // descartável. Serve para que o caminho de e-mail inexistente pague o mesmo custo
@@ -284,14 +287,10 @@ export class AuthService {
       throw new BadRequestException('Login com Google não configurado.');
     }
 
-    let response: Response;
+    let response: { statusCode: number; body: string };
 
     try {
-      response = await fetch(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(
-          credential,
-        )}`,
-      );
+      response = await this.requestGoogleTokenInfo(credential);
     } catch (error) {
       this.logger.error(
         'Falha ao validar credencial do Google.',
@@ -302,11 +301,18 @@ export class AuthService {
       );
     }
 
-    if (!response.ok) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw new UnauthorizedException('Credencial do Google inválida.');
     }
 
-    const tokenInfo = (await response.json()) as GoogleTokenInfo;
+    let tokenInfo: GoogleTokenInfo;
+
+    try {
+      tokenInfo = JSON.parse(response.body) as GoogleTokenInfo;
+    } catch {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    }
+
     const emailVerified =
       tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
 
@@ -319,6 +325,56 @@ export class AuthService {
     }
 
     return tokenInfo;
+  }
+
+  private requestGoogleTokenInfo(
+    credential: string,
+  ): Promise<{ statusCode: number; body: string }> {
+    const url = new URL('https://oauth2.googleapis.com/tokeninfo');
+    url.searchParams.set('id_token', credential);
+
+    return new Promise((resolve, reject) => {
+      const request = httpsGet(
+        url,
+        {
+          // A VM de produção não possui rota IPv6. Fixar IPv4 evita que a
+          // validação OAuth expire ao tentar um endereço IPv6 do Google.
+          family: 4,
+          timeout: GOOGLE_TOKENINFO_TIMEOUT_MS,
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          let responseBytes = 0;
+
+          response.on('data', (chunk: Buffer) => {
+            responseBytes += chunk.length;
+
+            if (responseBytes > GOOGLE_TOKENINFO_MAX_RESPONSE_BYTES) {
+              response.destroy(
+                new Error('Resposta do Google excedeu o limite permitido.'),
+              );
+              return;
+            }
+
+            chunks.push(chunk);
+          });
+
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 502,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+
+          response.on('error', reject);
+        },
+      );
+
+      request.on('timeout', () => {
+        request.destroy(new Error('Tempo limite ao validar credencial Google.'));
+      });
+      request.on('error', reject);
+    });
   }
 
   private throwIfDatabaseUnavailable(error: unknown): void {

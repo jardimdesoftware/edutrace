@@ -25,6 +25,7 @@ services:
      - PORT=3000
      - DATABASE_URL=${DATABASE_URL}
      - NODE_ENV=${NODE_ENV}
+     - "NODE_OPTIONS=--dns-result-order=ipv4first --no-network-family-autoselection"
      - SECRET_KEY=${SECRET_KEY}
      - FRONTEND_URL=${FRONTEND_URL}
      - ADMIN_EMAIL=${ADMIN_EMAIL}

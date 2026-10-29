@@ -14,7 +14,7 @@
 
 Sistema web para gerenciar prontuários eletrônicos de estudantes com necessidades educacionais específicas, permitindo o registro de informações acadêmicas, de saúde, crises e desempenho, com segurança, acessibilidade e suporte personalizado.
 
-Acesse agora pelo [Link](https://edutrace.valerialima.me/)
+Acesse agora pelo [Link](https://edutrace.ruancarvalho.me/)
 
 ## 🛠 Tecnologias Utilizadas
 - **Front-end:** Next.js e estilizado com Tailwind CSS

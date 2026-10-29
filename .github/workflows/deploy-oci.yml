@@ -98,7 +98,7 @@ jobs:
           healthy=0
           for attempt in $(seq 1 18); do
             if curl --fail --silent --show-error --max-time 10 \
-              https://backend.edutrace.valerialima.me/ >/dev/null; then
+              https://edutrace.ruancarvalho.me/api/ >/dev/null; then
               healthy=1
               break
             fi
@@ -155,7 +155,7 @@ jobs:
           healthy=0
           for attempt in $(seq 1 18); do
             if curl --fail --silent --show-error --max-time 10 \
-              https://edutrace.valerialima.me/ >/dev/null; then
+              https://edutrace.ruancarvalho.me/ >/dev/null; then
               healthy=1
               break
             fi

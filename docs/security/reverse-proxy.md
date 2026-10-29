@@ -18,7 +18,7 @@ sudo nginx -t && sudo systemctl reload nginx
 Depois do reload, confira:
 
 ```sh
-curl -sI https://edutrace.valerialima.me/ | grep -i '^server:'
+curl -sI https://edutrace.ruancarvalho.me/ | grep -i '^server:'
 # server: nginx
 ```
 
