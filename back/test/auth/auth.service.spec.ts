@@ -473,12 +473,19 @@ describe('AuthService', () => {
     const NOT_LINKED_MESSAGE =
       'Conta Google não vinculada. Entre com e-mail e senha e vincule a conta em Alterar meus dados.';
     let originalClientId: string | undefined;
-    let originalFetch: typeof fetch;
-
     const mockGoogleCredential = (claims: Record<string, unknown>) => {
-      globalThis.fetch = (async () =>
-        new Response(
-          JSON.stringify({
+      jest
+        .spyOn(
+          service as unknown as {
+            requestGoogleTokenInfo: (
+              credential: string,
+            ) => Promise<{ statusCode: number; body: string }>;
+          },
+          'requestGoogleTokenInfo',
+        )
+        .mockResolvedValue({
+          statusCode: 200,
+          body: JSON.stringify({
             aud: 'client-id',
             iss: 'https://accounts.google.com',
             email_verified: true,
@@ -486,18 +493,15 @@ describe('AuthService', () => {
             sub: 'google-sub',
             ...claims,
           }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )) as typeof fetch;
+        });
     };
 
     beforeEach(() => {
       originalClientId = process.env.GOOGLE_CLIENT_ID;
-      originalFetch = globalThis.fetch;
       process.env.GOOGLE_CLIENT_ID = 'client-id';
     });
 
     afterEach(() => {
-      globalThis.fetch = originalFetch;
       if (originalClientId === undefined) {
         delete process.env.GOOGLE_CLIENT_ID;
       } else {
@@ -1306,19 +1310,26 @@ describe('AuthService', () => {
 
     it('should identify the account by id when the Google login is refused by the lock', async () => {
       const clientId = process.env.GOOGLE_CLIENT_ID;
-      const originalFetch = globalThis.fetch;
       process.env.GOOGLE_CLIENT_ID = 'client-id';
-      globalThis.fetch = (async () =>
-        new Response(
-          JSON.stringify({
+      jest
+        .spyOn(
+          service as unknown as {
+            requestGoogleTokenInfo: (
+              credential: string,
+            ) => Promise<{ statusCode: number; body: string }>;
+          },
+          'requestGoogleTokenInfo',
+        )
+        .mockResolvedValue({
+          statusCode: 200,
+          body: JSON.stringify({
             aud: 'client-id',
             iss: 'https://accounts.google.com',
             email: mockUser.email,
             email_verified: true,
             sub: 'google-sub',
           }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )) as typeof fetch;
+        });
 
       try {
         jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
@@ -1336,7 +1347,6 @@ describe('AuthService', () => {
         );
         expect(loggedText()).not.toContain(mockUser.email);
       } finally {
-        globalThis.fetch = originalFetch;
         if (clientId === undefined) {
           delete process.env.GOOGLE_CLIENT_ID;
         } else {

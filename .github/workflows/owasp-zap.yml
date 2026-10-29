@@ -31,7 +31,7 @@ jobs:
         uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          target: ${{ vars.ZAP_TARGET_URL || 'https://edutrace.valerialima.me' }}
+          target: ${{ vars.ZAP_TARGET_URL || 'https://edutrace.ruancarvalho.me' }}
           rules_file_name: ".zap/rules.tsv"
           fail_action: true
           allow_issue_writing: true
