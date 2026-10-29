@@ -20,6 +20,8 @@ jobs:
     name: Run DAST scan on target
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ZAP_TARGET: ${{ vars.ZAP_TARGET_URL || 'https://edutrace.ruancarvalho.me' }}
 
     steps:
       - name: Checkout source code
@@ -27,12 +29,42 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify target availability
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 6); do
+            if curl --fail --location --silent --show-error --max-time 20 \
+              "${ZAP_TARGET}/" >/dev/null; then
+              exit 0
+            fi
+
+            echo "Target availability check ${attempt}/6 failed; retrying."
+            sleep 10
+          done
+
+          echo "OWASP ZAP target is unavailable: ${ZAP_TARGET}" >&2
+          exit 1
+
       - name: OWASP ZAP baseline scan
         uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          target: ${{ vars.ZAP_TARGET_URL || 'https://edutrace.ruancarvalho.me' }}
+          target: ${{ env.ZAP_TARGET }}
           rules_file_name: ".zap/rules.tsv"
           fail_action: true
           allow_issue_writing: true
           issue_title: "OWASP ZAP Security Scan Report"
+
+      - name: Upload OWASP ZAP reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owasp-zap-report-${{ github.run_number }}
+          path: |
+            report_html.html
+            report_json.json
+            report_md.md
+          if-no-files-found: warn
+          retention-days: 30
