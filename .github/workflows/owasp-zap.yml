@@ -53,6 +53,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: ${{ env.ZAP_TARGET }}
           rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-I"
           fail_action: true
           allow_issue_writing: true
           issue_title: "OWASP ZAP Security Scan Report"
