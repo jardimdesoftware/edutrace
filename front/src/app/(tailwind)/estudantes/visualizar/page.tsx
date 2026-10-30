@@ -49,7 +49,16 @@ function VisualizarEstudante() {
   const nome = estudante?.full_name;
   const cpf = estudante?.cpf;
   const email = estudante?.email;
-  const responsavel = nomeDoResponsavel(estudante);
+  const responsavel =
+    estudante && podeDefinirResponsavel(user, estudante) ? (
+      <ResponsavelPedagogico
+        key={estudante.id}
+        estudante={estudante}
+        onAtualizado={setAtualizado}
+      />
+    ) : (
+      nomeDoResponsavel(estudante)
+    );
   const matricula = estudante?.enrollment_number || NAO_INFORMADO;
   const curso = estudante?.course || NAO_INFORMADO;
   const papeis = rotulosDosPapeis(estudante?.roles).join(", ") || "Papel desconhecido";
@@ -99,14 +108,6 @@ function VisualizarEstudante() {
             </table>
           </div>
         </div>
-
-        {estudante && podeDefinirResponsavel(user, estudante) && (
-          <ResponsavelPedagogico
-            key={estudante.id}
-            estudante={estudante}
-            onAtualizado={setAtualizado}
-          />
-        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 max-w-5xl mx-auto">
           {(user ? fichasDoEstudante(user.roles) : []).map((ficha) => (
