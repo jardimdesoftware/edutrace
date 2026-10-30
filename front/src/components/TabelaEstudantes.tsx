@@ -28,6 +28,7 @@ import {
 } from "@/utils/papeis";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { canAccessPage } from "@/utils/pageAccess";
+import { podeDefinirResponsavel } from "@/utils/responsavelPedagogico";
 import {
   listarUsuariosDaTabela,
   podeExportarRelatorio,
@@ -41,6 +42,7 @@ import Swal from "sweetalert2";
 import AtendimentoEstudante from "./AtendimentoEstudante";
 import Loading from "./Loading";
 import EditorDePapeis from "./EditorDePapeis";
+import ResponsavelPedagogico from "./ResponsavelPedagogico";
 
 interface AcaoAtendimento {
   chamar: (email: string) => Promise<StudentData>;
@@ -122,6 +124,19 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
       });
     }
   };
+
+  const renderResponsavel = (estudante: StudentData) =>
+    podeDefinirResponsavel(user, estudante) ? (
+      <ResponsavelPedagogico
+        estudante={estudante}
+        onAtualizado={(atualizado) => {
+          setStudents((prev) => prev && substituirUsuario(prev, atualizado));
+          onAlteracao?.();
+        }}
+      />
+    ) : (
+      responsavelDaLinha(estudante)
+    );
 
   const handleAlterarPapeis = async (estudante: StudentData, novosPapeis: number[]): Promise<void> => {
     const confirmacao = await Swal.fire({
@@ -294,7 +309,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               <p><span className="font-semibold">Nome:</span> {estudante.full_name}</p>
               <p><span className="font-semibold">CPF:</span> {estudante.cpf}</p>
               <p className="break-all"><span className="font-semibold">E-mail:</span> {estudante.email}</p>
-              <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavelDaLinha(estudante)}</p>
+              <p><span className="font-semibold">Responsável Pedagógico:</span> {renderResponsavel(estudante)}</p>
               {isAdmin ? (
                 <EditorDePapeis
                   key={`m-${estudante.id}-${estudante.roles.join(",")}`}
@@ -359,7 +374,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                 <td className="p-3">{estudante.full_name}</td>
                 <td className="p-3">{estudante.cpf}</td>
                 <td className="p-3">{estudante.email}</td>
-                <td className="p-3">{responsavelDaLinha(estudante)}</td>
+                <td className="p-3">{renderResponsavel(estudante)}</td>
                 <td className="p-3">
                   {isAdmin ? (
                     <EditorDePapeis
