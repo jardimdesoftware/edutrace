@@ -10,6 +10,7 @@ interface TextAreaFieldProps {
   ajuda?: string;
   erro?: string;
   rotuloOculto?: boolean;
+  obrigatorio?: boolean;
   linhas?: number;
   placeholder?: string;
   disabled?: boolean;
@@ -29,6 +30,7 @@ export default function TextAreaField({
   ajuda,
   erro,
   rotuloOculto,
+  obrigatorio,
   linhas = LINHAS_PADRAO,
   placeholder,
   disabled,
@@ -41,6 +43,7 @@ export default function TextAreaField({
       id={id}
       rotulo={rotulo}
       rotuloOculto={rotuloOculto}
+      obrigatorio={obrigatorio}
       ajuda={ajuda}
       erro={erro}
       descricaoExtra={contadorId}
