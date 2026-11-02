@@ -22,6 +22,7 @@ interface PaeeFormularioProps {
   novo: boolean;
   // undefined é o curso que a tela não conhece; null é o cadastro sem curso.
   curso?: string | null;
+  estudante?: string;
   autor: string | null;
   salvando: boolean;
   onSalvar: (periodo: string, corpo: AeePlanPayload) => void;
@@ -32,6 +33,7 @@ export default function PaeeFormulario({
   inicial,
   novo,
   curso,
+  estudante,
   autor,
   salvando,
   onSalvar,
@@ -39,11 +41,13 @@ export default function PaeeFormulario({
 }: PaeeFormularioProps) {
   return (
     <FormularioPorTabela
+      titulo="PAEE"
+      estudante={estudante}
+      modo={novo ? "criar" : "editar"}
       secoes={SECOES_PAEE}
       prefixoDosIds="paee"
       inicial={inicial}
       validar={novo ? validarPlanoNovo : validarPlanoExistente}
-      rotuloSalvar="Salvar PAEE"
       salvando={salvando}
       onSalvar={(form) => onSalvar(form.semester.trim(), montarCorpoDoPlano(form))}
       onCancelar={onCancelar}
@@ -54,6 +58,7 @@ export default function PaeeFormulario({
               <TextField
                 id={idDoCampo(CAMINHO_DO_PERIODO)}
                 rotulo="Período letivo"
+                obrigatorio
                 valor={valores.semester}
                 tamanhoMaximo={TAMANHO_DO_PERIODO}
                 ajuda="Formato AAAA.S, com semestre 1 ou 2, por exemplo 2026.1. Não pode ser alterado depois."
