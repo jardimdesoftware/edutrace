@@ -8,6 +8,7 @@ interface PeiParecerFormularioProps {
   inicial: PeiOpinionForm;
   semestre: string;
   disciplina: string;
+  estudante?: string;
   autor: string | null;
   salvando: boolean;
   onSalvar: (form: PeiOpinionForm) => void;
@@ -21,6 +22,7 @@ export default function PeiParecerFormulario({
   inicial,
   semestre,
   disciplina,
+  estudante,
   autor,
   salvando,
   onSalvar,
@@ -28,11 +30,13 @@ export default function PeiParecerFormulario({
 }: PeiParecerFormularioProps) {
   return (
     <FormularioPorTabela
+      titulo="Parecer semestral do PEI"
+      estudante={estudante}
+      modo="editar"
       secoes={SECOES_PARECER}
       prefixoDosIds="pei-parecer"
       inicial={inicial}
       validar={validarParecer}
-      rotuloSalvar="Salvar parecer"
       salvando={salvando}
       onSalvar={onSalvar}
       onCancelar={onCancelar}
