@@ -6,16 +6,26 @@
 export const NAO_INFORMADO = 'Não informado';
 const NENHUMA_OPCAO = 'Nenhuma opção marcada';
 
+// obrigatorio: o campo em branco é recusado. Marcação nunca é obrigatória: item
+// desmarcado é uma resposta.
 export type CampoDef =
-  | { tipo: 'texto' | 'textoLongo'; caminho: string; rotulo: string; max: number }
+  | {
+      tipo: 'texto' | 'textoLongo';
+      caminho: string;
+      rotulo: string;
+      max: number;
+      obrigatorio?: true;
+    }
   | {
       tipo: 'numero';
       caminho: string;
       rotulo: string;
       max: number;
       unidade: { singular: string; plural: string };
+      obrigatorio?: true;
     }
-  | { tipo: 'data' | 'marcacao'; caminho: string; rotulo: string };
+  | { tipo: 'data'; caminho: string; rotulo: string; obrigatorio?: true }
+  | { tipo: 'marcacao'; caminho: string; rotulo: string };
 
 // A lista de verificação agrupa itens marcáveis sob um título, com os textos
 // que a acompanham; os outros grupos só reúnem campos que têm um subtítulo.
@@ -23,38 +33,65 @@ export type GrupoDef =
   | { titulo?: string; lista?: false; campos: CampoDef[] }
   | { titulo: string; lista: true; campos: CampoDef[] };
 
+// Num formulário em passos, cada seção é um passo. Seções seguidas com o mesmo
+// `passo` formam um passo só, com esse rótulo na barra de passos.
+// dividirPorGrupo: uma seção grande vira um passo por grupo, cada um com o
+// título do grupo na barra de passos.
+// caminhosExtras: caminhos que a tela controla fora da tabela (como o período
+// do PAEE ou a lista do PEI), para o erro de um deles cair no passo da seção.
 export interface SecaoDef {
   titulo: string;
   grupos: GrupoDef[];
+  passo?: string;
+  dividirPorGrupo?: true;
+  caminhosExtras?: string[];
 }
 
-export const texto = (caminho: string, rotulo: string, max: number): CampoDef => ({
+// Só leva a chave quando o campo é obrigatório, para a definição dos campos
+// comuns continuar com a mesma forma.
+const marcaObrigatorio = (obrigatorio?: true) => (obrigatorio ? { obrigatorio } : {});
+
+export const texto = (
+  caminho: string,
+  rotulo: string,
+  max: number,
+  obrigatorio?: true,
+): CampoDef => ({
   tipo: 'texto',
   caminho,
   rotulo,
   max,
+  ...marcaObrigatorio(obrigatorio),
 });
-export const textoLongo = (caminho: string, rotulo: string, max: number): CampoDef => ({
+export const textoLongo = (
+  caminho: string,
+  rotulo: string,
+  max: number,
+  obrigatorio?: true,
+): CampoDef => ({
   tipo: 'textoLongo',
   caminho,
   rotulo,
   max,
+  ...marcaObrigatorio(obrigatorio),
 });
 export const numero = (
   caminho: string,
   rotulo: string,
   max: number,
   unidade: { singular: string; plural: string },
-): CampoDef => ({ tipo: 'numero', caminho, rotulo, max, unidade });
+  obrigatorio?: true,
+): CampoDef => ({ tipo: 'numero', caminho, rotulo, max, unidade, ...marcaObrigatorio(obrigatorio) });
 export const marcacao = (caminho: string, rotulo: string): CampoDef => ({
   tipo: 'marcacao',
   caminho,
   rotulo,
 });
-export const data = (caminho: string, rotulo: string): CampoDef => ({
+export const data = (caminho: string, rotulo: string, obrigatorio?: true): CampoDef => ({
   tipo: 'data',
   caminho,
   rotulo,
+  ...marcaObrigatorio(obrigatorio),
 });
 
 export function camposDaTabela(secoes: readonly SecaoDef[]): CampoDef[] {
@@ -174,6 +211,10 @@ function dataExiste(valor: string): boolean {
 function erroDoCampo(campo: CampoDef, valor: unknown): string | null {
   const limpo = textoDe(valor).trim();
 
+  if (campo.tipo !== 'marcacao' && campo.obrigatorio && !limpo) {
+    return `O campo "${campo.rotulo}" é obrigatório.`;
+  }
+
   switch (campo.tipo) {
     case 'texto':
     case 'textoLongo':
@@ -203,9 +244,6 @@ export function validarFormularioDe(secoes: readonly SecaoDef[], form: unknown):
   );
 }
 
-// Tira o erro do caminho e os dos campos dentro dele: trocar uma lista muda o
-// índice dos itens, e o erro de um item não vale mais para o item que ocupa o
-// lugar.
 export function semErroDoCaminho(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
   return Object.fromEntries(
     Object.entries(erros).filter(([chave]) => chave !== caminho && !chave.startsWith(`${caminho}.`)),
