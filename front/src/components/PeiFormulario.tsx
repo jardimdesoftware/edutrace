@@ -24,6 +24,7 @@ interface PeiFormularioProps {
   // O semestre e a disciplina só se escolhem na criação; o registro já criado
   // os mantém.
   novo: boolean;
+  estudante?: string;
   autor: string | null;
   salvando: boolean;
   onSalvar: (form: PeiEntryForm) => void;
@@ -42,6 +43,7 @@ export function DadoFixo({ rotulo, valor }: { rotulo: string; valor: string }) {
 export default function PeiFormulario({
   inicial,
   novo,
+  estudante,
   autor,
   salvando,
   onSalvar,
@@ -49,11 +51,13 @@ export default function PeiFormulario({
 }: PeiFormularioProps) {
   return (
     <FormularioPorTabela
+      titulo="PEI"
+      estudante={estudante}
+      modo={novo ? "criar" : "editar"}
       secoes={SECOES_PEI}
       prefixoDosIds="pei"
       inicial={inicial}
       validar={novo ? validarPeiNovo : validarPeiExistente}
-      rotuloSalvar="Salvar registro"
       salvando={salvando}
       onSalvar={onSalvar}
       onCancelar={onCancelar}
@@ -70,6 +74,7 @@ export default function PeiFormulario({
                 <TextField
                   id={idDoCampo(CAMINHO_DO_SEMESTRE)}
                   rotulo="Semestre"
+                  obrigatorio
                   valor={valores.semester}
                   tamanhoMaximo={TAMANHO_DO_SEMESTRE}
                   ajuda="Formato AAAA.S, com semestre 1 ou 2, por exemplo 2026.2. Não pode ser alterado depois."
@@ -79,6 +84,7 @@ export default function PeiFormulario({
                 <TextField
                   id={idDoCampo(CAMINHO_DA_DISCIPLINA)}
                   rotulo="Disciplina"
+                  obrigatorio
                   valor={valores.subject}
                   tamanhoMaximo={LIMITES_PEI.DISCIPLINA}
                   ajuda={`Até ${LIMITES_PEI.DISCIPLINA} caracteres. Não pode ser alterada depois.`}
