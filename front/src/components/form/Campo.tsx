@@ -19,12 +19,14 @@ export interface PropsDoControle {
   id: string;
   "aria-describedby": string | undefined;
   "aria-invalid": true | undefined;
+  "aria-required": true | undefined;
 }
 
 interface CampoProps {
   id: string;
   rotulo: string;
   rotuloOculto?: boolean;
+  obrigatorio?: boolean;
   ajuda?: string;
   erro?: string;
   descricaoExtra?: string;
@@ -39,6 +41,7 @@ export default function Campo({
   id,
   rotulo,
   rotuloOculto = false,
+  obrigatorio = false,
   ajuda,
   erro,
   descricaoExtra,
@@ -56,11 +59,13 @@ export default function Campo({
         className={rotuloOculto ? "sr-only" : "mb-1 block text-sm font-medium text-gray-900"}
       >
         {rotulo}
+        {obrigatorio && <span className="font-normal text-gray-600"> (obrigatório)</span>}
       </label>
       {children({
         id,
         "aria-describedby": descricao || undefined,
         "aria-invalid": erro ? true : undefined,
+        "aria-required": obrigatorio ? true : undefined,
       })}
       {ajuda && (
         <p id={ajudaId} className="mt-1 text-xs text-gray-600">
