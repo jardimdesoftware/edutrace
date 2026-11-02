@@ -145,8 +145,21 @@ function PaeePage() {
   );
 
   return (
-    <AppLayout>
-      <div className="w-full p-6">
+    <AppLayout ocuparTela={!!edicao && !erro}>
+      <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
+        {edicao && !erro ? (
+          <PaeeFormulario
+            key={edicao.plano?.id ?? 'novo'}
+            inicial={edicao.plano ? formularioDoPlano(edicao.plano) : formularioVazioDoPlano()}
+            novo={!edicao.plano}
+            curso={cursoDoEstudante(edicao.plano ?? planos[0] ?? null, registro)}
+            estudante={nome ?? undefined}
+            autor={edicao.plano ? (edicao.plano.author?.full_name ?? null) : user.name}
+            salvando={salvando}
+            onSalvar={handleSalvar}
+            onCancelar={() => setEdicao(null)}
+          />
+        ) : (
         <div className="mx-auto w-full max-w-3xl space-y-6">
           <header className="space-y-1">
             <h1 className="text-4xl font-bold">PAEE</h1>
@@ -161,17 +174,6 @@ function PaeePage() {
                 Tentar novamente
               </button>
             </div>
-          ) : edicao ? (
-            <PaeeFormulario
-              key={edicao.plano?.id ?? 'novo'}
-              inicial={edicao.plano ? formularioDoPlano(edicao.plano) : formularioVazioDoPlano()}
-              novo={!edicao.plano}
-              curso={cursoDoEstudante(edicao.plano ?? planos[0] ?? null, registro)}
-              autor={edicao.plano ? (edicao.plano.author?.full_name ?? null) : user.name}
-              salvando={salvando}
-              onSalvar={handleSalvar}
-              onCancelar={() => setEdicao(null)}
-            />
           ) : planos.length > 0 ? (
             <>
               {botaoNovo}
@@ -198,6 +200,7 @@ function PaeePage() {
             </div>
           )}
         </div>
+        )}
       </div>
     </AppLayout>
   );
