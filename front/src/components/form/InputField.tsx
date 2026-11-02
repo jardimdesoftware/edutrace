@@ -8,6 +8,7 @@ interface CampoBasicoProps {
   ajuda?: string;
   erro?: string;
   disabled?: boolean;
+  obrigatorio?: boolean;
 }
 
 type InputProps = CampoBasicoProps & {
@@ -25,6 +26,7 @@ function InputField({
   ajuda,
   erro,
   disabled,
+  obrigatorio,
   tipo,
   max,
   min,
@@ -33,7 +35,7 @@ function InputField({
   const id = useIdDoCampo(idDaProp);
 
   return (
-    <Campo id={id} rotulo={rotulo} ajuda={ajuda} erro={erro}>
+    <Campo id={id} rotulo={rotulo} ajuda={ajuda} erro={erro} obrigatorio={obrigatorio}>
       {(controle) => (
         <input
           {...controle}
