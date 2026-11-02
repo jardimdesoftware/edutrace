@@ -13,7 +13,6 @@ import {
   montarCorpoDe,
   numero,
   secoesDeLeitura,
-  semErroDoCaminho,
   texto,
   textoLongo,
   validarFormularioDe,
@@ -95,6 +94,34 @@ describe('field builders', () => {
       max: 9,
       unidade: HORAS,
     });
+  });
+
+  it('mark a required field only when it is asked for, so the common fields keep their shape', () => {
+    assert.deepEqual(texto('a', 'A', 3, true), {
+      tipo: 'texto',
+      caminho: 'a',
+      rotulo: 'A',
+      max: 3,
+      obrigatorio: true,
+    });
+    assert.deepEqual(textoLongo('a', 'A', 3, true), {
+      tipo: 'textoLongo',
+      caminho: 'a',
+      rotulo: 'A',
+      max: 3,
+      obrigatorio: true,
+    });
+    assert.deepEqual(data('a', 'A', true), { tipo: 'data', caminho: 'a', rotulo: 'A', obrigatorio: true });
+    assert.deepEqual(numero('a', 'A', 9, HORAS, true), {
+      tipo: 'numero',
+      caminho: 'a',
+      rotulo: 'A',
+      max: 9,
+      unidade: HORAS,
+      obrigatorio: true,
+    });
+    assert.equal('obrigatorio' in texto('a', 'A', 3), false);
+    assert.equal('obrigatorio' in marcacao('a', 'A'), false);
   });
 });
 
@@ -263,54 +290,67 @@ describe('validarFormularioDe', () => {
   });
 });
 
-describe('semErroDoCaminho', () => {
-  const ERROS = {
-    a: 'erro de a',
-    'a.0.x': 'filha 0',
-    'a.1': 'filha 1',
-    'a.1.y': 'neta de 1',
-    'a.10.x': 'filha 10',
-    ab: 'irmã com o mesmo prefixo',
-    'ab.0': 'filha da irmã',
-    b: 'outro campo',
+describe('validarFormularioDe com campos obrigatórios', () => {
+  const OBRIGATORIOS: readonly SecaoDef[] = [
+    {
+      titulo: 'Dados',
+      grupos: [
+        {
+          campos: [
+            texto('nome', 'Nome', 5, true),
+            textoLongo('detalhe.observacoes', 'Observações', 10, true),
+            numero('detalhe.horas', 'Horas', 40, HORAS, true),
+            data('detalhe.dia', 'Dia', true),
+            marcacao('ativo', 'Ativo'),
+            texto('apelido', 'Apelido', 5),
+          ],
+        },
+      ],
+    },
+  ];
+  const PREENCHIDO = {
+    nome: 'Ana',
+    detalhe: { observacoes: 'Texto', horas: '12', dia: '2026-10-17' },
+    ativo: false,
+    apelido: '',
   };
 
-  it('removes the error of the exact path', () => {
-    assert.deepEqual(semErroDoCaminho({ a: 'x', b: 'y' }, 'a'), { b: 'y' });
+  it('refuses the blank required fields, naming each one by its path', () => {
+    assert.deepEqual(validarFormularioDe(OBRIGATORIOS, formularioVazioDe(OBRIGATORIOS)), {
+      nome: 'O campo "Nome" é obrigatório.',
+      'detalhe.observacoes': 'O campo "Observações" é obrigatório.',
+      'detalhe.horas': 'O campo "Horas" é obrigatório.',
+      'detalhe.dia': 'O campo "Dia" é obrigatório.',
+    });
   });
 
-  it('removes the errors of the fields inside the path, at any depth', () => {
-    assert.deepEqual(Object.keys(semErroDoCaminho(ERROS, 'a')), ['ab', 'ab.0', 'b']);
+  it('treats spaces as blank', () => {
+    const erros = validarFormularioDe(OBRIGATORIOS, { ...PREENCHIDO, nome: '   ' });
+
+    assert.deepEqual(erros, { nome: 'O campo "Nome" é obrigatório.' });
   });
 
-  it('does not remove "a.10.x" when the path is "a.1"', () => {
-    assert.deepEqual(Object.keys(semErroDoCaminho(ERROS, 'a.1')), ['a', 'a.0.x', 'a.10.x', 'ab', 'ab.0', 'b']);
+  it('accepts the filled form, with the number zero and an unchecked box', () => {
+    assert.deepEqual(validarFormularioDe(OBRIGATORIOS, PREENCHIDO), {});
+    assert.deepEqual(
+      validarFormularioDe(OBRIGATORIOS, { ...PREENCHIDO, detalhe: { ...PREENCHIDO.detalhe, horas: '0' } }),
+      {},
+    );
   });
 
-  it('keeps the sibling key that shares the prefix without the dot', () => {
-    const erros = semErroDoCaminho(ERROS, 'a');
-
-    assert.equal(erros.ab, 'irmã com o mesmo prefixo');
-    assert.equal(erros['ab.0'], 'filha da irmã');
+  it('says the field is required before it checks the limit', () => {
+    assert.equal(
+      validarFormularioDe(OBRIGATORIOS, { ...PREENCHIDO, nome: '' }).nome,
+      'O campo "Nome" é obrigatório.',
+    );
+    assert.equal(
+      validarFormularioDe(OBRIGATORIOS, { ...PREENCHIDO, nome: 'a'.repeat(6) }).nome,
+      'O campo "Nome" deve ter no máximo 5 caracteres.',
+    );
   });
 
-  it('removes only the leaf when the path is a leaf', () => {
-    const erros = semErroDoCaminho(ERROS, 'a.1.y');
-
-    assert.equal('a.1.y' in erros, false);
-    assert.equal(Object.keys(erros).length, Object.keys(ERROS).length - 1);
-  });
-
-  it('keeps everything when the path has no error', () => {
-    assert.deepEqual(semErroDoCaminho({ a: 'x', 'a.0': 'y' }, 'c'), { a: 'x', 'a.0': 'y' });
-  });
-
-  it('returns a new object and does not change the one it receives', () => {
-    const original = { a: 'x', b: 'y' };
-    const resultado = semErroDoCaminho(original, 'a');
-
-    assert.notEqual(resultado, original);
-    assert.deepEqual(original, { a: 'x', b: 'y' });
+  it('never refuses an optional field left blank', () => {
+    assert.equal('apelido' in validarFormularioDe(OBRIGATORIOS, PREENCHIDO), false);
   });
 });
 
