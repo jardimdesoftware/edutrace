@@ -3,11 +3,10 @@
 import { Suspense, useEffect, useState } from 'react';
 import { temPapel } from '@/utils/papeis';
 import { useRouter } from 'next/navigation';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import AppLayout from '@/components/AppLayout';
 import EstudoDeCasoFormulario from '@/components/EstudoDeCasoFormulario';
-import EstudoDeCasoLeitura from '@/components/EstudoDeCasoLeitura';
 import Loading from '@/components/Loading';
 import {
   BOTAO_PERIGO,
@@ -144,48 +143,51 @@ function EstudoDeCasoPage() {
 
   if (loading || carregando || !user || carregandoEstudo) return <Loading />;
 
-  return (
-    <AppLayout>
-      <div className="w-full p-6">
-        <div className="mx-auto w-full max-w-3xl space-y-6">
-          <header className="space-y-1">
-            <h1 className="text-4xl font-bold">Estudo de Caso</h1>
-            {nome && <p className="text-gray-600">Estudante: {nome}</p>}
-          </header>
+  const cabecalho = (
+    <header className="space-y-1">
+      <h1 className="text-4xl font-bold">Estudo de Caso</h1>
+      {nome && <p className="text-gray-600">Estudante: {nome}</p>}
+    </header>
+  );
 
-          {erro ? (
+  return (
+    <AppLayout ocuparTela={!erro && !!(estudo || editando)}>
+      <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
+        {erro ? (
+          <div className="mx-auto w-full max-w-3xl space-y-6">
+            {cabecalho}
             <div role="alert" className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5">
               <p className="text-red-800">{erro}</p>
               <button type="button" className={BOTAO_SECUNDARIO} onClick={() => tentarDeNovo()}>
                 Tentar novamente
               </button>
             </div>
-          ) : editando ? (
-            <EstudoDeCasoFormulario
-              inicial={estudo ? formularioDoEstudo(estudo) : formularioVazio()}
-              curso={curso}
-              autor={estudo ? (estudo.author?.full_name ?? null) : user.name}
-              salvando={salvando}
-              onSalvar={handleSalvar}
-              onCancelar={() => setEditando(false)}
-            />
-          ) : estudo ? (
-            <>
-              {podeEditar && (
-                <div className="flex flex-wrap gap-3">
-                  <button type="button" className={BOTAO_PRIMARIO} onClick={() => setEditando(true)}>
-                    <Pencil size={16} aria-hidden="true" />
-                    Editar
-                  </button>
-                  <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
-                    <Trash2 size={16} aria-hidden="true" />
-                    Excluir
-                  </button>
-                </div>
-              )}
-              <EstudoDeCasoLeitura estudo={estudo} curso={curso} />
-            </>
-          ) : (
+          </div>
+        ) : estudo || editando ? (
+          <EstudoDeCasoFormulario
+            key={editando ? 'edicao' : 'leitura'}
+            inicial={estudo ? formularioDoEstudo(estudo) : formularioVazio()}
+            estudo={editando ? undefined : (estudo ?? undefined)}
+            modo={editando ? (estudo ? 'editar' : 'criar') : 'ver'}
+            estudante={nome ?? undefined}
+            curso={curso}
+            autor={estudo ? (estudo.author?.full_name ?? null) : user.name}
+            salvando={salvando}
+            onSalvar={handleSalvar}
+            onCancelar={() => (editando ? setEditando(false) : router.back())}
+            onEditar={podeEditar ? () => setEditando(true) : undefined}
+            acoesDoDocumento={
+              estudo && !editando && podeEditar ? (
+                <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
+                  <Trash2 size={16} aria-hidden="true" />
+                  Excluir
+                </button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="mx-auto w-full max-w-3xl space-y-6">
+            {cabecalho}
             <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
               <p className="text-gray-700">
                 {quemSemEstudo} ainda não tem estudo de caso.
@@ -198,8 +200,8 @@ function EstudoDeCasoPage() {
                 </button>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );
