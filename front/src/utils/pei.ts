@@ -44,8 +44,16 @@ const ROTULO_PROFESSOR = 'Professor(a)';
 const ROTULO_CONTEUDO_PREVISTO = 'Conteúdo previsto na ementa';
 const ROTULO_ADEQUACAO = 'Adequação';
 
-function secaoDeTexto(caminho: string, titulo: string): SecaoDef {
-  return { titulo, grupos: [{ campos: [textoLongo(caminho, titulo, LIMITES_PEI.TEXTO)] }] };
+export const CAMINHO_DO_SEMESTRE = 'semester';
+export const CAMINHO_DA_DISCIPLINA = 'subject';
+export const CAMINHO_DOS_PARES = 'syllabus_adaptations';
+
+function secaoDeTexto(caminho: string, titulo: string, passo?: string): SecaoDef {
+  return {
+    titulo,
+    ...(passo ? { passo } : {}),
+    grupos: [{ campos: [textoLongo(caminho, titulo, LIMITES_PEI.TEXTO)] }],
+  };
 }
 
 // Rótulos e ordem copiados do contrato da issue #706. A mesma tabela monta o
@@ -54,14 +62,18 @@ function secaoDeTexto(caminho: string, titulo: string): SecaoDef {
 // conteúdo) e a lista de pares, que não cabe num campo de texto. Quem monta o
 // formulário e a leitura preenche esses dois lugares.
 export const SECOES_PEI: readonly SecaoDef[] = [
-  { titulo: TITULO_IDENTIFICACAO, grupos: [] },
-  secaoDeTexto('adapted_objectives', 'Objetivos adaptados'),
-  secaoDeTexto('prioritized_contents', 'Conteúdos priorizados no semestre'),
-  { titulo: TITULO_EMENTA, grupos: [] },
-  secaoDeTexto('adapted_methodologies', 'Metodologias adaptadas'),
-  secaoDeTexto('adapted_assessments', 'Atividades avaliativas adaptadas'),
-  secaoDeTexto('adapted_resources', 'Recursos adaptados'),
-  secaoDeTexto('general_notes', 'Observações gerais'),
+  {
+    titulo: TITULO_IDENTIFICACAO,
+    caminhosExtras: [CAMINHO_DO_SEMESTRE, CAMINHO_DA_DISCIPLINA],
+    grupos: [],
+  },
+  secaoDeTexto('adapted_objectives', 'Objetivos adaptados', 'Objetivos e conteúdos'),
+  secaoDeTexto('prioritized_contents', 'Conteúdos priorizados no semestre', 'Objetivos e conteúdos'),
+  { titulo: TITULO_EMENTA, caminhosExtras: [CAMINHO_DOS_PARES], grupos: [] },
+  secaoDeTexto('adapted_methodologies', 'Metodologias adaptadas', 'Metodologias e avaliação'),
+  secaoDeTexto('adapted_assessments', 'Atividades avaliativas adaptadas', 'Metodologias e avaliação'),
+  secaoDeTexto('adapted_resources', 'Recursos adaptados', 'Recursos e observações'),
+  secaoDeTexto('general_notes', 'Observações gerais', 'Recursos e observações'),
 ];
 
 const TITULO_PARECER = 'Parecer semestral';
@@ -92,10 +104,6 @@ export const SECOES_PARECER: readonly SecaoDef[] = [
     ],
   },
 ];
-
-export const CAMINHO_DO_SEMESTRE = 'semester';
-export const CAMINHO_DA_DISCIPLINA = 'subject';
-export const CAMINHO_DOS_PARES = 'syllabus_adaptations';
 
 export function caminhoDoParDe(indice: number, campo: keyof SyllabusAdaptation): string {
   return `${CAMINHO_DOS_PARES}.${indice}.${campo}`;
