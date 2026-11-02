@@ -244,12 +244,6 @@ export function validarFormularioDe(secoes: readonly SecaoDef[], form: unknown):
   );
 }
 
-export function semErroDoCaminho(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
-  return Object.fromEntries(
-    Object.entries(erros).filter(([chave]) => chave !== caminho && !chave.startsWith(`${caminho}.`)),
-  );
-}
-
 export interface LinhaDeLeitura {
   label: string;
   value: string;
