@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'bcryptjs';
+import { LEVELS } from '../src/constants';
 import { readInitialAdmin } from '../src/users/initial-admin';
 
 const connectionString = process.env.DATABASE_URL;
@@ -11,17 +12,21 @@ if (!connectionString) {
 const prisma = new PrismaClient({ adapter: new PrismaPg(connectionString) });
 
 async function main() {
+  // O código lê os níveis pelos ids de LEVELS, então o id é gravado de forma
+  // explícita. Com upsert por nome, o id saía do autoincrement e, num banco em
+  // que a sequence não começa em 1, cada nível ficava com um id diferente do
+  // que o código espera.
   const levels = [
-    { name: 'Administrador' },
-    { name: 'Estudante/Família' },
-    { name: 'Profissional da Educação' },
-    { name: 'Profissional da Saúde' }
+    { id: LEVELS.ADMIN, name: 'Administrador' },
+    { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
+    { id: LEVELS.PROFISSIONAL_EDUCACAO, name: 'Profissional da Educação' },
+    { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' }
   ];
 
   for (const level of levels) {
     await prisma.level.upsert({
-      where: { name: level.name },
-      update: {},
+      where: { id: level.id },
+      update: { name: level.name },
       create: level,
     });
   }

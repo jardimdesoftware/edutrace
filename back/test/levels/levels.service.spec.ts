@@ -14,11 +14,8 @@ describe('LevelsService', () => {
           provide: PrismaService,
           useValue: {
             level: {
-              create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
             },
           },
         },
@@ -33,26 +30,10 @@ describe('LevelsService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a level', async () => {
-      const createLevelDto = { name: 'Test Level' };
-      const createdLevel = {
-        id: 1,
-        created_at: new Date(),
-        updated_at: new Date(),
-        deleted_at: null,
-        ...createLevelDto,
-      };
-
-      jest.spyOn(prisma.level, 'create').mockResolvedValue(createdLevel);
-
-      const result = await service.create(createLevelDto);
-
-      expect(prisma.level.create).toHaveBeenCalledWith({
-        data: createLevelDto,
-      });
-      expect(result).toEqual(createdLevel);
-    });
+  it('should not expose write methods', () => {
+    expect(service).not.toHaveProperty('create');
+    expect(service).not.toHaveProperty('update');
+    expect(service).not.toHaveProperty('remove');
   });
 
   describe('findAll', () => {
@@ -100,52 +81,6 @@ describe('LevelsService', () => {
         where: { id: id },
       });
       expect(result).toEqual(level);
-    });
-  });
-
-  describe('update', () => {
-    it('should update a level', async () => {
-      const id = 1;
-      const updateLevelDto = { name: 'Updated Level' };
-      const updatedLevel = {
-        id: 1,
-        created_at: new Date(),
-        updated_at: new Date(),
-        deleted_at: null,
-        ...updateLevelDto,
-      };
-
-      jest.spyOn(prisma.level, 'update').mockResolvedValue(updatedLevel);
-
-      const result = await service.update(id, updateLevelDto);
-
-      expect(prisma.level.update).toHaveBeenCalledWith({
-        where: { id: id },
-        data: { name: updateLevelDto.name },
-      });
-      expect(result).toEqual(updatedLevel);
-    });
-  });
-
-  describe('remove', () => {
-    it('should remove a level', async () => {
-      const id = 1;
-      const removedLevel = {
-        id: 1,
-        name: 'Removed Level',
-        created_at: new Date(),
-        updated_at: new Date(),
-        deleted_at: null,
-      };
-
-      jest.spyOn(prisma.level, 'delete').mockResolvedValue(removedLevel);
-
-      const result = await service.remove(id);
-
-      expect(prisma.level.delete).toHaveBeenCalledWith({
-        where: { id: id },
-      });
-      expect(result).toEqual(removedLevel);
     });
   });
 });

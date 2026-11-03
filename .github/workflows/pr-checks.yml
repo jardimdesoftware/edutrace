@@ -129,6 +129,12 @@ jobs:
       # cobre o administrador inicial: senha comum recusada sem criar usuário,
       # duas execuções seguidas e uma execução depois da troca do e-mail do
       # administrador, que antes fazia o seed falhar e impedia a API de subir.
+      # Também cobre os ids fixos dos níveis (LEVELS em src/constants.ts): a
+      # sequence da tabela Level é avançada antes do seed, como num banco em
+      # que o autoincrement não começa em 1, e os níveis precisam terminar com
+      # os ids 1 a 4. O seed antigo, que gravava por nome, os criaria a partir
+      # do 11 e reprovaria a checagem. Junto com a troca do e-mail, o nível 2 é
+      # renomeado, e a execução seguinte precisa devolver o nome do código.
       - name: Smoke test do seed
         working-directory: ./back
         run: |
@@ -138,6 +144,12 @@ jobs:
           administradores() {
             psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM \"User\" u JOIN \"Level\" l ON l.id = u.id_level WHERE l.name = 'Administrador'"
           }
+
+          niveis() {
+            psql "$DATABASE_URL" -tA -c "SELECT string_agg(id || ':' || name, ',' ORDER BY id) FROM \"Level\""
+          }
+
+          psql "$DATABASE_URL" -tA -c "SELECT setval(pg_get_serial_sequence('\"Level\"', 'id'), 10)"
 
           if ADMIN_EMAIL=admin.ci@example.test ADMIN_CPF=01234567890 ADMIN_PASSWORD=admin123 npm run seed > seed-output.log 2>&1; then
             cat seed-output.log
@@ -155,7 +167,7 @@ jobs:
 
           for execucao in primeira segunda troca-de-email terceira; do
             if [ "$execucao" = troca-de-email ]; then
-              echo "UPDATE \"User\" SET email = 'admin.novo@example.test' WHERE email = '$ADMIN_EMAIL';" | npx prisma db execute --stdin
+              echo "UPDATE \"User\" SET email = 'admin.novo@example.test' WHERE email = '$ADMIN_EMAIL'; UPDATE \"Level\" SET name = 'Renomeado' WHERE id = 2;" | npx prisma db execute --stdin
               continue
             fi
 
@@ -172,7 +184,13 @@ jobs:
             exit 1
           fi
 
-          echo "OK: o seed recusa senha comum, cria um único administrador e continua passando depois da troca do e-mail dele."
+          esperado="1:Administrador,2:Estudante/Família,3:Profissional da Educação,4:Profissional da Saúde"
+          if [ "$(niveis)" != "$esperado" ]; then
+            echo "ERRO: os níveis terminaram como '$(niveis)'; o esperado é '$esperado'."
+            exit 1
+          fi
+
+          echo "OK: o seed recusa senha comum, grava os níveis com os ids fixos, cria um único administrador e continua passando depois da troca do e-mail dele."
 
       # A migration de google_sub copia o sub do CPF provisório (google:<sub>)
       # das contas com cadastro pendente. O banco do job nasce vazio e esse
