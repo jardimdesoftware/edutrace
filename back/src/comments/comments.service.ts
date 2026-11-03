@@ -1,22 +1,79 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { CommentType, Prisma } from '@prisma/client';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { MailService } from 'src/mail/mail.service';
-import { COMMENT_EDIT_LIMIT, STUDENT_RECORD_READERS } from 'src/constants';
+import {
+  COMMENT_EDIT_LIMIT,
+  COMMENT_LIST_LIMIT,
+  COMMENT_LIST_TRANSACTION_MAX_WAIT_MS,
+  COMMENT_LIST_TRANSACTION_TIMEOUT_MS,
+  COMMENT_MAX_LENGTH,
+  STUDENT_RECORD_READERS,
+} from 'src/constants';
 import { AuthenticatedRequest } from './types/express';
 import { StudentsService } from 'src/students/students.service';
+import { commentTooLongMessage } from './comment-max-length';
+import {
+  authorsSql,
+  countsSql,
+  pageIdsSql,
+  statementTimeoutSql,
+} from './comments-list.sql';
+import { ListCommentsQueryDto } from './dto/list-comments-query.dto';
 
 const editsInclude = {
   edits: {
     orderBy: { created_at: 'asc' as const },
   },
 };
+
+const authorCollator = new Intl.Collator('pt-BR');
+
+const STATEMENT_TIMEOUT_SQLSTATE = '57014';
+
+const TRANSACTION_START_TIMEOUT_TEXT =
+  'Unable to start a transaction in the given time';
+
+const SEARCH_TIMEOUT_MESSAGE =
+  'A busca demorou demais. Refine os filtros e tente de novo.';
+
+const BUSY_MESSAGE = 'O sistema está ocupado. Tente de novo em instantes.';
+
+function isStatementTimeout(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== 'P2010'
+  ) {
+    return false;
+  }
+
+  const driverError = error.meta?.driverAdapterError as
+    { cause?: { code?: unknown } } | undefined;
+
+  return driverError?.cause?.code === STATEMENT_TIMEOUT_SQLSTATE;
+}
+
+function isTransactionStartTimeout(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2028' &&
+    error.message.includes(TRANSACTION_START_TIMEOUT_TEXT)
+  );
+}
+
+export interface CommentAuthor {
+  id: number;
+  name: string;
+}
 
 @Injectable()
 export class CommentsService {
@@ -34,13 +91,19 @@ export class CommentsService {
     userName: string,
     authorLevel: number,
   ) {
-    const { comment, id_user, notify_by_email } = createCommentDto;
+    const {
+      comment,
+      id_user,
+      notify_by_email,
+      type = CommentType.NOTE,
+    } = createCommentDto;
 
     await this.studentsService.findOneOrFail({ id: id_user });
 
     const commentCreated = await this.prisma.comments.create({
       data: {
         comment,
+        type,
         id_user,
         id_author: idAuthor,
         author_name: userName,
@@ -77,6 +140,12 @@ export class CommentsService {
 
     const { comment, notify_by_email } = updateCommentDto;
 
+    const maxLength = COMMENT_MAX_LENGTH[existingComment.type];
+
+    if (comment.length > maxLength) {
+      throw new BadRequestException([commentTooLongMessage(maxLength)]);
+    }
+
     if (
       comment !== existingComment.comment &&
       existingComment.edits.length >= COMMENT_EDIT_LIMIT
@@ -111,7 +180,11 @@ export class CommentsService {
     return { ...commentUpdated, author_level: request.user.id_level };
   }
 
-  async findAllByIdUser(idUser: number, request: AuthenticatedRequest) {
+  async findAllByIdUser(
+    idUser: number,
+    query: ListCommentsQueryDto,
+    request: AuthenticatedRequest,
+  ) {
     const readsAnyStudent = STUDENT_RECORD_READERS.includes(
       request.user.id_level,
     );
@@ -125,14 +198,75 @@ export class CommentsService {
 
     await this.studentsService.findOneOrFail({ id: idUser });
 
-    const allComments = await this.prisma.comments.findMany({
-      where: {
-        id_user: idUser,
-      },
-      include: editsInclude,
-    });
+    const limit = query.limit ?? COMMENT_LIST_LIMIT.DEFAULT;
 
-    return this.withAuthorLevel(allComments);
+    const { counts, pageRows, authorRows } = await this.queryPage(
+      idUser,
+      query,
+      limit,
+    );
+
+    const pageIds = pageRows.slice(0, limit).map((row) => row.id);
+    const hasMore = pageRows.length > limit;
+
+    const comments =
+      pageIds.length === 0
+        ? []
+        : await this.prisma.comments.findMany({
+            where: { id: { in: pageIds }, id_user: idUser },
+            orderBy: { id: 'desc' },
+            include: editsInclude,
+          });
+
+    return {
+      items: await this.withAuthorLevel(comments),
+      next_cursor: hasMore ? pageIds[pageIds.length - 1] : null,
+      total: counts.total,
+      overall: counts.overall,
+      authors: [...authorRows].sort(
+        (a, b) => authorCollator.compare(a.name, b.name) || a.id - b.id,
+      ),
+    };
+  }
+
+  private async queryPage(
+    idUser: number,
+    query: ListCommentsQueryDto,
+    limit: number,
+  ) {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw(statementTimeoutSql());
+
+          const [counts] = await tx.$queryRaw<
+            { overall: number; total: number }[]
+          >(countsSql(idUser, query));
+          const pageRows = await tx.$queryRaw<{ id: number }[]>(
+            pageIdsSql(idUser, query, limit),
+          );
+          const authorRows = await tx.$queryRaw<CommentAuthor[]>(
+            authorsSql(idUser),
+          );
+
+          return { counts, pageRows, authorRows };
+        },
+        {
+          maxWait: COMMENT_LIST_TRANSACTION_MAX_WAIT_MS,
+          timeout: COMMENT_LIST_TRANSACTION_TIMEOUT_MS,
+        },
+      );
+    } catch (error) {
+      if (isStatementTimeout(error)) {
+        throw new ServiceUnavailableException(SEARCH_TIMEOUT_MESSAGE);
+      }
+
+      if (isTransactionStartTimeout(error)) {
+        throw new ServiceUnavailableException(BUSY_MESSAGE);
+      }
+
+      throw error;
+    }
   }
 
   private async withAuthorLevel<T extends { id_author: number }>(

@@ -36,3 +36,7 @@ export const ANAMNESIS_EDIT_FIELDS = [
   "student_assessment",
   "student_development",
 ] as const;
+
+// Campos de UpdateCommentDto. O tipo da anotação fica de fora: a API o recusa
+// no PATCH.
+export const COMMENT_EDIT_FIELDS = ["comment", "notify_by_email"] as const;

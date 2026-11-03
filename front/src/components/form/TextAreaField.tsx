@@ -11,6 +11,7 @@ interface TextAreaFieldProps {
   erro?: string;
   rotuloOculto?: boolean;
   linhas?: number;
+  placeholder?: string;
   disabled?: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function TextAreaField({
   erro,
   rotuloOculto,
   linhas = LINHAS_PADRAO,
+  placeholder,
   disabled,
 }: TextAreaFieldProps) {
   const id = useIdDoCampo(idDaProp);
@@ -63,6 +65,7 @@ export default function TextAreaField({
           onChange={(e) => onChange(e.target.value)}
           maxLength={tamanhoMaximo}
           rows={linhas}
+          placeholder={placeholder}
           disabled={disabled}
           className={`${estiloDoControle(!!erro)} resize-y`}
         />

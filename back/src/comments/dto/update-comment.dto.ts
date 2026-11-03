@@ -4,20 +4,28 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  MaxLength,
+  Matches,
 } from 'class-validator';
+import { MaxCombiningMarkRun, TEXT_PATTERN } from 'src/common/dto-fields';
+import {
+  COMMENT_COMBINING_MARKS_MESSAGE,
+  COMMENT_CONTROL_CHARACTERS_MESSAGE,
+  COMMENT_MAX_LENGTH_CEILING,
+  CommentMaxLength,
+} from '../comment-max-length';
+import { COMBINING_MARKS_MAX_RUN, COMMENT_MAX_LENGTH } from 'src/constants';
 
 export class UpdateCommentDto {
   @ApiProperty({
-    description: 'Novo texto da anotação.',
+    description: `Novo texto do registro. O limite depende do tipo gravado, que não muda: ${COMMENT_MAX_LENGTH.NOTE} caracteres para NOTE e ${COMMENT_MAX_LENGTH.CLASS_COUNCIL_REPORT} para CLASS_COUNCIL_REPORT.`,
     example: 'Estudante "tal" teve um surto esta manhã',
-    maxLength: 1000,
+    maxLength: COMMENT_MAX_LENGTH_CEILING,
   })
   @IsNotEmpty({ message: 'O campo comment não deve estar vazio.' })
   @IsString({ message: 'O campo comment deve ser uma string.' })
-  @MaxLength(1000, {
-    message: 'O campo comment deve ter no máximo 1000 caracteres.',
-  })
+  @CommentMaxLength(() => COMMENT_MAX_LENGTH_CEILING)
+  @Matches(TEXT_PATTERN, { message: COMMENT_CONTROL_CHARACTERS_MESSAGE })
+  @MaxCombiningMarkRun(COMBINING_MARKS_MAX_RUN, COMMENT_COMBINING_MARKS_MESSAGE)
   comment: string;
 
   @ApiPropertyOptional({

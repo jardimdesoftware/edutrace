@@ -6,6 +6,7 @@ import type {
   PeiEntryOpinion,
   SyllabusAdaptation,
 } from '@/interfaces/PeiEntry';
+import { CONTROLE_EM_TEXTO } from './caracteres';
 import {
   NAO_INFORMADO,
   camposDaTabela,
@@ -189,13 +190,11 @@ export function montarCorpoDeCriacao(email: string, form: PeiEntryForm): NewPeiE
   };
 }
 
-// Os textos recusam os caracteres de controle (categoria Cc) e o surrogate
-// solto (Cs), como o TEXT_PATTERN do back, menos a tabulação e as quebras de
-// linha, que os textos longos aceitam. A disciplina, que cabe numa linha, não
-// aceita nem elas, e recusa também os invisíveis que forjam um texto igual ao de
-// outra disciplina: formatação (Cf, como U+200B, U+202E, U+FEFF e U+00AD) e os
-// separadores de linha e de parágrafo (Zl e Zp).
-const CONTROLE_EM_TEXTO = /(?![\t\n\r])[\p{Cc}\p{Cs}]/u;
+// Os textos recusam os caracteres de CONTROLE_EM_TEXTO (a tabulação e as quebras
+// de linha passam, porque os textos longos as aceitam). A disciplina, que cabe
+// numa linha, não aceita nem elas, e recusa também os invisíveis que forjam um
+// texto igual ao de outra disciplina: formatação (Cf, como U+200B, U+202E,
+// U+FEFF e U+00AD) e os separadores de linha e de parágrafo (Zl e Zp).
 const CONTROLE_EM_LINHA = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u;
 
 function erroDeTamanhoEControle(
