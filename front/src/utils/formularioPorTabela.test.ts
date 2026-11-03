@@ -13,6 +13,7 @@ import {
   montarCorpoDe,
   numero,
   secoesDeLeitura,
+  semErroDoCaminho,
   texto,
   textoLongo,
   validarFormularioDe,
@@ -259,6 +260,57 @@ describe('validarFormularioDe', () => {
       );
     }
     assert.deepEqual(validarFormularioDe(TABELA, formComCampo('detalhe.dia', '2028-02-29')), {});
+  });
+});
+
+describe('semErroDoCaminho', () => {
+  const ERROS = {
+    a: 'erro de a',
+    'a.0.x': 'filha 0',
+    'a.1': 'filha 1',
+    'a.1.y': 'neta de 1',
+    'a.10.x': 'filha 10',
+    ab: 'irmã com o mesmo prefixo',
+    'ab.0': 'filha da irmã',
+    b: 'outro campo',
+  };
+
+  it('removes the error of the exact path', () => {
+    assert.deepEqual(semErroDoCaminho({ a: 'x', b: 'y' }, 'a'), { b: 'y' });
+  });
+
+  it('removes the errors of the fields inside the path, at any depth', () => {
+    assert.deepEqual(Object.keys(semErroDoCaminho(ERROS, 'a')), ['ab', 'ab.0', 'b']);
+  });
+
+  it('does not remove "a.10.x" when the path is "a.1"', () => {
+    assert.deepEqual(Object.keys(semErroDoCaminho(ERROS, 'a.1')), ['a', 'a.0.x', 'a.10.x', 'ab', 'ab.0', 'b']);
+  });
+
+  it('keeps the sibling key that shares the prefix without the dot', () => {
+    const erros = semErroDoCaminho(ERROS, 'a');
+
+    assert.equal(erros.ab, 'irmã com o mesmo prefixo');
+    assert.equal(erros['ab.0'], 'filha da irmã');
+  });
+
+  it('removes only the leaf when the path is a leaf', () => {
+    const erros = semErroDoCaminho(ERROS, 'a.1.y');
+
+    assert.equal('a.1.y' in erros, false);
+    assert.equal(Object.keys(erros).length, Object.keys(ERROS).length - 1);
+  });
+
+  it('keeps everything when the path has no error', () => {
+    assert.deepEqual(semErroDoCaminho({ a: 'x', 'a.0': 'y' }, 'c'), { a: 'x', 'a.0': 'y' });
+  });
+
+  it('returns a new object and does not change the one it receives', () => {
+    const original = { a: 'x', b: 'y' };
+    const resultado = semErroDoCaminho(original, 'a');
+
+    assert.notEqual(resultado, original);
+    assert.deepEqual(original, { a: 'x', b: 'y' });
   });
 });
 

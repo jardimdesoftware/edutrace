@@ -203,6 +203,15 @@ export function validarFormularioDe(secoes: readonly SecaoDef[], form: unknown):
   );
 }
 
+// Tira o erro do caminho e os dos campos dentro dele: trocar uma lista muda o
+// índice dos itens, e o erro de um item não vale mais para o item que ocupa o
+// lugar.
+export function semErroDoCaminho(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
+  return Object.fromEntries(
+    Object.entries(erros).filter(([chave]) => chave !== caminho && !chave.startsWith(`${caminho}.`)),
+  );
+}
+
 export interface LinhaDeLeitura {
   label: string;
   value: string;
@@ -213,7 +222,7 @@ export interface SecaoDeLeitura {
   linhas: LinhaDeLeitura[];
 }
 
-function textoOuNaoInformado(valor: unknown): string {
+export function textoOuNaoInformado(valor: unknown): string {
   return textoDe(valor).trim() || NAO_INFORMADO;
 }
 
@@ -234,7 +243,7 @@ function valorDoCampo(campo: CampoDef, valor: unknown): string {
 }
 
 // Numa lista de verificação só os itens marcados saem, um por linha, como o
-// relatório faz com os grupos de opções do PEI. Os textos vão em linhas
+// relatório faz com os grupos de opções da triagem. Os textos vão em linhas
 // próprias, que levam o título do grupo no rótulo.
 function linhasDoGrupo(grupo: GrupoDef, registro: unknown): LinhaDeLeitura[] {
   const linhaDe = (campo: CampoDef, label: string): LinhaDeLeitura => ({

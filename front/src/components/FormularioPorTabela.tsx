@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import {
   NAO_INFORMADO,
   lerCaminho,
+  semErroDoCaminho,
   type CampoDef,
   type ErrosDoFormulario,
   type GrupoDef,
@@ -20,12 +21,16 @@ import TextAreaField from "./form/TextAreaField";
 const VALOR_MINIMO = 0;
 
 export type AoAlterar = (caminho: string, valor: string | boolean) => void;
+// Troca o valor de um caminho por qualquer valor, como a lista inteira de um
+// campo que o usuário aumenta e diminui.
+export type AoDefinir = (caminho: string, valor: unknown) => void;
 
 // O que o cabeçalho de uma seção precisa para ler e alterar o formulário.
 export interface ControleDoFormulario<F> {
   valores: F;
   erros: ErrosDoFormulario;
   alterar: AoAlterar;
+  definir: AoDefinir;
   idDoCampo: (caminho: string) => string;
 }
 
@@ -188,10 +193,6 @@ export function DadosDoCadastro({ curso, autor, periodo }: DadosDoCadastroProps)
   );
 }
 
-function semErro(erros: ErrosDoFormulario, caminho: string): ErrosDoFormulario {
-  return Object.fromEntries(Object.entries(erros).filter(([chave]) => chave !== caminho));
-}
-
 export default function FormularioPorTabela<F extends object>({
   secoes,
   prefixoDosIds,
@@ -218,10 +219,11 @@ export default function FormularioPorTabela<F extends object>({
     }
   }, [tentativasInvalidas, prefixoDosIds]);
 
-  const alterar: AoAlterar = (caminho, valor) => {
+  const definir: AoDefinir = (caminho, valor) => {
     setValores((atuais) => setNestedField(atuais, caminho, valor));
-    setErros((atuais) => semErro(atuais, caminho));
+    setErros((atuais) => semErroDoCaminho(atuais, caminho));
   };
+  const alterar: AoAlterar = definir;
 
   const handleSubmit = (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
@@ -257,7 +259,7 @@ export default function FormularioPorTabela<F extends object>({
   };
 
   const quantidadeDeErros = Object.keys(erros).length;
-  const controle: ControleDoFormulario<F> = { valores, erros, alterar, idDoCampo };
+  const controle: ControleDoFormulario<F> = { valores, erros, alterar, definir, idDoCampo };
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">

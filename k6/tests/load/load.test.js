@@ -28,6 +28,10 @@ const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
 const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
+// Estudante que já existe no banco; o administrador lê o PEI de qualquer um.
+// Configure via variável de ambiente: k6 run -e TEST_STUDENT_EMAIL=...
+const TEST_STUDENT_EMAIL = __ENV.TEST_STUDENT_EMAIL || 'estudante@edutrace.com';
+
 export const options = loadOptions;
 
 export function setup() {
@@ -61,11 +65,11 @@ export default function (data) {
 
   sleep(0.3);
 
-  group('Leitura - Plans Education', () => {
-    const res = http.get(`${BASE_URL}/plans-education`, { headers });
+  group('Leitura - PEI', () => {
+    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers });
     check(res, {
-      '[load][plans-education] GET → 200': (r) => r.status === 200,
-      '[load][plans-education] < 500ms': (r) => r.timings.duration < 500,
+      '[load][pei-entries] GET → 200': (r) => r.status === 200,
+      '[load][pei-entries] < 500ms': (r) => r.timings.duration < 500,
     });
   });
 

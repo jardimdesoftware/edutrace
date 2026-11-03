@@ -10,8 +10,8 @@ interface LeituraPorTabelaProps {
   atualizadoEm: string;
   autor: string | null;
   // Nível do título das seções: um documento sob o título de outro, como o PAEE
-  // de um período, desce um nível.
-  nivelDoTitulo?: "h2" | "h3";
+  // de um período, desce um nível, e o do PEI de uma disciplina, dois.
+  nivelDoTitulo?: "h2" | "h3" | "h4";
 }
 
 function SecaoDoDocumento({
@@ -21,7 +21,7 @@ function SecaoDoDocumento({
 }: {
   secao: SecaoDeLeitura;
   tituloId: string;
-  Titulo: "h2" | "h3";
+  Titulo: "h2" | "h3" | "h4";
 }) {
   return (
     <section

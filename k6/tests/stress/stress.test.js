@@ -32,6 +32,10 @@ const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
 const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
 const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
+// Estudante que já existe no banco; o administrador lê o PEI de qualquer um.
+// Configure via variável de ambiente: k6 run -e TEST_STUDENT_EMAIL=...
+const TEST_STUDENT_EMAIL = __ENV.TEST_STUDENT_EMAIL || 'estudante@edutrace.com';
+
 // Mais permissivo — queremos ver onde a API começa a falhar
 export const options = stressOptions;
 
@@ -66,11 +70,11 @@ export default function (data) {
 
   sleep(0.2);
 
-  group('Stress - Plans Education List', () => {
-    const res = http.get(`${BASE_URL}/plans-education`, { headers });
+  group('Stress - PEI List', () => {
+    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers });
     check(res, {
-      '[stress][plans-education] status 200': (r) => r.status === 200,
-      '[stress][plans-education] < 1000ms': (r) => r.timings.duration < 1000,
+      '[stress][pei-entries] status 200': (r) => r.status === 200,
+      '[stress][pei-entries] < 1000ms': (r) => r.timings.duration < 1000,
     });
   });
 

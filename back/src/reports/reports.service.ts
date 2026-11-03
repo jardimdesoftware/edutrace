@@ -4,9 +4,14 @@ import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
 import { AEE_PLAN_SECTIONS_SELECT } from 'src/aee-plans/aee-plan-select';
 import { CASE_STUDY_SECTIONS_SELECT } from 'src/case-studies/case-study-select';
+import {
+  PEI_ENTRY_CONTENT_SELECT,
+  PEI_ENTRY_ORDER_BY,
+} from 'src/pei-entries/pei-entry-select';
 
-// O relatório traz a triagem, o PEI, o estudo de caso e os PAEE, só com os
-// campos que os formulários exibem. A anamnese não faz parte do relatório.
+// O relatório traz a triagem, os registros do PEI, o estudo de caso e os PAEE,
+// só com os campos que os formulários exibem. A anamnese não faz parte do
+// relatório.
 const REPORT_SCREENING_SELECT = {
   report: true,
   specific_need: true,
@@ -17,23 +22,16 @@ const REPORT_SCREENING_SELECT = {
   other_disabilities: true,
 } satisfies Prisma.ScreeningSelect;
 
-const REPORT_PLANS_EDUCATION_SELECT = {
-  professor_name: true,
-  professor_email: true,
-  academic_semester: true,
-  service_modality: true,
-  support_service: true,
-  skills: true,
-  resource_equipment_used: true,
-  resource_equipment_needs: true,
-  curriculum_accessibility: true,
-  school_content: true,
-  activities_to_be_developed: true,
-  objectives: true,
-  work_methodology: true,
-  materials_used: true,
-  evaluation_criteria: true,
-} satisfies Prisma.PlansEducationSelect;
+// O semestre, a disciplina, os sete campos de conteúdo e o nome de quem
+// escreveu o registro. O autor sai pelo select explícito: o User inteiro traria
+// o CPF, o e-mail e o hash da senha. Sem id, id_author, id_student, deleted_at
+// nem datas, que o PDF não exibe.
+const REPORT_PEI_ENTRY_SELECT = {
+  semester: true,
+  subject: true,
+  ...PEI_ENTRY_CONTENT_SELECT,
+  author: { select: { full_name: true } },
+} satisfies Prisma.PeiEntrySelect;
 
 // As seções do estudo de caso, o nome de quem o escreveu e o curso do estudante.
 // O autor e o estudante saem pelo select explícito: o User inteiro traria o CPF,
@@ -65,14 +63,15 @@ export class ReportsService {
   async findOne(email: string) {
     const student = await this.studentsService.findOneOrFail({ email });
 
-    const [screening, plansEducation, caseStudy, aeePlans] = await Promise.all([
+    const [screening, peiEntries, caseStudy, aeePlans] = await Promise.all([
       this.prisma.screening.findUnique({
         where: { email },
         select: REPORT_SCREENING_SELECT,
       }),
-      this.prisma.plansEducation.findUnique({
-        where: { student_email: email },
-        select: REPORT_PLANS_EDUCATION_SELECT,
+      this.prisma.peiEntry.findMany({
+        where: { id_student: student.id, deleted_at: null },
+        orderBy: PEI_ENTRY_ORDER_BY,
+        select: REPORT_PEI_ENTRY_SELECT,
       }),
       this.prisma.caseStudy.findUnique({
         where: { id_student: student.id },
@@ -85,6 +84,6 @@ export class ReportsService {
       }),
     ]);
 
-    return { screening, plansEducation, caseStudy, aeePlans };
+    return { screening, peiEntries, caseStudy, aeePlans };
   }
 }

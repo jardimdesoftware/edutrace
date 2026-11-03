@@ -5,7 +5,9 @@ import { AppModule } from 'src/app.module';
 import { AppService } from 'src/app.service';
 import { CaseStudiesModule } from 'src/case-studies/case-studies.module';
 import { PrismaService } from 'src/database/prisma.service';
-import { APP_GUARD } from '@nestjs/core';
+import { PeiEntriesModule } from 'src/pei-entries/pei-entries.module';
+import { PATH_METADATA } from '@nestjs/common/constants';
+import { APP_GUARD, ModulesContainer } from '@nestjs/core';
 import { getOptionsToken } from '@nestjs/throttler';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { UserThrottlerGuard } from 'src/common/user-throttler.guard';
@@ -41,10 +43,29 @@ describe('AppModule', () => {
   it.each([
     ['CaseStudiesModule', CaseStudiesModule],
     ['AeePlansModule', AeePlansModule],
+    ['PeiEntriesModule', PeiEntriesModule],
   ])('should import the %s', (_name, importedModule) => {
     const imports = Reflect.getMetadata('imports', AppModule) as unknown[];
 
     expect(imports).toContain(importedModule);
+  });
+
+  // O PEI antigo (um formulário por estudante) saiu junto com a tabela
+  // PlansEducation, que virou PlansEducation_legacy e ficou fora da API. A prova
+  // é pelas rotas que a aplicação monta, e não pelo nome de um módulo: um
+  // controller que voltasse a declarar o caminho antigo, com qualquer nome de
+  // módulo, derrubaria este teste.
+  it('should not expose the routes of the old PEI, and expose the ones of the PEI by subject', () => {
+    const controllerPaths = [...module.get(ModulesContainer).values()].flatMap(
+      (nestModule) =>
+        [...nestModule.controllers.values()].map(
+          (controller) =>
+            Reflect.getMetadata(PATH_METADATA, controller.metatype!) as string,
+        ),
+    );
+
+    expect(controllerPaths).not.toContain('plans-education');
+    expect(controllerPaths).toContain('pei-entries');
   });
 
   // O Nest executa os guards globais na ordem em que são registrados: o
