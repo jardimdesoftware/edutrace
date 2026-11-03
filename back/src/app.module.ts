@@ -8,9 +8,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
 import { ConfigModule } from '@nestjs/config';
 import { StudentsModule } from './students/students.module';
-import { LevelsModule } from './levels/levels.module';
 import { ScreeningsModule } from './screenings/screenings.module';
-import { PhasesModule } from './phases/phases.module';
 import { AnamnesisModule } from './anamnesis/anamnesis.module';
 import { CommentsModule } from './comments/comments.module';
 import { CaseStudiesModule } from './case-studies/case-studies.module';
@@ -27,9 +25,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
     StudentsModule,
-    LevelsModule,
     ScreeningsModule,
-    PhasesModule,
     AnamnesisModule,
     CommentsModule,
     CaseStudiesModule,
