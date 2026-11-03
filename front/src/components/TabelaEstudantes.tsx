@@ -24,6 +24,13 @@ import {
 } from "@/utils/atendimento";
 import { errorAlertOptions } from "@/utils/errorAlert";
 import {
+  FiltroPapel,
+  filtrarPorPapel,
+  lerFiltroPapel,
+  OPCOES_FILTRO_PAPEL,
+} from "@/utils/filtroPorPapel";
+import { paginar, textoDoIntervalo } from "@/utils/paginacao";
+import {
   estaMarcado,
   motivoDaLixeiraDesativada,
   podeExcluir,
@@ -43,7 +50,7 @@ import {
   responsavelDaLinha,
   substituirUsuario,
 } from "@/utils/tabelaUsuarios";
-import { Eye, FileDown, Trash2, Undo2, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, FileDown, Trash2, Undo2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
@@ -91,6 +98,8 @@ interface TabelaEstudantesProps {
 export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps) {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
+  const [filtroPapel, setFiltroPapel] = useState<FiltroPapel>("TODOS");
+  const [pagina, setPagina] = useState(1);
   const [acaoEmAndamento, setAcaoEmAndamento] = useState(false);
   // Fim da janela de senha que o back abriu com "lembrar". O back é quem vale; o
   // valor só decide se o modal mostra o campo de senha.
@@ -103,10 +112,15 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
   const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.roles);
   const totalColunas = 7;
 
-  const filtrados = students && filtrarPorStatus(
-    students.filter(e => e.full_name.toLowerCase().includes(busca.toLowerCase())),
-    filtroStatus,
+  // O administrador gerencia contas, então filtra pelos papéis do sistema; o
+  // filtro de atendimento é dos profissionais.
+  const buscados = students?.filter(e => e.full_name.toLowerCase().includes(busca.toLowerCase()));
+  const filtrados = buscados && (
+    isAdmin
+      ? filtrarPorPapel(buscados, filtroPapel)
+      : filtrarPorStatus(buscados, filtroStatus)
   );
+  const paginado = filtrados && paginar(filtrados, pagina);
 
   const handleVerEstudante = (estudante: StudentData) => {
     router.push(rotaDoEstudante('/estudantes/visualizar', estudante.id));
@@ -348,38 +362,64 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
           </button>
         )}
         <div className="flex flex-col gap-3 sm:ml-auto sm:flex-row sm:items-center">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <span className="font-semibold">Atendimento:</span>
-            <select
-              value={filtroStatus}
-              onChange={(e) => setFiltroStatus(e.target.value as FiltroStatus)}
-              className="border rounded px-2 py-2"
-            >
-              {OPCOES_FILTRO_STATUS.map((opcao) => (
-                <option key={opcao.value} value={opcao.value}>
-                  {opcao.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {isAdmin ? (
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="font-semibold">Papel:</span>
+              <select
+                value={filtroPapel}
+                onChange={(e) => {
+                  setFiltroPapel(lerFiltroPapel(e.target.value));
+                  setPagina(1);
+                }}
+                className="border rounded px-2 py-2"
+              >
+                {OPCOES_FILTRO_PAPEL.map((opcao) => (
+                  <option key={opcao.value} value={opcao.value}>
+                    {opcao.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="font-semibold">Atendimento:</span>
+              <select
+                value={filtroStatus}
+                onChange={(e) => {
+                  setFiltroStatus(e.target.value as FiltroStatus);
+                  setPagina(1);
+                }}
+                className="border rounded px-2 py-2"
+              >
+                {OPCOES_FILTRO_STATUS.map((opcao) => (
+                  <option key={opcao.value} value={opcao.value}>
+                    {opcao.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <input
             type="text"
             placeholder="Por quem você busca?"
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            onChange={(e) => {
+              setBusca(e.target.value);
+              setPagina(1);
+            }}
             className="w-full sm:w-80 border rounded px-3 py-2"
           />
         </div>
       </div>
 
-      {students && (
+      {students && !isAdmin && (
         <p role="status" className="px-4 pb-3 text-sm text-gray-700">
           {textoDaContagem(contarPorStatus(students))}
         </p>
       )}
 
       <div className="md:hidden px-4 pb-4 space-y-3">
-        {filtrados?.map((estudante) => (
+        {paginado?.itens.map((estudante) => (
           <div key={estudante.id} className="border rounded-lg p-4 shadow-sm">
             <div className="space-y-1 text-sm">
               <p><span className="font-semibold">Nome:</span> {estudante.full_name}</p>
@@ -465,17 +505,17 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
         <table className="min-w-full table-auto text-sm text-left">
           <thead className="bg-gray-100 text-gray-700">
             <tr>
-              <th className="p-3">Nome</th>
-              <th className="p-3">CPF</th>
-              <th className="p-3">E-mail</th>
-              <th className="p-3">Responsável Pedagógico</th>
-              <th className="p-3">Papéis</th>
-              <th className="p-3">Atendimento</th>
-              <th className="p-3"></th>
+              <th className="p-3 font-bold! text-gray-900!">Nome</th>
+              <th className="p-3 font-bold! text-gray-900!">CPF</th>
+              <th className="p-3 font-bold! text-gray-900!">E-mail</th>
+              <th className="p-3 font-bold! text-gray-900!">Responsável Pedagógico</th>
+              <th className="p-3 font-bold! text-gray-900!">Papéis</th>
+              <th className="p-3 font-bold! text-gray-900!">Atendimento</th>
+              <th className="p-3 font-bold! text-gray-900!"></th>
             </tr>
           </thead>
           <tbody>
-            {filtrados?.map((estudante) => (
+            {paginado?.itens.map((estudante) => (
               <tr key={estudante.id} className="border-b hover:bg-gray-50">
                 <td className="p-3">
                   {estudante.full_name}
@@ -561,18 +601,52 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
         </table>
       </div>
 
-      <div className="flex justify-between items-center px-4 py-3 text-sm text-gray-600 border-t">
-        <div>Exibir <span className="font-semibold">{students?.length}</span> de 100 itens</div>
-        <div className="flex items-center space-x-2">
-          <span>Página</span>
-          <select className="border rounded px-2 py-1">
-            <option>1</option>
-            {/* outras opções aqui */}
-          </select>
-          <button>{"<"}</button>
-          <button>{">"}</button>
+      {paginado && (
+        <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+          <p role="status">
+            {textoDoIntervalo(
+              paginado,
+              isAdmin ? "usuário" : "estudante",
+              isAdmin ? "usuários" : "estudantes",
+            )}
+          </p>
+          <nav aria-label="Paginação" className="flex items-center gap-2">
+            <label className="flex items-center gap-2">
+              <span className="font-semibold text-gray-900">Página</span>
+              <select
+                value={paginado.pagina}
+                onChange={(e) => setPagina(Number(e.target.value))}
+                className="border rounded px-2 py-1"
+              >
+                {Array.from({ length: paginado.totalDePaginas }, (_, indice) => indice + 1).map((numero) => (
+                  <option key={numero} value={numero}>
+                    {numero}
+                  </option>
+                ))}
+              </select>
+              <span>de {paginado.totalDePaginas}</span>
+            </label>
+            <button
+              type="button"
+              aria-label="Página anterior"
+              disabled={!paginado.temAnterior}
+              onClick={() => setPagina(paginado.pagina - 1)}
+              className="inline-flex items-center justify-center rounded border border-gray-200 p-1 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Próxima página"
+              disabled={!paginado.temProxima}
+              onClick={() => setPagina(paginado.pagina + 1)}
+              className="inline-flex items-center justify-center rounded border border-gray-200 p-1 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </nav>
         </div>
-      </div>
+      )}
     </div>
   );
 }
