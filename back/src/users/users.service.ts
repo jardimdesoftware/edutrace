@@ -40,8 +40,8 @@ const UNIQUE_FIELD_MESSAGES = [
   { field: 'enrollment_number', message: 'Esta matrícula já está cadastrada.' },
 ] as const;
 
-const NAPNE_IN_SERVICE_MESSAGE =
-  'Encerre os atendimentos do Profissional NAPNE antes de tirar esse papel ou excluir a conta.';
+const AEE_IN_SERVICE_MESSAGE =
+  'Encerre os atendimentos do Professor do AEE antes de tirar esse papel ou excluir a conta.';
 
 // As rotas que chegam a este serviço são do Administrador (o cadastro, também
 // do NAPNE), que leem o telefone e o CPF do responsável pedagógico externo, e
@@ -278,9 +278,9 @@ export class UsersService {
     }
   }
 
-  // A decisão sobre a fila depende dos papéis que a conta tem agora, e o NAPNE
-  // com estudantes em atendimento não pode perder o papel. Por isso a linha é
-  // travada com FOR UPDATE antes de qualquer leitura: o "assumir" do mesmo NAPNE
+  // A decisão sobre a fila depende dos papéis que a conta tem agora, e o Professor
+  // do AEE com estudantes em atendimento não pode perder o papel. Por isso a linha é
+  // travada com FOR UPDATE antes de qualquer leitura: o "assumir" do mesmo professor
   // trava a mesma linha, então nenhum atendimento novo entra entre a conferência
   // e a troca de papéis, e duas trocas simultâneas da mesma conta se enfileiram.
   // A transação usa o isolamento padrão (READ COMMITTED), em que cada comando
@@ -313,8 +313,7 @@ export class UsersService {
     email: string,
     updateUserDto: UpdateUserDto,
   ) {
-    const { full_name, roles, enrollment_number, course, service_capacity } =
-      updateUserDto;
+    const { full_name, roles, enrollment_number, course } = updateUserDto;
 
     const [current] = await tx.$queryRaw<{ id: number; roles: number[] }[]>`
       SELECT "id", "roles" FROM "User" WHERE "email" = ${email} FOR UPDATE`;
@@ -322,7 +321,6 @@ export class UsersService {
     // Conta inexistente (current indefinido) fica para o update, que falha.
     const finalRoles = roles ?? current?.roles;
     this.assertStudentOnlyFields(finalRoles, updateUserDto);
-    this.assertCapacityOnlyForNapne(finalRoles, service_capacity);
 
     const rolesChange = await this.applyRolesChange(tx, current, roles);
 
@@ -334,7 +332,6 @@ export class UsersService {
         roles: rolesChange?.to,
         enrollment_number,
         course,
-        service_capacity,
         ...(rolesChange
           ? this.studentFieldsOnRolesChange(rolesChange.from, rolesChange.to)
           : {}),
@@ -357,13 +354,13 @@ export class UsersService {
     const rolesChange = { from: current.roles, to: sortRoles(roles) };
 
     if (
-      rolesChange.from.includes(LEVELS.PROFISSIONAL_NAPNE) &&
-      !rolesChange.to.includes(LEVELS.PROFISSIONAL_NAPNE)
+      rolesChange.from.includes(LEVELS.PROFESSOR_AEE) &&
+      !rolesChange.to.includes(LEVELS.PROFESSOR_AEE)
     ) {
       await this.assertNoServiceInProgress(tx, current.id);
     }
 
-    // Quem deixa os papéis 3 e 5 deixa de ser responsável pedagógico. Com a
+    // Quem deixa os papéis 3, 5 e 6 deixa de ser responsável pedagógico. Com a
     // linha dele travada, o vínculo que o PATCH do estudante grava ao mesmo
     // tempo termina antes desta limpeza ou recusa o papel novo depois dela.
     if (this.leavesPedagogicalManagerRoles(rolesChange)) {
@@ -390,57 +387,36 @@ export class UsersService {
   }
 
   // Quem passa a ser estudante entra no fim da fila. Quem deixa de ser tem o
-  // atendimento e o responsável pedagógico limpos, e quem perde o papel NAPNE
-  // perde o limite, que só faz sentido com o papel 5 (CHECK
-  // User_service_capacity_chk).
+  // atendimento e o responsável pedagógico limpos.
   private studentFieldsOnRolesChange(
     from: readonly number[],
     to: readonly number[],
   ) {
     const wasStudent = from.includes(LEVELS.ALUNO_ESTUDANTE);
     const isStudent = to.includes(LEVELS.ALUNO_ESTUDANTE);
-    const lostNapne =
-      from.includes(LEVELS.PROFISSIONAL_NAPNE) &&
-      !to.includes(LEVELS.PROFISSIONAL_NAPNE);
 
     return {
       ...(isStudent && !wasStudent ? enterQueue() : {}),
       ...(wasStudent && !isStudent
         ? { ...LEAVE_QUEUE, ...LEAVE_PEDAGOGICAL_MANAGER }
         : {}),
-      ...(lostNapne ? { service_capacity: null } : {}),
     };
   }
 
-  private assertCapacityOnlyForNapne(
-    roles: readonly number[] | undefined,
-    serviceCapacity: number | undefined,
-  ) {
-    if (
-      serviceCapacity !== undefined &&
-      roles !== undefined &&
-      !roles.includes(LEVELS.PROFISSIONAL_NAPNE)
-    ) {
-      throw new BadRequestException(
-        'O limite de atendimentos só pode ser informado para quem tem o papel Profissional NAPNE.',
-      );
-    }
-  }
-
-  // Chamado com a linha do NAPNE já travada (FOR UPDATE).
+  // Chamado com a linha do Professor do AEE já travada (FOR UPDATE).
   private async assertNoServiceInProgress(
     tx: Prisma.TransactionClient,
-    napneId: number,
+    aeeId: number,
   ) {
     const inService = await tx.user.count({
       where: {
-        napne_responsible_id: napneId,
+        aee_responsible_id: aeeId,
         service_status: ServiceStatus.IN_SERVICE,
       },
     });
 
     if (inService > 0) {
-      throw new ConflictException(NAPNE_IN_SERVICE_MESSAGE);
+      throw new ConflictException(AEE_IN_SERVICE_MESSAGE);
     }
   }
 
@@ -634,16 +610,15 @@ export class UsersService {
     });
   }
 
-  // Mesma trava e mesma recusa do update: quem tem o papel NAPNE e estudantes
-  // em atendimento não é excluído até encerrar os atendimentos.
+  // Mesma trava e mesma recusa do update, mas sem condicionar ao papel 6: uma
+  // conta que perdeu o papel com estudantes em atendimento ainda é responsável
+  // por eles, e excluí-la quebraria o CHECK da chave estrangeira (500). Quem
+  // tem estudantes em atendimento não é excluído até encerrar os atendimentos.
   async remove(id: number) {
     return this.prisma.$transaction(async (tx) => {
-      const [target] = await tx.$queryRaw<{ roles: number[] }[]>`
-        SELECT "roles" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
 
-      if (target?.roles.includes(LEVELS.PROFISSIONAL_NAPNE)) {
-        await this.assertNoServiceInProgress(tx, id);
-      }
+      await this.assertNoServiceInProgress(tx, id);
 
       return tx.user.delete({
         select: USER_WITH_MANAGER_CONTACT_SELECT,

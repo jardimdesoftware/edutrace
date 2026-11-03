@@ -90,7 +90,7 @@ export class StudentsController {
 
   // As três transições devolvem o estudante já atualizado. Respondem 200: a
   // ação altera um estudante que já existe, e não cria um registro.
-  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @HttpCode(HttpStatus.OK)
   @Post(':email/service/assume')
   async assume(
@@ -98,18 +98,22 @@ export class StudentsController {
     @Req() req: AuthenticatedRequest,
   ) {
     return maskUserCpf(
-      await this.serviceQueueService.assume(email, req.user.sub),
+      await this.serviceQueueService.assume(
+        email,
+        req.user.sub,
+        req.user.roles,
+      ),
     );
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFESSOR_AEE)
   @HttpCode(HttpStatus.OK)
   @Post(':email/service/close')
   async close(@Param('email') email: string, @Req() req: AuthenticatedRequest) {
     return maskUserCpf(await this.serviceQueueService.close(email, req.user));
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE)
   @HttpCode(HttpStatus.OK)
   @Post(':email/service/reopen')
   async reopen(

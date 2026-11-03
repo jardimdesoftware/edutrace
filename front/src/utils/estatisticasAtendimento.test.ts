@@ -13,6 +13,7 @@ import {
   PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
+  PROFESSOR_AEE,
 } from '../consts';
 
 process.env.TZ = 'UTC';
@@ -20,7 +21,7 @@ process.env.TZ = 'UTC';
 const AGORA = new Date('2026-10-16T15:00:00.000Z');
 
 function profissional(extra: Partial<ProfessionalLoad> = {}): ProfessionalLoad {
-  return { id: 7, full_name: 'Ana NAPNE', in_service: 2, capacity: 5, free: 3, ...extra };
+  return { id: 7, full_name: 'Ana AEE', in_service: 2, capacity: 15, free: 13, ...extra };
 }
 
 describe('podeVerEstatisticas', () => {
@@ -42,6 +43,14 @@ describe('podeVerEstatisticas', () => {
       assert.equal(podeVerEstatisticas([nivel]), false);
     });
   }
+
+  it('denies the AEE teacher alone, who does not see the stats', () => {
+    assert.equal(podeVerEstatisticas([PROFESSOR_AEE]), false);
+  });
+
+  it('keeps the panel for NAPNE plus AEE', () => {
+    assert.equal(podeVerEstatisticas([PROFISSIONAL_NAPNE, PROFESSOR_AEE]), true);
+  });
 
   it('denies a level that does not exist', () => {
     assert.equal(podeVerEstatisticas([99]), false);
@@ -97,54 +106,51 @@ describe('textoDaEsperaMaisAntiga', () => {
 });
 
 describe('ocupacaoDoProfissional', () => {
-  it('shows the students in service against the limit and the free slots', () => {
+  it('shows the students in service against the limit and the free slots sent by the API', () => {
     assert.deepEqual(ocupacaoDoProfissional(profissional()), {
       id: 7,
-      nome: 'Ana NAPNE',
-      ocupacao: '2 de 5',
-      vagas: '3',
+      nome: 'Ana AEE',
+      ocupacao: '2 de 15',
+      vagas: '13',
       situacao: 'COM_VAGAS',
       rotuloSituacao: 'Com vagas',
-      percentual: 40,
+      percentual: 13,
     });
   });
 
-  it('flags the professional with no free slot as at the limit', () => {
-    const resultado = ocupacaoDoProfissional(profissional({ in_service: 5, free: 0 }));
+  it('flags the teacher with 15 in service as at the limit', () => {
+    const resultado = ocupacaoDoProfissional(profissional({ in_service: 15, free: 0 }));
 
-    assert.equal(resultado.ocupacao, '5 de 5');
+    assert.equal(resultado.ocupacao, '15 de 15');
     assert.equal(resultado.vagas, '0');
     assert.equal(resultado.situacao, 'NO_LIMITE');
     assert.equal(resultado.rotuloSituacao, 'No limite');
     assert.equal(resultado.percentual, 100);
   });
 
-  it('keeps the real count and caps the bar when the limit was lowered below it', () => {
-    const resultado = ocupacaoDoProfissional(profissional({ in_service: 6, capacity: 4, free: 0 }));
+  it('keeps 14 in service with one free slot', () => {
+    const resultado = ocupacaoDoProfissional(profissional({ in_service: 14, free: 1 }));
 
-    assert.equal(resultado.ocupacao, '6 de 4');
+    assert.equal(resultado.vagas, '1');
+    assert.equal(resultado.situacao, 'COM_VAGAS');
+  });
+
+  it('keeps the real count and caps the bar and the free slots when above 15', () => {
+    const resultado = ocupacaoDoProfissional(profissional({ in_service: 17, free: -2 }));
+
+    assert.equal(resultado.ocupacao, '17 de 15');
+    assert.equal(resultado.vagas, '0');
     assert.equal(resultado.situacao, 'NO_LIMITE');
     assert.equal(resultado.percentual, 100);
   });
 
-  it('treats a limit of zero as at the limit without dividing by zero', () => {
-    const resultado = ocupacaoDoProfissional(profissional({ in_service: 0, capacity: 0, free: 0 }));
+  it('follows the capacity sent by the API when it is not 15', () => {
+    const resultado = ocupacaoDoProfissional(profissional({ in_service: 5, capacity: 20, free: 15 }));
 
-    assert.equal(resultado.ocupacao, '0 de 0');
-    assert.equal(resultado.situacao, 'NO_LIMITE');
-    assert.equal(resultado.percentual, 100);
-  });
-
-  it('does not flag a professional whose limit is not defined as at the limit', () => {
-    const resultado = ocupacaoDoProfissional(
-      profissional({ in_service: 0, capacity: null, free: null }),
-    );
-
-    assert.equal(resultado.ocupacao, 'Limite não definido');
-    assert.equal(resultado.vagas, 'Não definidas');
-    assert.equal(resultado.situacao, 'SEM_LIMITE');
-    assert.equal(resultado.rotuloSituacao, 'Aguardando limite');
-    assert.equal(resultado.percentual, null);
+    assert.equal(resultado.ocupacao, '5 de 20');
+    assert.equal(resultado.vagas, '15');
+    assert.equal(resultado.situacao, 'COM_VAGAS');
+    assert.equal(resultado.percentual, 25);
   });
 });
 
@@ -153,8 +159,8 @@ describe('montarPainel', () => {
     totals: { WAITING: 3, IN_SERVICE: 4, CLOSED: 5 },
     professionals: [
       profissional(),
-      profissional({ id: 8, full_name: 'Bia NAPNE', in_service: 5, free: 0 }),
-      profissional({ id: 9, full_name: 'Caio NAPNE', in_service: 0, capacity: null, free: null }),
+      profissional({ id: 8, full_name: 'Bia AEE', in_service: 15, free: 0 }),
+      profissional({ id: 9, full_name: 'Caio AEE', in_service: 0, free: 15 }),
     ],
     queue: { size: 3, oldest_queued_at: '2026-10-13T12:00:00.000Z' },
   };
@@ -187,9 +193,9 @@ describe('montarPainel', () => {
     assert.deepEqual(
       profissionais.map(({ nome, situacao }) => [nome, situacao]),
       [
-        ['Ana NAPNE', 'COM_VAGAS'],
-        ['Bia NAPNE', 'NO_LIMITE'],
-        ['Caio NAPNE', 'SEM_LIMITE'],
+        ['Ana AEE', 'COM_VAGAS'],
+        ['Bia AEE', 'NO_LIMITE'],
+        ['Caio AEE', 'COM_VAGAS'],
       ],
     );
   });

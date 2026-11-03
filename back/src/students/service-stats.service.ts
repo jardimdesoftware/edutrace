@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
-import { LEVELS } from 'src/constants';
+import { AEE_SERVICE_CAPACITY, LEVELS } from 'src/constants';
 
 export interface ProfessionalLoad {
   id: number;
   full_name: string;
   in_service: number;
-  capacity: number | null;
-  free: number | null;
+  capacity: number;
+  free: number;
 }
 
 export interface ServiceStats {
@@ -26,7 +26,7 @@ export class ServiceStatsService {
   // assumido entre elas pode aparecer só em uma delas, e a próxima leitura do
   // painel já traz os números certos.
   async getStats(): Promise<ServiceStats> {
-    const [byStatus, napnes, oldest] = await Promise.all([
+    const [byStatus, teachers, oldest] = await Promise.all([
       this.prisma.user.groupBy({
         by: ['service_status'],
         where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
@@ -37,15 +37,14 @@ export class ServiceStatsService {
       // (responsável e IN_SERVICE), para o painel e a recusa do "assumir"
       // concordarem sobre quem está no limite.
       this.prisma.user.findMany({
-        where: { roles: { has: LEVELS.PROFISSIONAL_NAPNE } },
+        where: { roles: { has: LEVELS.PROFESSOR_AEE } },
         orderBy: [{ full_name: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
           full_name: true,
-          service_capacity: true,
           _count: {
             select: {
-              napne_students: {
+              aee_students: {
                 where: { service_status: ServiceStatus.IN_SERVICE },
               },
             },
@@ -72,28 +71,28 @@ export class ServiceStatsService {
 
     return {
       totals,
-      professionals: napnes.map((napne) => this.toProfessionalLoad(napne)),
+      professionals: teachers.map((teacher) =>
+        this.toProfessionalLoad(teacher),
+      ),
       queue: { size: totals.WAITING, oldest_queued_at: oldest._min.queued_at },
     };
   }
 
-  // Capacidade nula é limite ainda não definido: não há vaga a informar. Com a
-  // capacidade reduzida abaixo da ocupação, as vagas ficam em zero, nunca negativas.
-  private toProfessionalLoad(napne: {
+  // O limite é fixo (AEE_SERVICE_CAPACITY). Com mais atendimentos que o limite
+  // (contas anteriores à regra), as vagas ficam em zero, nunca negativas.
+  private toProfessionalLoad(teacher: {
     id: number;
     full_name: string;
-    service_capacity: number | null;
-    _count: { napne_students: number };
+    _count: { aee_students: number };
   }): ProfessionalLoad {
-    const inService = napne._count.napne_students;
-    const capacity = napne.service_capacity;
+    const inService = teacher._count.aee_students;
 
     return {
-      id: napne.id,
-      full_name: napne.full_name,
+      id: teacher.id,
+      full_name: teacher.full_name,
       in_service: inService,
-      capacity,
-      free: capacity === null ? null : Math.max(capacity - inService, 0),
+      capacity: AEE_SERVICE_CAPACITY,
+      free: Math.max(AEE_SERVICE_CAPACITY - inService, 0),
     };
   }
 }

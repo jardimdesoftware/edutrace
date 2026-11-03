@@ -119,10 +119,9 @@ describe('PlansEducationController', () => {
         ...student,
         cpf: '***.456.789-**',
       });
-      expect(service.findOne).toHaveBeenCalledWith(
-        'luizin@hotmail.com',
-        [LEVELS.PROFISSIONAL_SAUDE],
-      );
+      expect(service.findOne).toHaveBeenCalledWith('luizin@hotmail.com', [
+        LEVELS.PROFISSIONAL_SAUDE,
+      ]);
     });
 
     it('should return null when the email is not a student', async () => {
@@ -195,19 +194,23 @@ describe('PlansEducationController', () => {
       roles: [2],
     };
     const masked = { ...student, cpf: '***.456.789-**' };
-    it('should assume the student for the NAPNE of the session and mask the CPF', async () => {
+    it('should assume the student for the AEE teacher of the session and mask the CPF', async () => {
       serviceQueue.assume.mockResolvedValue(student);
 
       const result = await controller.assume(
         'luizin@hotmail.com',
-        request(LEVELS.PROFISSIONAL_NAPNE),
+        request(LEVELS.PROFESSOR_AEE),
       );
 
-      expect(serviceQueue.assume).toHaveBeenCalledWith('luizin@hotmail.com', 9);
+      expect(serviceQueue.assume).toHaveBeenCalledWith(
+        'luizin@hotmail.com',
+        9,
+        [LEVELS.PROFESSOR_AEE],
+      );
       expect(result).toEqual(masked);
     });
 
-    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])(
+    it.each([LEVELS.ADMIN, LEVELS.PROFESSOR_AEE])(
       'should close the service on behalf of the level %s and mask the CPF',
       async (id_level) => {
         serviceQueue.close.mockResolvedValue(student);
@@ -233,19 +236,21 @@ describe('PlansEducationController', () => {
         request(LEVELS.ADMIN),
       );
 
-      expect(serviceQueue.reopen).toHaveBeenCalledWith(
-        'luizin@hotmail.com',
-        [LEVELS.ADMIN],
-      );
+      expect(serviceQueue.reopen).toHaveBeenCalledWith('luizin@hotmail.com', [
+        LEVELS.ADMIN,
+      ]);
       expect(result).toEqual(masked);
     });
 
     it.each([
-      ['assume', [LEVELS.PROFISSIONAL_NAPNE]],
-      ['close', [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]],
-      ['reopen', [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]],
+      ['assume', [LEVELS.PROFESSOR_AEE]],
+      ['close', [LEVELS.ADMIN, LEVELS.PROFESSOR_AEE]],
+      [
+        'reopen',
+        [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE],
+      ],
     ] as const)(
-      'should open %s only to %j, which leaves the Education, Health and student levels with 403',
+      'should open %s only to %j, which leaves the Education, Health, student and (except reopen) NAPNE levels with 403',
       (route, levels) => {
         expect(
           Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]),
@@ -310,10 +315,9 @@ describe('PlansEducationController', () => {
           await controller.findOne('luizin@hotmail.com', request(level)),
         ).toEqual(masked);
         expect(service.findAll).toHaveBeenCalledWith([level]);
-        expect(service.findOne).toHaveBeenCalledWith(
-          'luizin@hotmail.com',
-          [level],
-        );
+        expect(service.findOne).toHaveBeenCalledWith('luizin@hotmail.com', [
+          level,
+        ]);
       },
     );
 

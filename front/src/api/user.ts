@@ -12,16 +12,6 @@ export async function updateUser(email: string, roles: number[]): Promise<Studen
   });
 }
 
-export async function updateServiceCapacity(
-  email: string,
-  service_capacity: number,
-): Promise<StudentData> {
-  return apiRequest(`/users/${encodeURIComponent(email)}`, {
-    method: 'PATCH',
-    body: { service_capacity },
-  });
-}
-
 // Alteração self-service dos próprios dados (e-mail e/ou senha).
 // Ao ter sucesso, o backend troca o cookie de sessão pelo token emitido com os
 // dados atualizados.

@@ -34,7 +34,7 @@ export const STUDENT_RECORD_READERS: readonly number[] = [
 export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
 
 // Quem lê o estudo de caso de qualquer estudante. O estudante lê só o próprio, e
-// quem escreve é só o Profissional NAPNE (declarado nas rotas).
+// quem escreve é só o Professor do AEE (declarado nas rotas).
 export const CASE_STUDY_READERS: readonly number[] = [
   LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
@@ -44,7 +44,7 @@ export const CASE_STUDY_READERS: readonly number[] = [
 ];
 
 // Quem lê os PAEE de qualquer estudante. O estudante lê só os próprios, e quem
-// escreve é só o Profissional NAPNE (declarado nas rotas).
+// escreve é só o Professor do AEE (declarado nas rotas).
 export const AEE_PLAN_READERS: readonly number[] = [
   LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
@@ -67,10 +67,15 @@ export const PEI_ENTRY_READERS: readonly number[] = [
 // recusa o seguinte com 409, e excluir um registro libera a vaga.
 export const PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT = 300;
 
+// Estudantes em atendimento (IN_SERVICE) que cada Professor do AEE tem ao mesmo
+// tempo. Fixo: a fila recusa o 16º com 409.
+export const AEE_SERVICE_CAPACITY = 15;
+
 // Servidores que podem ser o responsável pedagógico de um estudante.
 export const PEDAGOGICAL_MANAGER_LEVELS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
 ];
 
 // Quem lê o telefone e o CPF do responsável pedagógico externo, dados de uma

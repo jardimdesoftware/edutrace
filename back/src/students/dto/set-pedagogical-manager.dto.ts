@@ -68,7 +68,7 @@ function OnlyForKind(kind: ManagerKind) {
 export class SetPedagogicalManagerDto {
   @ApiProperty({
     description:
-      'SERVER vincula um Profissional da Educação ou Profissional NAPNE (user_id). EXTERNAL grava uma pessoa externa (name, phone e cpf). NONE remove o responsável.',
+      'SERVER vincula um Profissional da Educação, Profissional NAPNE ou Professor do AEE (user_id). EXTERNAL grava uma pessoa externa (name, phone e cpf). NONE remove o responsável.',
     enum: Object.values(MANAGER_KINDS),
     example: MANAGER_KINDS.SERVER,
   })
@@ -79,7 +79,7 @@ export class SetPedagogicalManagerDto {
 
   @ApiProperty({
     description:
-      'Id do servidor, de nível Profissional da Educação ou Profissional NAPNE. Só com kind SERVER.',
+      'Id do servidor, de nível Profissional da Educação, Profissional NAPNE ou Professor do AEE. Só com kind SERVER.',
     example: 12,
     required: false,
   })

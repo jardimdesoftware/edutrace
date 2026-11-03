@@ -21,6 +21,5 @@ export interface StudentData {
   queued_at?: string | null;
   service_started_at?: string | null;
   service_closed_at?: string | null;
-  service_capacity?: number | null;
-  napne_responsible?: { id: number; full_name: string } | null;
+  aee_responsible?: { id: number; full_name: string } | null;
 }

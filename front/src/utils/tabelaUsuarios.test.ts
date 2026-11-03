@@ -137,18 +137,16 @@ describe('substituirUsuario', () => {
   it('replaces the row with the response of the update, not only the changed field', () => {
     const napne = usuario(2, {
       roles: [PROFISSIONAL_NAPNE],
-      service_capacity: 5,
     });
     const atualizado = usuario(2, {
       roles: [PROFISSIONAL_SAUDE],
-      service_capacity: null,
       updated_at: '2026-10-16T12:00:00.000Z',
     });
 
     const resultado = substituirUsuario([usuario(1), napne, usuario(3)], atualizado);
 
     assert.equal(resultado[1], atualizado);
-    assert.equal(resultado[1].service_capacity, null);
+    assert.deepEqual(resultado[1].roles, [PROFISSIONAL_SAUDE]);
     assert.equal(resultado[1].updated_at, '2026-10-16T12:00:00.000Z');
   });
 
@@ -158,7 +156,7 @@ describe('substituirUsuario', () => {
       roles: [ESTUDANTE],
       service_status: 'WAITING',
       queued_at: '2026-10-16T12:00:00.000Z',
-      napne_responsible: null,
+      aee_responsible: null,
     });
 
     const [resultado] = substituirUsuario([profissional], atualizado);

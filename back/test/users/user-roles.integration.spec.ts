@@ -82,25 +82,24 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
       });
     });
 
-    // Insere direto, sem o Prisma Client, com os campos NOT NULL e as colunas
-    // da fila que os CHECKs de service_status e service_capacity olham.
+    // Insere direto, sem o Prisma Client, com os campos NOT NULL e a coluna
+    // da fila que o CHECK de service_status olha.
     async function insertRaw(
       roles: number[],
-      extra: { status?: 'WAITING'; capacity?: number } = {},
+      extra: { status?: 'WAITING' } = {},
     ) {
       counter += 1;
       const n = String(counter).padStart(4, '0');
       const status = extra.status ?? null;
-      const capacity = extra.capacity ?? null;
 
       return prisma.$executeRaw`
         INSERT INTO "User"
           ("full_name", "cpf", "email", "password", "roles", "id_current_phase",
-           "service_status", "queued_at", "service_capacity", "updated_at")
+           "service_status", "queued_at", "updated_at")
         VALUES
           (${'Conta de teste'}, ${`7${n}000000`}, ${`conta${n}@roles.edutrace.test`},
            ${'x'}, ${roles}::integer[], ${PHASES.TRIAGEM},
-           ${status}::"ServiceStatus", ${status ? new Date() : null}, ${capacity},
+           ${status}::"ServiceStatus", ${status ? new Date() : null},
            now())`;
     }
 
@@ -194,15 +193,17 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
       );
     });
 
-    it('should allow service_capacity only with the NAPNE role, even among others', async () => {
-      await expect(insertRaw([5, 6], { capacity: 7 })).resolves.toBe(1);
-      await expect(insertRaw([3, 5], { capacity: 7 })).resolves.toBe(1);
-      await expect(insertRaw([3, 6], { capacity: 7 })).rejects.toThrow(
-        /User_service_capacity_chk/,
-      );
-      await expect(insertRaw([5], { capacity: 201 })).rejects.toThrow(
-        /User_service_capacity_chk/,
-      );
+    it('should no longer have service_capacity or its CHECK', async () => {
+      const [{ columns, checks }] = await prisma.$queryRaw<
+        { columns: number; checks: number }[]
+      >`
+        SELECT
+          (SELECT count(*)::int FROM information_schema.columns
+            WHERE table_name = 'User' AND column_name = 'service_capacity') AS columns,
+          (SELECT count(*)::int FROM pg_constraint
+            WHERE conname = 'User_service_capacity_chk') AS checks`;
+
+      expect({ columns, checks }).toEqual({ columns: 0, checks: 0 });
     });
 
     it('should refuse an UPDATE that breaks the composition', async () => {
@@ -220,7 +221,7 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
     describe('UsersService', () => {
       const base = {
         full_name: 'Conta combinada',
-        cpf: '01234567890',
+        cpf: '39053344705',
         email: 'combinada@roles.edutrace.test',
       };
 
@@ -234,14 +235,14 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
         expect(created.service_status).toBeNull();
       });
 
-      it('should answer 409 and change nothing when the NAPNE with a student in service loses the role', async () => {
+      it('should answer 409 and change nothing when the AEE teacher with a student in service loses the role', async () => {
         const napne = await service.create({
           ...base,
           roles: [5, 6],
         });
         const student = await service.create({
           ...base,
-          cpf: '11144477735',
+          cpf: '15350946056',
           email: 'estudante@roles.edutrace.test',
           enrollment_number: 'ROLES0001',
           course: 'ADS',
@@ -250,21 +251,24 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
           where: { id: student.id },
           data: {
             service_status: 'IN_SERVICE',
-            napne_responsible_id: napne.id,
+            aee_responsible_id: napne.id,
           },
         });
 
         await expect(
-          service.update(base.email, { roles: [3, 6] }),
+          service.update(base.email, { roles: [3, 5] }),
         ).rejects.toBeInstanceOf(ConflictException);
         await expect(
-          service.update(base.email, { roles: [5] }),
-        ).resolves.toMatchObject({ roles: [5] });
+          service.update(base.email, { roles: [5, 6] }),
+        ).resolves.toMatchObject({ roles: [5, 6] });
+        await expect(service.remove(napne.id)).rejects.toBeInstanceOf(
+          ConflictException,
+        );
 
         const row = await prisma.user.findUniqueOrThrow({
           where: { id: napne.id },
         });
-        expect(row.roles).toEqual([5]);
+        expect(row.roles).toEqual([5, 6]);
       });
 
       it('should revoke the sessions only when the set of roles changes', async () => {
@@ -276,15 +280,6 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
 
         await service.update(base.email, { roles: [3, 4, 6] });
         expect(revokeAllFromUser).toHaveBeenCalledTimes(1);
-      });
-
-      it('should clear the capacity when the NAPNE role is lost', async () => {
-        await service.create({ ...base, roles: [5, 6] });
-        await service.update(base.email, { service_capacity: 4 });
-
-        const updated = await service.update(base.email, { roles: [6] });
-
-        expect(updated.service_capacity).toBeNull();
       });
 
       it('should put the account that becomes a student in the queue and take it out when it stops being one', async () => {
@@ -301,6 +296,25 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
           roles: [3, 6],
         });
         expect(professional.service_status).toBeNull();
+      });
+
+      it('should answer 409, not 500, when removing an account that lost the AEE role while it still has a student in service', async () => {
+        const lost = await service.create({ ...base, roles: [5] });
+        const student = await service.create({
+          ...base,
+          cpf: '15350946056',
+          email: 'estudante@roles.edutrace.test',
+          enrollment_number: 'ROLES0003',
+          course: 'ADS',
+        });
+        await prisma.user.update({
+          where: { id: student.id },
+          data: { service_status: 'IN_SERVICE', aee_responsible_id: lost.id },
+        });
+
+        await expect(service.remove(lost.id)).rejects.toBeInstanceOf(
+          ConflictException,
+        );
       });
 
       it('should delete an account that combines roles with no student in service', async () => {

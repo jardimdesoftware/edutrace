@@ -39,28 +39,31 @@ describe('PUBLIC_USER_SELECT', () => {
     'queued_at',
     'service_started_at',
     'service_closed_at',
-    'service_capacity',
   ])('should select %s', (field) => {
     expect(PUBLIC_USER_SELECT).toHaveProperty(field, true);
   });
 
-  // A relação com `true` ou `include` devolveria o registro inteiro do NAPNE,
+  // A relação com `true` ou `include` devolveria o registro inteiro do Professor do AEE,
   // com o hash da senha e os campos de recuperação.
-  it('should select only the id and the name of the NAPNE responsible', () => {
-    expect(PUBLIC_USER_SELECT.napne_responsible).toEqual({
+  it('should select only the id and the name of the AEE responsible', () => {
+    expect(PUBLIC_USER_SELECT.aee_responsible).toEqual({
       select: { id: true, full_name: true },
     });
   });
 
+  it('should not select service_capacity, which no longer exists', () => {
+    expect(PUBLIC_USER_SELECT).not.toHaveProperty('service_capacity');
+  });
+
   it('should not select the raw foreign key of the responsible', () => {
-    expect(PUBLIC_USER_SELECT).not.toHaveProperty('napne_responsible_id');
+    expect(PUBLIC_USER_SELECT).not.toHaveProperty('aee_responsible_id');
   });
 
-  it('should not select the students of a NAPNE', () => {
-    expect(PUBLIC_USER_SELECT).not.toHaveProperty('napne_students');
+  it('should not select the students of an AEE teacher', () => {
+    expect(PUBLIC_USER_SELECT).not.toHaveProperty('aee_students');
   });
 
-  // Mesma razão do NAPNE responsável: o registro inteiro do servidor traria o
+  // Mesma razão do Professor do AEE responsável: o registro inteiro do servidor traria o
   // hash da senha. O texto livre antigo também não sai: a coluna agora é
   // pedagogical_manager_legacy, ignorada pelo client.
   it('should select only the id and the name of the pedagogical manager', () => {
@@ -134,15 +137,30 @@ describe('userSelectFor', () => {
   });
 
   it.each([
-    ['Educação + NAPNE', [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]],
-    ['NAPNE + Professor do AEE', [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE]],
-  ])('should give the combined %s the select with the contact, since one role reads it', (_, roles) => {
-    expect(userSelectFor(roles)).toBe(USER_WITH_MANAGER_CONTACT_SELECT);
-  });
+    [
+      'Educação + NAPNE',
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
+    ],
+    [
+      'NAPNE + Professor do AEE',
+      [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE],
+    ],
+  ])(
+    'should give the combined %s the select with the contact, since one role reads it',
+    (_, roles) => {
+      expect(userSelectFor(roles)).toBe(USER_WITH_MANAGER_CONTACT_SELECT);
+    },
+  );
 
   it.each([
-    ['Educação + Professor do AEE', [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]],
-    ['Saúde + Educação', [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_EDUCACAO]],
+    [
+      'Educação + Professor do AEE',
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+    ],
+    [
+      'Saúde + Educação',
+      [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_EDUCACAO],
+    ],
     ['uma lista vazia', []],
     ['nenhuma lista', undefined as unknown as number[]],
   ])('should give %s the public select, without the contact', (_, roles) => {

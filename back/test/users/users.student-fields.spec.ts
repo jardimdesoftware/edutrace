@@ -148,10 +148,10 @@ describe('POST e PATCH /users, matrícula e curso', () => {
     });
 
     // Os campos da fila só mudam pelos endpoints próprios. O corpo do cadastro
-    // não os aceita, nem o limite de atendimentos.
+    // não os aceita, nem o limite de atendimentos (que não existe mais).
     it.each([
       ['service_status', 'IN_SERVICE'],
-      ['napne_responsible_id', 9],
+      ['aee_responsible_id', 9],
       ['queued_at', '2026-10-16T12:00:00.000Z'],
       ['service_started_at', '2026-10-16T12:00:00.000Z'],
       ['service_closed_at', '2026-10-16T12:00:00.000Z'],
@@ -211,10 +211,11 @@ describe('POST e PATCH /users, matrícula e curso', () => {
 
     it.each([
       ['service_status', 'IN_SERVICE'],
-      ['napne_responsible_id', 9],
+      ['aee_responsible_id', 9],
       ['queued_at', '2026-10-16T12:00:00.000Z'],
       ['service_started_at', '2026-10-16T12:00:00.000Z'],
       ['service_closed_at', '2026-10-16T12:00:00.000Z'],
+      ['service_capacity', 5],
     ])('should answer 400 for %s in the body', async (field, value) => {
       const response = await patch({ [field]: value });
 

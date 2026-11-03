@@ -33,7 +33,7 @@ const STORED = {
   id: PLAN_ID,
   semester: SEMESTER,
   ...validSections(),
-  author: { id: SUB, full_name: 'Profissional NAPNE' },
+  author: { id: SUB, full_name: 'Professor do AEE' },
   student: { full_name: 'Estudante', course: 'Informática' },
   created_at: '2026-10-17T10:00:00.000Z',
   updated_at: '2026-10-17T10:00:00.000Z',
@@ -44,9 +44,11 @@ const READERS = [
   ['Profissional da Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional da Saúde', LEVELS.PROFISSIONAL_SAUDE],
   ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
+  ['Professor do AEE', LEVELS.PROFESSOR_AEE],
 ] as const;
 
-const NOT_NAPNE = [
+const NOT_AEE = [
+  ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
   ['Administrador', LEVELS.ADMIN],
   ['Profissional da Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional da Saúde', LEVELS.PROFISSIONAL_SAUDE],
@@ -107,8 +109,8 @@ describe('PAEE, rotas de /aee-plans', () => {
   let studentsService: { findOneOrFail: jest.Mock };
 
   beforeEach(async () => {
-    sessionLevel = LEVELS.PROFISSIONAL_NAPNE;
-    sessionEmail = 'napne@example.com';
+    sessionLevel = LEVELS.PROFESSOR_AEE;
+    sessionEmail = 'professor.aee@example.com';
     prisma = {
       aeePlan: {
         create: jest.fn().mockResolvedValue(STORED),
@@ -181,7 +183,7 @@ describe('PAEE, rotas de /aee-plans', () => {
     call('delete', `/aee-plans/${id}`);
 
   describe('POST /aee-plans', () => {
-    it('should answer 201 to the NAPNE and record the session as the author', async () => {
+    it('should answer 201 to the AEE teacher and record the session as the author', async () => {
       const response = await post(validBody());
 
       expect(response.status).toBe(201);
@@ -197,7 +199,7 @@ describe('PAEE, rotas de /aee-plans', () => {
       );
     });
 
-    it.each(NOT_NAPNE)('should answer 403 to the %s', async (_, level) => {
+    it.each(NOT_AEE)('should answer 403 to the %s', async (_, level) => {
       sessionLevel = level;
 
       const response = await post(validBody());
@@ -383,7 +385,7 @@ describe('PAEE, rotas de /aee-plans', () => {
   });
 
   describe('PATCH /aee-plans/:id', () => {
-    it('should answer 200 to the NAPNE with the sections that were sent', async () => {
+    it('should answer 200 to the AEE teacher with the sections that were sent', async () => {
       const response = await patch({ basis: 'Novo embasamento' });
 
       expect(response.status).toBe(200);
@@ -411,15 +413,15 @@ describe('PAEE, rotas de /aee-plans', () => {
       expect(response.status).toBe(200);
     });
 
-    it('should let any NAPNE edit, whoever wrote the plan', async () => {
-      sessionEmail = 'outro.napne@example.com';
+    it('should let any AEE teacher edit, whoever wrote the plan', async () => {
+      sessionEmail = 'outro.aee@example.com';
 
       const response = await patch({ basis: 'Novo embasamento' });
 
       expect(response.status).toBe(200);
     });
 
-    it.each(NOT_NAPNE)('should answer 403 to the %s', async (_, level) => {
+    it.each(NOT_AEE)('should answer 403 to the %s', async (_, level) => {
       sessionLevel = level;
 
       const response = await patch({ basis: 'Novo embasamento' });
@@ -480,7 +482,7 @@ describe('PAEE, rotas de /aee-plans', () => {
   });
 
   describe('DELETE /aee-plans/:id', () => {
-    it('should answer 200 to the NAPNE', async () => {
+    it('should answer 200 to the AEE teacher', async () => {
       const response = await del();
 
       expect(response.status).toBe(200);
@@ -490,7 +492,7 @@ describe('PAEE, rotas de /aee-plans', () => {
       });
     });
 
-    it.each(NOT_NAPNE)('should answer 403 to the %s', async (_, level) => {
+    it.each(NOT_AEE)('should answer 403 to the %s', async (_, level) => {
       sessionLevel = level;
 
       const response = await del();
