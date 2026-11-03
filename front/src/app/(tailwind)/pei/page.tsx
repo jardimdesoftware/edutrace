@@ -194,8 +194,36 @@ function PeiPage() {
   );
 
   return (
-    <AppLayout>
-      <div className="w-full p-6">
+    <AppLayout ocuparTela={!!(edicao || parecerEmEdicao) && !erro}>
+      <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
+        {(edicao || parecerEmEdicao) && !erro ? (
+          edicao ? (
+            <PeiFormulario
+              key={edicao.registro?.id ?? 'novo'}
+              inicial={edicao.registro ? formularioDoPei(edicao.registro) : formularioVazioDoPei()}
+              novo={!edicao.registro}
+              estudante={nome ?? undefined}
+              autor={edicao.registro ? (edicao.registro.author?.full_name ?? null) : user.name}
+              salvando={salvando}
+              onSalvar={handleSalvar}
+              onCancelar={() => setEdicao(null)}
+            />
+          ) : (
+            parecerEmEdicao && (
+              <PeiParecerFormulario
+                key={parecerEmEdicao.id}
+                inicial={formularioDoParecer(parecerEmEdicao)}
+                semestre={parecerEmEdicao.semester}
+                disciplina={parecerEmEdicao.subject}
+                estudante={nome ?? undefined}
+                autor={parecerEmEdicao.author?.full_name ?? null}
+                salvando={salvando}
+                onSalvar={handleSalvarParecer}
+                onCancelar={() => setParecerEmEdicao(null)}
+              />
+            )
+          )
+        ) : (
         <div className="mx-auto w-full max-w-3xl space-y-6">
           <header className="space-y-1">
             <h1 className="text-4xl font-bold">PEI</h1>
@@ -210,27 +238,6 @@ function PeiPage() {
                 Tentar novamente
               </button>
             </div>
-          ) : edicao ? (
-            <PeiFormulario
-              key={edicao.registro?.id ?? 'novo'}
-              inicial={edicao.registro ? formularioDoPei(edicao.registro) : formularioVazioDoPei()}
-              novo={!edicao.registro}
-              autor={edicao.registro ? (edicao.registro.author?.full_name ?? null) : user.name}
-              salvando={salvando}
-              onSalvar={handleSalvar}
-              onCancelar={() => setEdicao(null)}
-            />
-          ) : parecerEmEdicao ? (
-            <PeiParecerFormulario
-              key={parecerEmEdicao.id}
-              inicial={formularioDoParecer(parecerEmEdicao)}
-              semestre={parecerEmEdicao.semester}
-              disciplina={parecerEmEdicao.subject}
-              autor={parecerEmEdicao.author?.full_name ?? null}
-              salvando={salvando}
-              onSalvar={handleSalvarParecer}
-              onCancelar={() => setParecerEmEdicao(null)}
-            />
           ) : grupos.length > 0 ? (
             <>
               {botaoNovo}
@@ -264,6 +271,7 @@ function PeiPage() {
             </div>
           )}
         </div>
+        )}
       </div>
     </AppLayout>
   );

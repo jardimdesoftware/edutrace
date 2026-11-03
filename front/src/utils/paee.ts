@@ -34,6 +34,7 @@ const TITULO_FINALIDADE = 'Finalidade do AEE';
 const TITULO_EMBASAMENTO = 'Embasamento para o atendimento do AEE';
 const TITULO_AVALIACAO =
   'Procedimentos e metodologias para avaliação do desenvolvimento do estudante no AEE';
+export const CAMINHO_DO_PERIODO = 'semester';
 
 // Rótulos e ordem copiados da seção "Solução Proposta" da issue #705. A mesma
 // tabela monta o formulário, a leitura na tela e o PDF. O período letivo e o
@@ -42,6 +43,7 @@ const TITULO_AVALIACAO =
 export const SECOES_PAEE: readonly SecaoDef[] = [
   {
     titulo: TITULO_IDENTIFICACAO,
+    caminhosExtras: [CAMINHO_DO_PERIODO],
     grupos: [
       {
         campos: [
@@ -63,10 +65,12 @@ export const SECOES_PAEE: readonly SecaoDef[] = [
   },
   {
     titulo: TITULO_EMBASAMENTO,
+    passo: 'Embasamento e laudo',
     grupos: [{ campos: [textoLongo('basis', TITULO_EMBASAMENTO, LIMITES_PAEE.LONGO)] }],
   },
   {
     titulo: 'Laudo/diagnóstico',
+    passo: 'Embasamento e laudo',
     grupos: [{ campos: [marcacao('has_diagnosis', 'Há laudo/diagnóstico?')] }],
   },
   {
@@ -123,6 +127,7 @@ export const SECOES_PAEE: readonly SecaoDef[] = [
   },
   {
     titulo: 'Objetivos',
+    passo: 'Objetivos e avaliação',
     grupos: [
       {
         campos: [
@@ -134,6 +139,7 @@ export const SECOES_PAEE: readonly SecaoDef[] = [
   },
   {
     titulo: TITULO_AVALIACAO,
+    passo: 'Objetivos e avaliação',
     grupos: [{ campos: [textoLongo('evaluation_procedures', TITULO_AVALIACAO, LIMITES_PAEE.LONGO)] }],
   },
 ];
@@ -141,8 +147,6 @@ export const SECOES_PAEE: readonly SecaoDef[] = [
 // O formulário traz o período junto das seções, porque a criação o pede na
 // mesma tela; o corpo do PATCH, que não o aceita, sai só das seções.
 export type AeePlanForm = { semester: string } & Formulario<AeePlanSections>;
-
-export const CAMINHO_DO_PERIODO = 'semester';
 
 export function formularioVazioDoPlano(): AeePlanForm {
   return { [CAMINHO_DO_PERIODO]: '', ...formularioVazioDe<Formulario<AeePlanSections>>(SECOES_PAEE) };

@@ -2,304 +2,221 @@
 
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import Swal from "sweetalert2";
-import {
-  NAO_INFORMADO,
-  lerCaminho,
-  semErroDoCaminho,
-  type CampoDef,
-  type ErrosDoFormulario,
-  type GrupoDef,
-  type SecaoDef,
-} from "@/utils/formularioPorTabela";
+import { useAvisoAoSair } from "@/hooks/useAvisoAoSair";
+import type { SecaoDeLeitura, SecaoDef, ErrosDoFormulario } from "@/utils/formularioPorTabela";
 import { setNestedField } from "@/utils/nestedField";
-import CheckboxField from "./form/CheckboxField";
-import { COR_CANCELAR, COR_CONFIRMAR } from "./form/botoes";
-import { FormFieldset, FormSection } from "./form/FormSection";
-import { DateField, NumberField, TextField } from "./form/InputField";
-import TextAreaField from "./form/TextAreaField";
+import {
+  houveAlteracao,
+  limitarPasso,
+  passoDoCaminho,
+  passosDe,
+  primeiroCaminhoComErro,
+  situacaoDosPassos,
+  textoDoBloqueio,
+  type PassoDef,
+} from "@/utils/passosDoFormulario";
+import AssistenteDePassos from "./AssistenteDePassos";
+import type { ModoDoFormulario } from "./AcoesDoAssistente";
+import {
+  GrupoDaTabela,
+  idDoCampoCom,
+  type AoAlterar,
+  type AoDefinir,
+  type ControleDoFormulario,
+} from "./CamposDaTabela";
+import LeituraDoPasso from "./LeituraDoPasso";
+import { COR_CANCELAR, COR_EXCLUIR } from "./form/botoes";
 
-const VALOR_MINIMO = 0;
-
-export type AoAlterar = (caminho: string, valor: string | boolean) => void;
-// Troca o valor de um caminho por qualquer valor, como a lista inteira de um
-// campo que o usuário aumenta e diminui.
-export type AoDefinir = (caminho: string, valor: unknown) => void;
-
-// O que o cabeçalho de uma seção precisa para ler e alterar o formulário.
-export interface ControleDoFormulario<F> {
-  valores: F;
-  erros: ErrosDoFormulario;
-  alterar: AoAlterar;
-  definir: AoDefinir;
-  idDoCampo: (caminho: string) => string;
-}
+export { DadosDoCadastro } from "./CamposDaTabela";
+export type { AoAlterar, AoDefinir, ControleDoFormulario } from "./CamposDaTabela";
 
 interface FormularioPorTabelaProps<F extends object> {
+  // O documento e o estudante, no cabeçalho do cartão.
+  titulo: string;
+  estudante?: string;
+  resumo?: ReactNode;
+  // Botões do documento que não são do formulário, como Excluir.
+  acoesDoDocumento?: ReactNode;
   secoes: readonly SecaoDef[];
   // Prefixo dos ids dos campos, para o rótulo e o foco de erro acharem o campo.
   prefixoDosIds: string;
   inicial: F;
   validar: (form: F) => ErrosDoFormulario;
-  rotuloSalvar: string;
   salvando: boolean;
   onSalvar: (form: F) => void;
   onCancelar: () => void;
+  modo?: ModoDoFormulario;
+  // Só no modo "ver": leva o usuário à edição do mesmo registro.
+  onEditar?: () => void;
+  // Só no modo "ver": as linhas de leitura das seções de um passo.
+  leituraDoPasso?: (secoes: readonly SecaoDef[]) => SecaoDeLeitura[];
   // Conteúdo que abre uma seção, antes dos campos da tabela: o que o documento
   // mostra do cadastro e os campos que não estão na tabela.
   cabecalhoDaSecao?: (secao: SecaoDef, controle: ControleDoFormulario<F>) => ReactNode;
 }
 
-function idDoCampoCom(prefixo: string, caminho: string): string {
-  return `${prefixo}-${caminho.replaceAll(".", "-")}`;
-}
-
-interface CampoDaTabelaProps {
-  campo: CampoDef;
-  id: string;
-  valor: unknown;
-  erro?: string;
-  onChange: AoAlterar;
-  rotuloOculto?: boolean;
-}
-
-function CampoDaTabela({ campo, id, valor, erro, onChange, rotuloOculto }: CampoDaTabelaProps) {
-  const texto = typeof valor === "string" ? valor : "";
-  const alterar = (novo: string) => onChange(campo.caminho, novo);
-
-  switch (campo.tipo) {
-    case "marcacao":
-      return (
-        <CheckboxField
-          id={id}
-          rotulo={campo.rotulo}
-          marcado={valor === true}
-          onChange={(marcado) => onChange(campo.caminho, marcado)}
-        />
-      );
-    case "textoLongo":
-      return (
-        <TextAreaField
-          id={id}
-          rotulo={campo.rotulo}
-          rotuloOculto={rotuloOculto}
-          valor={texto}
-          tamanhoMaximo={campo.max}
-          erro={erro}
-          onChange={alterar}
-        />
-      );
-    case "texto":
-      return (
-        <TextField
-          id={id}
-          rotulo={campo.rotulo}
-          valor={texto}
-          tamanhoMaximo={campo.max}
-          ajuda={`Até ${campo.max} caracteres.`}
-          erro={erro}
-          onChange={alterar}
-        />
-      );
-    case "numero":
-      return (
-        <NumberField
-          id={id}
-          rotulo={campo.rotulo}
-          valor={texto}
-          min={VALOR_MINIMO}
-          max={campo.max}
-          erro={erro}
-          onChange={alterar}
-        />
-      );
-    case "data":
-      return (
-        <DateField id={id} rotulo={campo.rotulo} valor={texto} erro={erro} onChange={alterar} />
-      );
-  }
-}
-
-interface GrupoDaTabelaProps<F> {
-  grupo: GrupoDef;
-  tituloDaSecao: string;
-  controle: ControleDoFormulario<F>;
-}
-
-function GrupoDaTabela<F>({ grupo, tituloDaSecao, controle }: GrupoDaTabelaProps<F>) {
-  const { valores, erros, alterar, idDoCampo } = controle;
-  const renderizar = (campo: CampoDef) => (
-    <CampoDaTabela
-      key={campo.caminho}
-      campo={campo}
-      id={idDoCampo(campo.caminho)}
-      valor={lerCaminho(valores, campo.caminho)}
-      erro={erros[campo.caminho]}
-      onChange={alterar}
-      rotuloOculto={campo.rotulo === tituloDaSecao}
-    />
-  );
-
-  if (grupo.lista) {
-    return (
-      <FormFieldset legenda={grupo.titulo} legendaOculta={grupo.titulo === tituloDaSecao}>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {grupo.campos.filter((campo) => campo.tipo === "marcacao").map(renderizar)}
-        </div>
-        {grupo.campos.filter((campo) => campo.tipo !== "marcacao").map(renderizar)}
-      </FormFieldset>
-    );
-  }
-
-  const curtos = grupo.campos.every((campo) => campo.tipo !== "textoLongo" && campo.tipo !== "marcacao");
-  const campos = (
-    <div className={curtos ? "grid gap-4 sm:grid-cols-3" : "space-y-5"}>
-      {grupo.campos.map(renderizar)}
-    </div>
-  );
-
-  return grupo.titulo ? <FormFieldset legenda={grupo.titulo}>{campos}</FormFieldset> : campos;
-}
-
-interface DadosDoCadastroProps {
-  // undefined é o curso que a tela não conhece; null é o cadastro sem curso.
-  curso?: string | null;
-  autor: string | null;
-  // Período letivo que o documento já tem e não muda; some quando o período
-  // ainda vai ser escolhido.
-  periodo?: string;
-}
-
-// O que o documento herda do cadastro e da sessão, e o usuário não digita.
-export function DadosDoCadastro({ curso, autor, periodo }: DadosDoCadastroProps) {
-  return (
-    <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-      {periodo !== undefined && (
-        <div>
-          <dt className="text-gray-600">Período letivo (não pode ser alterado)</dt>
-          <dd className="font-medium text-gray-900">{periodo}</dd>
-        </div>
-      )}
-      {curso !== undefined && (
-        <div>
-          <dt className="text-gray-600">Curso (do cadastro do estudante)</dt>
-          <dd className="font-medium text-gray-900">{curso?.trim() || NAO_INFORMADO}</dd>
-        </div>
-      )}
-      <div>
-        <dt className="text-gray-600">Professor(a) do AEE (autor)</dt>
-        <dd className="font-medium text-gray-900">{autor?.trim() || NAO_INFORMADO}</dd>
-      </div>
-    </dl>
-  );
+function tituloDoPasso(passo: PassoDef): string {
+  return passo.secoes.length === 1 ? passo.secoes[0].titulo : passo.rotulo;
 }
 
 export default function FormularioPorTabela<F extends object>({
+  titulo,
+  estudante,
+  resumo,
+  acoesDoDocumento,
   secoes,
   prefixoDosIds,
   inicial,
   validar,
-  rotuloSalvar,
   salvando,
   onSalvar,
   onCancelar,
+  modo = "criar",
+  onEditar,
+  leituraDoPasso,
   cabecalhoDaSecao,
 }: FormularioPorTabelaProps<F>) {
+  const passos = passosDe(secoes);
   const [valores, setValores] = useState<F>(inicial);
-  const [erros, setErros] = useState<ErrosDoFormulario>({});
-  const [tentativasInvalidas, setTentativasInvalidas] = useState(0);
-  const primeiroComErro = useRef<string | null>(null);
+  const [atual, setAtual] = useState(0);
+  const [visitados, setVisitados] = useState<number[]>([0]);
+  const [tentou, setTentou] = useState(false);
+  const [pedidoDeFoco, setPedidoDeFoco] = useState<{ caminho: string; vez: number } | null>(null);
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+  const focarOTitulo = useRef(false);
+
+  const ver = modo === "ver";
+  const alterado = houveAlteracao(inicial, valores);
+  useAvisoAoSair(!ver && !salvando && alterado);
+
+  // Os erros vêm sempre dos valores: corrigir o campo tira o erro sozinho. Só
+  // aparecem nos passos que o usuário já deixou, ou depois de tentar concluir.
+  const erros = validar(valores);
+  const situacao = situacaoDosPassos(passos, erros);
+  const aparece = (indice: number) => tentou || (visitados.includes(indice) && indice !== atual);
+  const errosVisiveis = Object.fromEntries(
+    Object.entries(erros).filter(([caminho]) => aparece(Math.max(0, passoDoCaminho(passos, caminho)))),
+  );
+
+  // O foco vai para o título do passo novo, para o leitor de tela anunciá-lo.
+  useEffect(() => {
+    if (focarOTitulo.current) {
+      focarOTitulo.current = false;
+      tituloRef.current?.focus();
+    }
+  }, [atual]);
+
+  // Depois do render do passo que tem o campo inválido, o foco vai para ele.
+  useEffect(() => {
+    if (pedidoDeFoco) {
+      document.getElementById(idDoCampoCom(prefixoDosIds, pedidoDeFoco.caminho))?.focus();
+    }
+  }, [pedidoDeFoco, prefixoDosIds]);
 
   const idDoCampo = (caminho: string) => idDoCampoCom(prefixoDosIds, caminho);
 
-  // O foco vai para o primeiro campo inválido depois que o erro foi desenhado,
-  // para o leitor de tela ler a mensagem ligada ao campo.
-  useEffect(() => {
-    if (primeiroComErro.current) {
-      document.getElementById(idDoCampoCom(prefixoDosIds, primeiroComErro.current))?.focus();
-    }
-  }, [tentativasInvalidas, prefixoDosIds]);
+  const irPara = (indice: number, comFocoNoTitulo = true) => {
+    const destino = limitarPasso(indice, passos.length);
+    focarOTitulo.current = comFocoNoTitulo;
+    setVisitados((anteriores) => (anteriores.includes(destino) ? anteriores : [...anteriores, destino]));
+    setAtual(destino);
+  };
 
   const definir: AoDefinir = (caminho, valor) => {
     setValores((atuais) => setNestedField(atuais, caminho, valor));
-    setErros((atuais) => semErroDoCaminho(atuais, caminho));
   };
   const alterar: AoAlterar = definir;
 
-  const handleSubmit = (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault();
-
-    const encontrados = validar(valores);
-    setErros(encontrados);
-
-    const [primeiro] = Object.keys(encontrados);
-    if (primeiro) {
-      primeiroComErro.current = primeiro;
-      setTentativasInvalidas((atual) => atual + 1);
+  const concluir = () => {
+    if (!situacao.podeConcluir) {
+      setTentou(true);
+      const caminho = primeiroCaminhoComErro(passos, erros);
+      if (caminho) {
+        irPara(Math.max(0, passoDoCaminho(passos, caminho)), false);
+        setPedidoDeFoco((anterior) => ({ caminho, vez: (anterior?.vez ?? 0) + 1 }));
+      }
       return;
     }
-
     onSalvar(valores);
   };
 
-  const handleCancelar = async () => {
-    if (JSON.stringify(valores) !== JSON.stringify(inicial)) {
+  // Enter num campo avança o passo, e só no último passo conclui.
+  const handleSubmit = (evento: FormEvent<HTMLFormElement>) => {
+    evento.preventDefault();
+    if (ver) return;
+    if (atual < passos.length - 1) irPara(atual + 1);
+    else concluir();
+  };
+
+  const cancelar = async () => {
+    if (!ver && alterado) {
       const confirmacao = await Swal.fire({
         icon: "warning",
-        title: "Descartar alterações",
-        text: "As alterações que você não salvou serão perdidas.",
+        title: "Descartar dados",
+        text: "Os dados preenchidos não serão salvos, pois este formulário não guarda rascunho.",
         showCancelButton: true,
-        confirmButtonColor: COR_CONFIRMAR,
+        confirmButtonColor: COR_EXCLUIR,
         cancelButtonColor: COR_CANCELAR,
         confirmButtonText: "Descartar",
-        cancelButtonText: "Continuar editando",
+        cancelButtonText: "Continuar preenchendo",
       });
       if (!confirmacao.isConfirmed) return;
     }
     onCancelar();
   };
 
-  const quantidadeDeErros = Object.keys(erros).length;
-  const controle: ControleDoFormulario<F> = { valores, erros, alterar, definir, idDoCampo };
+  const controle: ControleDoFormulario<F> = { valores, erros: errosVisiveis, alterar, definir, idDoCampo };
+  const passo = passos[atual];
+  const textoDeApoio = textoDoBloqueio(passos, erros);
 
-  return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-6">
-      {secoes.map((secao) => (
-        <FormSection key={secao.titulo} titulo={secao.titulo}>
+  const corpo =
+    ver && leituraDoPasso ? (
+      <LeituraDoPasso secoes={leituraDoPasso(passo.secoes)} mostrarTitulos={passo.secoes.length > 1} />
+    ) : (
+      passo.secoes.map((secao) => (
+        <section key={secao.titulo} className="space-y-5">
+          {passo.secoes.length > 1 && (
+            <h3 className="text-base font-semibold text-gray-900">{secao.titulo}</h3>
+          )}
           {cabecalhoDaSecao?.(secao, controle)}
           {secao.grupos.map((grupo, indice) => (
-            <GrupoDaTabela
-              key={indice}
-              grupo={grupo}
-              tituloDaSecao={secao.titulo}
-              controle={controle}
-            />
+            <GrupoDaTabela key={indice} grupo={grupo} tituloDaSecao={secao.titulo} controle={controle} />
           ))}
-        </FormSection>
-      ))}
+        </section>
+      ))
+    );
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-white py-3">
-        <p role="alert" className="text-sm text-red-700">
-          {quantidadeDeErros > 0 &&
-            `Há ${quantidadeDeErros} ${quantidadeDeErros === 1 ? "campo com erro" : "campos com erro"}. Corrija para salvar.`}
-        </p>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="rounded-full border px-4 py-2 text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-50"
-            onClick={handleCancelar}
-            disabled={salvando}
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="rounded-full bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={salvando}
-          >
-            {salvando ? "Salvando..." : rotuloSalvar}
-          </button>
-        </div>
-      </div>
+  return (
+    <form onSubmit={handleSubmit} noValidate className="lg:h-full">
+      <AssistenteDePassos
+        titulo={titulo}
+        estudante={estudante}
+        resumo={resumo}
+        acoesDoDocumento={acoesDoDocumento}
+        passos={passos}
+        atual={atual}
+        comPendencia={situacao.comPendencia.map((pendente, indice) => pendente && aparece(indice))}
+        visitados={passos.map((_, indice) => visitados.includes(indice))}
+        onIrPara={irPara}
+        tituloDoPasso={tituloDoPasso(passo)}
+        tituloRef={tituloRef}
+        acoes={{
+          modo,
+          temAnterior: atual > 0,
+          temProximo: atual < passos.length - 1,
+          onVoltar: () => irPara(atual - 1),
+          onProximo: () => irPara(atual + 1),
+          onCancelar: cancelar,
+          onConcluir: concluir,
+          onEditar,
+          concluirBloqueado: !situacao.podeConcluir,
+          textoDeApoio,
+          idDoApoio: `${prefixoDosIds}-apoio`,
+          salvando,
+        }}
+      >
+        {corpo}
+      </AssistenteDePassos>
     </form>
   );
 }

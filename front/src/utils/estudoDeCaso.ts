@@ -75,6 +75,7 @@ function listaDeVerificacao(titulo: string, base: string, itens: [string, string
 export const SECOES: readonly SecaoDef[] = [
   {
     titulo: TITULO_IDENTIFICACAO,
+    passo: 'Dados',
     grupos: [
       {
         campos: [
@@ -90,6 +91,7 @@ export const SECOES: readonly SecaoDef[] = [
   },
   {
     titulo: 'Informações gerais',
+    passo: 'Dados',
     grupos: [
       {
         campos: [
@@ -132,6 +134,7 @@ export const SECOES: readonly SecaoDef[] = [
   },
   {
     titulo: 'Aspectos pedagógicos',
+    dividirPorGrupo: true,
     grupos: [
       listaDeVerificacao('Linguagem e comunicação', 'pedagogical_aspects.language', [
         ['verbal', 'Comunica-se verbalmente'],
@@ -175,10 +178,12 @@ export const SECOES: readonly SecaoDef[] = [
   },
   {
     titulo: 'Potencialidades e interesses',
+    passo: 'Potencialidades e barreiras',
     grupos: [{ campos: [textoLongo('potentialities_interests', 'Potencialidades e interesses')] }],
   },
   {
     titulo: 'Barreiras para aprendizagem e participação',
+    passo: 'Potencialidades e barreiras',
     grupos: [
       {
         campos: [textoLongo('barriers', 'Barreiras para aprendizagem e participação')],
@@ -268,12 +273,14 @@ type EstudoParaLeitura = CaseStudySections & {
 // o chamador não conhece (a linha some) e null é o cadastro sem curso. O
 // professor do AEE é o autor do estudo de caso e entra logo depois da idade;
 // o resto da Identificação segue a ordem da tabela, então um campo novo ali
-// aparece sem mudar esta função.
+// aparece sem mudar esta função. `secoes` limita a leitura às seções de um passo
+// do formulário; sem ela, saem todas, como o PDF precisa.
 export function secoesParaLeitura(
   estudo: EstudoParaLeitura,
   curso?: string | null,
+  secoes: readonly SecaoDef[] = SECOES,
 ): SecaoDeLeitura[] {
-  return secoesDeLeitura(SECOES, estudo).map((secao) => {
+  return secoesDeLeitura(secoes, estudo).map((secao) => {
     if (secao.titulo !== TITULO_IDENTIFICACAO) return secao;
 
     const professor = {
