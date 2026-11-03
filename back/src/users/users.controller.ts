@@ -9,35 +9,61 @@ import {
   Delete,
   Req,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
+import { AuthenticatedRequest } from 'src/comments/types/express';
+import { USER_CREATE_THROTTLE } from './users.throttle';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @AllowLevels(LEVELS.ADMIN)
+  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
   @ApiBody({
     type: CreateUserDto,
-    description: 'Objeto para criação de um novo usuário por um administrador.',
+    description:
+      'Objeto para criação de um novo usuário por um administrador ou pelo Profissional NAPNE, que cadastra apenas estudantes.',
   })
+  @Throttle(USER_CREATE_THROTTLE)
   @Post()
-  async create(@Body() createUserDto: CreateUserDto, @Req() req: Request) {
-    const user = (req as Request & { user?: { id_level?: number } }).user;
+  async create(
+    @Body() createUserDto: CreateUserDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const requesterLevel = req.user?.id_level;
 
-    if (user?.id_level !== LEVELS.ADMIN) {
+    if (
+      requesterLevel !== LEVELS.ADMIN &&
+      requesterLevel !== LEVELS.PROFISSIONAL_NAPNE
+    ) {
       throw new ForbiddenException(
-        'Apenas administradores podem cadastrar usuários',
+        'Apenas administradores e o Profissional NAPNE podem cadastrar usuários',
       );
     }
 
-    return maskUserCpf(await this.usersService.create(createUserDto));
+    const createdLevel = createUserDto.id_level ?? LEVELS.ALUNO_ESTUDANTE;
+
+    if (
+      requesterLevel === LEVELS.PROFISSIONAL_NAPNE &&
+      createdLevel !== LEVELS.ALUNO_ESTUDANTE
+    ) {
+      throw new ForbiddenException(
+        'O Profissional NAPNE cadastra apenas estudantes.',
+      );
+    }
+
+    return maskUserCpf(
+      await this.usersService.create({
+        ...createUserDto,
+        id_level: createdLevel,
+      }),
+    );
   }
 
   @AllowLevels(LEVELS.ADMIN)

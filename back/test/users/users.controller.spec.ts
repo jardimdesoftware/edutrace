@@ -80,33 +80,119 @@ describe('UsersController', () => {
   });
 
   describe('create', () => {
-    it('should create a user when requester is admin', async () => {
-      const createDto = {
-        full_name: 'New User',
-        email: 'new@test.com',
-        password: '123',
-      };
-      const adminRequest = { user: { id_level: LEVELS.ADMIN } } as any;
+    const createDto = {
+      full_name: 'New User',
+      email: 'new@test.com',
+      password: '123',
+    };
+    const requestOf = (id_level: number) => ({ user: { id_level } }) as any;
+
+    it.each([
+      LEVELS.ADMIN,
+      LEVELS.ALUNO_ESTUDANTE,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ])(
+      'should create a user of level %i when requester is admin',
+      async (id_level) => {
+        const dto = { ...createDto, id_level };
+        jest
+          .spyOn(service, 'create')
+          .mockResolvedValue(mockPublicUser as never);
+
+        const result = await controller.create(
+          dto as any,
+          requestOf(LEVELS.ADMIN),
+        );
+
+        expect(service.create).toHaveBeenCalledWith(dto);
+        expect(result).toEqual(maskedUser);
+      },
+    );
+
+    it('should create a student with the level written explicitly when requester is admin and id_level is absent', async () => {
       jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
 
-      const result = await controller.create(createDto as any, adminRequest);
+      const result = await controller.create(
+        createDto as any,
+        requestOf(LEVELS.ADMIN),
+      );
 
-      expect(service.create).toHaveBeenCalledWith(createDto);
+      expect(service.create).toHaveBeenCalledWith({
+        ...createDto,
+        id_level: LEVELS.ALUNO_ESTUDANTE,
+      });
       expect(result).toEqual(maskedUser);
     });
 
-    it('should throw ForbiddenException when requester is not admin', async () => {
-      const createDto = {
-        full_name: 'New User',
-        email: 'new@test.com',
-        password: '123',
-      };
-      const nonAdminRequest = {
-        user: { id_level: LEVELS.PROFISSIONAL_EDUCACAO },
-      } as any;
+    it('should create a student when requester is NAPNE and id_level is the student level', async () => {
+      const dto = { ...createDto, id_level: LEVELS.ALUNO_ESTUDANTE };
+      jest.spyOn(service, 'create').mockResolvedValue(mockPublicUser as never);
 
+      const result = await controller.create(
+        dto as any,
+        requestOf(LEVELS.PROFISSIONAL_NAPNE),
+      );
+
+      expect(service.create).toHaveBeenCalledWith(dto);
+      expect(result).toEqual(maskedUser);
+    });
+
+    it.each([
+      ['absent', createDto],
+      ['null', { ...createDto, id_level: null }],
+    ])(
+      'should create a student with the level written explicitly when requester is NAPNE and id_level is %s',
+      async (_case, dto) => {
+        jest
+          .spyOn(service, 'create')
+          .mockResolvedValue(mockPublicUser as never);
+
+        const result = await controller.create(
+          dto as any,
+          requestOf(LEVELS.PROFISSIONAL_NAPNE),
+        );
+
+        expect(service.create).toHaveBeenCalledWith({
+          ...createDto,
+          id_level: LEVELS.ALUNO_ESTUDANTE,
+        });
+        expect(result).toEqual(maskedUser);
+      },
+    );
+
+    it.each([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ])(
+      'should throw ForbiddenException and not create when NAPNE sends id_level %i',
+      async (id_level) => {
+        await expect(
+          controller.create(
+            { ...createDto, id_level } as any,
+            requestOf(LEVELS.PROFISSIONAL_NAPNE),
+          ),
+        ).rejects.toThrow(ForbiddenException);
+        expect(service.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_SAUDE])(
+      'should throw ForbiddenException and not create when requester is level %i',
+      async (requesterLevel) => {
+        await expect(
+          controller.create(createDto as any, requestOf(requesterLevel)),
+        ).rejects.toThrow(ForbiddenException);
+        expect(service.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should throw ForbiddenException and not create when the request has no session user', async () => {
       await expect(
-        controller.create(createDto as any, nonAdminRequest),
+        controller.create(createDto as any, {} as any),
       ).rejects.toThrow(ForbiddenException);
       expect(service.create).not.toHaveBeenCalled();
     });
@@ -147,7 +233,13 @@ describe('UsersController', () => {
   });
 
   describe('access levels', () => {
-    it.each(['create', 'findAll', 'findOne', 'update', 'remove'] as const)(
+    it('should open create to the administrator and the NAPNE professional only', () => {
+      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.create);
+
+      expect(levels).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+    });
+
+    it.each(['findAll', 'findOne', 'update', 'remove'] as const)(
       'should restrict %s to the administrator',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);

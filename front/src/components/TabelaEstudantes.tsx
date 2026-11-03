@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
 import { exportStudentReportPdf } from "@/lib/exportStudentReport";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
+import { canAccessPage } from "@/utils/pageAccess";
 import { listarUsuariosDaTabela, podeExportarRelatorio } from "@/utils/tabelaUsuarios";
 import { Eye, FileDown, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ export default function TabelaEstudantes() {
   const { user, loading } = useAuth();
 
   const isAdmin = user?.id_level === ADMIN;
+  const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.id_level);
 
   const filtrados = students?.filter(e =>
     e.full_name.toLowerCase().includes(busca.toLowerCase())
@@ -129,7 +131,7 @@ export default function TabelaEstudantes() {
   return (
     <div className="bg-white rounded shadow-md">
       <div className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {isAdmin && (
+        {podeCadastrar && (
           <button
             type="button"
             onClick={() => router.push("/admin/usuarios/cadastro")}
