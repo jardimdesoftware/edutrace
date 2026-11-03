@@ -65,6 +65,7 @@ export class ServiceQueueService {
         where: {
           email,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
           service_status: ServiceStatus.WAITING,
         },
         data: {
@@ -94,6 +95,7 @@ export class ServiceQueueService {
       where: {
         email,
         roles: { has: LEVELS.ALUNO_ESTUDANTE },
+        deleted_at: null,
         service_status: ServiceStatus.IN_SERVICE,
         aee_responsible_id: requester.sub,
       },
@@ -121,6 +123,7 @@ export class ServiceQueueService {
       where: {
         email,
         roles: { has: LEVELS.ALUNO_ESTUDANTE },
+        deleted_at: null,
         service_status: ServiceStatus.CLOSED,
       },
       data: {
@@ -142,7 +145,11 @@ export class ServiceQueueService {
 
   private async statusOf(email: string) {
     const student = await this.prisma.user.findFirst({
-      where: { email, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+      where: {
+        email,
+        roles: { has: LEVELS.ALUNO_ESTUDANTE },
+        deleted_at: null,
+      },
       select: { service_status: true },
     });
 

@@ -555,6 +555,35 @@ describe('AuthService', () => {
         expect(sessionsService.create).not.toHaveBeenCalled();
       });
 
+      it('should refuse the account linked to the sub when it is marked for deletion, and say why', async () => {
+        mockGoogleCredential({ email: 'user@test.com' });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue({
+          ...mockUser,
+          google_sub: 'google-sub',
+          deleted_at: new Date('2026-11-01T00:00:00.000Z'),
+        });
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(
+            'Esta conta está em processo de exclusão. Procure a administração.',
+          ),
+        );
+
+        expect(sessionsService.create).not.toHaveBeenCalled();
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+
+      it('should create no account for the e-mail of a marked one that has no link', async () => {
+        mockGoogleCredential({ email: 'user@test.com' });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+
+        expect(sessionsService.create).not.toHaveBeenCalled();
+      });
+
       it('should answer the same way for a registered and an unknown e-mail without a link', async () => {
         jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
 
@@ -1820,6 +1849,75 @@ describe('AuthService', () => {
           compromisedPasswordService.assertNotCompromised,
         ).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('conta marcada para exclusão', () => {
+    const marked = {
+      ...mockUser,
+      deleted_at: new Date('2026-11-01T00:00:00.000Z'),
+    };
+
+    it('should refuse the login with the right password and say why', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(marked);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(service.signIn('user@test.com', 'certa')).rejects.toThrow(
+        new UnauthorizedException(
+          'Esta conta está em processo de exclusão. Procure a administração.',
+        ),
+      );
+
+      expect(sessionsService.create).not.toHaveBeenCalled();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('should answer the generic message for a wrong password, without revealing the mark', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(marked);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.signIn('user@test.com', 'errada')).rejects.toThrow(
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
+      );
+    });
+
+    it('should send no recovery code', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue(marked);
+
+      await service.forgotPassword('user@test.com');
+      await flushBackgroundWork();
+
+      expect(usersService.setPasswordResetToken).not.toHaveBeenCalled();
+      expect(mailService.sendPasswordResetCode).not.toHaveBeenCalled();
+    });
+
+    it('should refuse the recovery code even when it is right', async () => {
+      jest.spyOn(usersService, 'findOne').mockResolvedValue({
+        ...mockUserWithResetToken,
+        deleted_at: marked.deleted_at,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.resetPassword('user@test.com', '123456', 'novaSenha123'),
+      ).rejects.toThrow(new UnauthorizedException('Código inválido ou expirado.'));
+
+      expect(usersService.updatePassword).not.toHaveBeenCalled();
+      expect(sessionsService.revokeAllFromUser).not.toHaveBeenCalled();
+    });
+
+    it('should refuse the activation link', async () => {
+      jest.spyOn(usersService, 'findByActivationToken').mockResolvedValue({
+        ...marked,
+        activation_token: 'hash',
+        activation_expires: new Date(Date.now() + 60 * 60 * 1000),
+      });
+
+      await expect(
+        service.activateAccount('token-recebido-no-link', 'novaSenha123'),
+      ).rejects.toThrow(new UnauthorizedException('Link inválido ou expirado.'));
+
+      expect(usersService.updatePassword).not.toHaveBeenCalled();
     });
   });
 

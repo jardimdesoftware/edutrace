@@ -30,6 +30,11 @@ const MAX_RESET_ATTEMPTS = 5;
 // e-mail inexistente e senha incorreta revelam quais contas existem.
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 
+// Só quem provou a identidade (senha correta ou Conta Google vinculada) chega a
+// ver esta mensagem, então ela não revela quais contas existem.
+const PENDING_DELETION_MESSAGE =
+  'Esta conta está em processo de exclusão. Procure a administração.';
+
 // O Google Workspace do IFPE é a autoridade sobre os endereços discentes, e os
 // tokens desses endereços trazem o claim hd com o domínio. Sem hd, o Google não
 // é autoridade pelo e-mail, que só foi confirmado quando a Conta Google foi
@@ -411,9 +416,14 @@ export class AuthService {
       full_name: string;
       cpf: string;
       must_change_password: boolean;
+      deleted_at: Date | null;
     },
     context?: SessionContext,
   ): Promise<{ access_token: string }> {
+    if (user.deleted_at) {
+      throw new UnauthorizedException(PENDING_DELETION_MESSAGE);
+    }
+
     await this.sessionsService.revokeAllFromUser(user.id);
 
     const jti = randomUUID();
@@ -631,7 +641,7 @@ export class AuthService {
 
   private async processPasswordResetRequest(email: string): Promise<void> {
     const user = await this.userService.findOne(email);
-    if (!user) {
+    if (!user || user.deleted_at) {
       return;
     }
 
@@ -695,6 +705,7 @@ export class AuthService {
 
     if (
       !user ||
+      user.deleted_at ||
       !user.activation_expires ||
       user.activation_expires < new Date()
     ) {
@@ -723,7 +734,7 @@ export class AuthService {
     );
 
     const user = await this.userService.findOne(email);
-    if (!user || !user.password_reset_token) {
+    if (!user || user.deleted_at || !user.password_reset_token) {
       throw invalidCodeException;
     }
 

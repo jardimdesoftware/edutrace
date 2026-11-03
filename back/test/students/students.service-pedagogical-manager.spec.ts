@@ -115,6 +115,7 @@ describe('StudentsService, responsável pedagógico', () => {
               LEVELS.PROFESSOR_AEE,
             ],
           },
+          deleted_at: null,
         },
         select: { id: true, full_name: true, roles: true },
         orderBy: { full_name: 'asc' },
@@ -199,6 +200,7 @@ describe('StudentsService, responsável pedagógico', () => {
 
       const [serverLock] = locks();
       expect(serverLock.sql).toContain('FOR SHARE');
+      expect(serverLock.sql).toContain('"deleted_at" IS NULL');
       expect(serverLock.values).toEqual([9]);
       expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
         tx.user.update.mock.invocationCallOrder[0],
@@ -351,6 +353,7 @@ describe('StudentsService, responsável pedagógico', () => {
       const [studentLock] = locks();
       expect(studentLock.sql).toContain('FOR UPDATE');
       expect(studentLock.sql).toContain('ANY("roles")');
+      expect(studentLock.sql).toContain('"deleted_at" IS NULL');
       expect(studentLock.values).toEqual([EMAIL, LEVELS.ALUNO_ESTUDANTE]);
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });

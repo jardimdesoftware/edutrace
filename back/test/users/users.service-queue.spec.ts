@@ -44,7 +44,14 @@ describe('UsersService, fila de atendimento do Professor do AEE', () => {
       updateMany: jest.Mock;
       count: jest.Mock;
       delete: jest.Mock;
+      findUnique: jest.Mock;
     };
+    comments: { count: jest.Mock };
+    caseStudy: { count: jest.Mock };
+    aeePlan: { count: jest.Mock };
+    peiEntry: { count: jest.Mock };
+    screening: { count: jest.Mock };
+    anamnesis: { count: jest.Mock };
   };
   let sessions: { revokeAllFromUser: jest.Mock };
   let events: string[];
@@ -72,7 +79,16 @@ describe('UsersService, fila de atendimento do Professor do AEE', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         count: jest.fn().mockResolvedValue(0),
         delete: jest.fn().mockResolvedValue({ id: 7 }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 7, email: 'novo@test.com', deleted_at: null }),
       },
+      comments: { count: jest.fn().mockResolvedValue(0) },
+      caseStudy: { count: jest.fn().mockResolvedValue(0) },
+      aeePlan: { count: jest.fn().mockResolvedValue(0) },
+      peiEntry: { count: jest.fn().mockResolvedValue(0) },
+      screening: { count: jest.fn().mockResolvedValue(0) },
+      anamnesis: { count: jest.fn().mockResolvedValue(0) },
     };
     prisma = {
       user: { create: jest.fn().mockResolvedValue(created) },
@@ -555,12 +571,12 @@ describe('UsersService, fila de atendimento do Professor do AEE', () => {
       },
     );
 
-    it('should leave a missing account to the delete itself', async () => {
-      lockedAccount(null);
+    it('should delete nothing and answer null for a missing account', async () => {
+      tx.user.findUnique.mockResolvedValue(null);
 
-      await service.remove(99);
+      await expect(service.remove(99)).resolves.toBeNull();
 
-      expect(tx.user.delete).toHaveBeenCalledTimes(1);
+      expect(tx.user.delete).not.toHaveBeenCalled();
     });
   });
 

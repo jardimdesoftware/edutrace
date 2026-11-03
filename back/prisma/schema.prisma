@@ -92,6 +92,7 @@ model Session {
   created_at   DateTime  @default(now())
   last_used_at DateTime  @default(now())
   revoked_at   DateTime?
+  reauth_until DateTime?
 
   id_user Int
   user    User @relation(fields: [id_user], references: [id], onDelete: Cascade)

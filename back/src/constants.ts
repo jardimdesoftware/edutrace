@@ -81,6 +81,14 @@ export const MANAGER_CONTACT_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_NAPNE,
 ];
 
+// Dias entre marcar o usuário para exclusão e apagá-lo de vez. Até lá o
+// administrador restaura a conta.
+export const USER_DELETION_GRACE_DAYS = 7;
+
+// Quanto tempo a senha confirmada vale para as exclusões seguintes, quando o
+// administrador pede para lembrá-la.
+export const REAUTH_WINDOW_MS = 10 * 60 * 1000;
+
 export const COMMENT_EDIT_LIMIT = 10;
 
 // Tamanho máximo do texto de cada tipo de anotação, em unidades UTF-16: o que o

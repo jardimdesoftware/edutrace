@@ -54,7 +54,11 @@ export class AuthGuard implements CanActivate {
       // O token precisa ser do dono da sessão, e os papéis vêm do banco. Assim,
       // um token reassinado com outro sub ou com papéis inventados não passa, e
       // a troca de papéis vale na requisição seguinte (ASVS 5.0, 8.3.2).
-      if (!session || session.id_user !== payload.sub) {
+      if (
+        !session ||
+        session.id_user !== payload.sub ||
+        session.user.deleted_at
+      ) {
         throw new UnauthorizedException('Sessão encerrada');
       }
 

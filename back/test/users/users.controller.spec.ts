@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { UsersController } from 'src/users/users.controller';
 import { UsersService } from 'src/users/users.service';
 import { LEVELS } from 'src/constants';
@@ -66,7 +66,9 @@ describe('UsersController', () => {
             findAll: jest.fn(),
             findOne: jest.fn(),
             update: jest.fn(),
-            remove: jest.fn(),
+            confirmDeletionCredentials: jest.fn(),
+            markForDeletion: jest.fn(),
+            restore: jest.fn(),
           },
         },
       ],
@@ -315,16 +317,19 @@ describe('UsersController', () => {
 
     it('should mask both cpfs in every route and keep the phone', async () => {
       const requester = { user: { roles: [LEVELS.ADMIN] } } as any;
+      const deleter = { user: { sub: 9, jti: 'sessao-9' } } as any;
       jest.spyOn(service, 'create').mockResolvedValue(withContact as never);
       jest.spyOn(service, 'findAll').mockResolvedValue([withContact] as never);
       jest.spyOn(service, 'update').mockResolvedValue(withContact as never);
-      jest.spyOn(service, 'remove').mockResolvedValue(withContact as never);
+      jest
+        .spyOn(service, 'markForDeletion')
+        .mockResolvedValue(withContact as never);
 
       const results = [
         await controller.create({ roles: [2] } as any, requester),
         await controller.findAll(),
         await controller.update('test@test.com', {} as any),
-        await controller.remove('1'),
+        (await controller.remove(1, {}, deleter)).user,
       ];
 
       expect(results).toEqual([masked, [masked], masked, masked]);
@@ -346,13 +351,70 @@ describe('UsersController', () => {
   });
 
   describe('remove', () => {
-    it('should remove a user by id and return it with masked cpf', async () => {
-      jest.spyOn(service, 'remove').mockResolvedValue(mockPublicUser as never);
+    const req = { user: { sub: 9, jti: 'sessao-9' } } as any;
 
-      const result = await controller.remove('1');
+    it('should confirm the password, mark the user and return it with masked cpf', async () => {
+      const until = new Date('2026-11-03T12:10:00.000Z');
+      jest.spyOn(service, 'confirmDeletionCredentials').mockResolvedValue(until);
+      jest
+        .spyOn(service, 'markForDeletion')
+        .mockResolvedValue(mockPublicUser as never);
+      const dto = { currentPassword: 'senha', remember: true };
 
-      expect(service.remove).toHaveBeenCalledWith(1);
+      const result = await controller.remove(1, dto, req);
+
+      expect(service.confirmDeletionCredentials).toHaveBeenCalledWith(
+        req.user,
+        dto,
+      );
+      expect(service.markForDeletion).toHaveBeenCalledWith(1, 9);
+      expect(result).toEqual({ user: maskedUser, reauth_until: until });
+    });
+
+    it('should not touch the user when the confirmation fails', async () => {
+      jest
+        .spyOn(service, 'confirmDeletionCredentials')
+        .mockRejectedValue(new UnauthorizedException('Senha incorreta.'));
+
+      await expect(controller.remove(1, {}, req)).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(service.markForDeletion).not.toHaveBeenCalled();
+    });
+
+    it('should answer null when the confirmation came from the open window and not from the password', async () => {
+      jest.spyOn(service, 'confirmDeletionCredentials').mockResolvedValue(null);
+      jest
+        .spyOn(service, 'markForDeletion')
+        .mockResolvedValue(mockPublicUser as never);
+
+      const result = await controller.remove(1, {}, req);
+
+      expect(result.reauth_until).toBeNull();
+    });
+
+    it('should open DELETE only to the administrator', () => {
+      expect(Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.remove)).toEqual([
+        LEVELS.ADMIN,
+      ]);
+    });
+  });
+
+  describe('restore', () => {
+    it('should restore the user and return it with masked cpf', async () => {
+      jest.spyOn(service, 'restore').mockResolvedValue(mockPublicUser as never);
+
+      const result = await controller.restore(1);
+
+      expect(service.restore).toHaveBeenCalledWith(1);
       expect(result).toEqual(maskedUser);
+    });
+
+    it('should open POST restore only to the administrator', () => {
+      expect(Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.restore)).toEqual([
+        LEVELS.ADMIN,
+      ]);
     });
   });
 });

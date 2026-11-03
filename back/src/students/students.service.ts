@@ -38,6 +38,7 @@ export class StudentsService {
     return this.prisma.user.findMany({
       where: {
         roles: { has: LEVELS.ALUNO_ESTUDANTE },
+        deleted_at: null,
       },
       select: userSelectFor(requesterRoles),
     });
@@ -48,6 +49,7 @@ export class StudentsService {
       where: {
         email,
         roles: { has: LEVELS.ALUNO_ESTUDANTE },
+        deleted_at: null,
       },
       select: userSelectFor(requesterRoles),
     });
@@ -58,7 +60,11 @@ export class StudentsService {
   // e-mail sem conta caem no mesmo 404.
   async findOneOrFail(where: { email: string } | { id: number }) {
     const student = await this.prisma.user.findFirst({
-      where: { ...where, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+      where: {
+        ...where,
+        roles: { has: LEVELS.ALUNO_ESTUDANTE },
+        deleted_at: null,
+      },
       select: { id: true, email: true },
     });
 
@@ -74,7 +80,10 @@ export class StudentsService {
   // servidor não faz parte dela.
   findPedagogicalManagerOptions() {
     return this.prisma.user.findMany({
-      where: { roles: { hasSome: [...PEDAGOGICAL_MANAGER_LEVELS] } },
+      where: {
+        roles: { hasSome: [...PEDAGOGICAL_MANAGER_LEVELS] },
+        deleted_at: null,
+      },
       select: { id: true, full_name: true, roles: true },
       orderBy: { full_name: 'asc' },
     });
@@ -126,6 +135,7 @@ export class StudentsService {
     const [student] = await tx.$queryRaw<{ id: number }[]>`
       SELECT "id" FROM "User"
       WHERE "email" = ${email} AND ${LEVELS.ALUNO_ESTUDANTE} = ANY("roles")
+        AND "deleted_at" IS NULL
       FOR UPDATE`;
 
     if (!student) {
@@ -177,7 +187,8 @@ export class StudentsService {
     userId: number,
   ) {
     const [server] = await tx.$queryRaw<{ roles: number[] }[]>`
-      SELECT "roles" FROM "User" WHERE "id" = ${userId} FOR SHARE`;
+      SELECT "roles" FROM "User" WHERE "id" = ${userId}
+        AND "deleted_at" IS NULL FOR SHARE`;
 
     if (!server || !hasAnyRole(server.roles, PEDAGOGICAL_MANAGER_LEVELS)) {
       throw new BadRequestException(INVALID_SERVER_MESSAGE);
@@ -186,7 +197,7 @@ export class StudentsService {
 
   async findAllEmails(): Promise<string[]> {
     const students = await this.prisma.user.findMany({
-      where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+      where: { roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
       select: { email: true },
     });
 

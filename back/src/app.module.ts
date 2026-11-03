@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { StudentsModule } from './students/students.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { AnamnesisModule } from './anamnesis/anamnesis.module';
@@ -24,6 +25,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     UsersModule,
     AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     StudentsModule,
     ScreeningsModule,
     AnamnesisModule,

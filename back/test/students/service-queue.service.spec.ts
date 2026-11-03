@@ -128,6 +128,7 @@ describe('ServiceQueueService', () => {
         where: {
           email: EMAIL,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
           service_status: ServiceStatus.WAITING,
         },
         data: {
@@ -234,6 +235,7 @@ describe('ServiceQueueService', () => {
         where: {
           email: EMAIL,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
           service_status: ServiceStatus.IN_SERVICE,
           aee_responsible_id: AEE_ID,
         },
@@ -256,6 +258,7 @@ describe('ServiceQueueService', () => {
         where: {
           email: EMAIL,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
           service_status: ServiceStatus.IN_SERVICE,
           aee_responsible_id: 7,
         },
@@ -309,7 +312,7 @@ describe('ServiceQueueService', () => {
         new NotFoundException('Estudante não encontrado'),
       );
       expect(prisma.user.findFirst).toHaveBeenCalledWith({
-        where: { email: EMAIL, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+        where: { email: EMAIL, roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
         select: { service_status: true },
       });
     });
@@ -323,6 +326,7 @@ describe('ServiceQueueService', () => {
         where: {
           email: EMAIL,
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
           service_status: ServiceStatus.CLOSED,
         },
         data: {

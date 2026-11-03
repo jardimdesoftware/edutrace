@@ -15,6 +15,7 @@ describe('SessionsService', () => {
     created_at: new Date(),
     last_used_at: new Date(),
     revoked_at: null,
+    reauth_until: null,
   };
 
   beforeEach(async () => {
@@ -81,7 +82,7 @@ describe('SessionsService', () => {
 
       expect(prisma.session.findFirst).toHaveBeenCalledWith({
         where: { jti: 'sessao-1', revoked_at: null },
-        include: { user: { select: { roles: true } } },
+        include: { user: { select: { roles: true, deleted_at: true } } },
       });
       expect(result).toEqual(sessao);
     });
@@ -96,6 +97,20 @@ describe('SessionsService', () => {
       expect(prisma.session.updateMany).toHaveBeenCalledWith({
         where: { jti: 'sessao-1', revoked_at: null },
         data: { revoked_at: expect.any(Date) },
+      });
+    });
+  });
+
+  describe('grantReauth', () => {
+    it('should write the end of the confirmation only on the open session of that jti', async () => {
+      jest.spyOn(prisma.session, 'updateMany').mockResolvedValue({ count: 1 });
+      const until = new Date('2026-11-03T12:10:00.000Z');
+
+      await service.grantReauth('sessao-1', until);
+
+      expect(prisma.session.updateMany).toHaveBeenCalledWith({
+        where: { jti: 'sessao-1', revoked_at: null },
+        data: { reauth_until: until },
       });
     });
   });
