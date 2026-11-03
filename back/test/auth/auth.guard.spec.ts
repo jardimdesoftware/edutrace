@@ -112,6 +112,26 @@ describe('AuthGuard', () => {
       );
     });
 
+    it('should reject an open session whose owner is marked for deletion', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida' });
+      jest.spyOn(sessionsService, 'findActive').mockResolvedValue({
+        ...sessaoAtiva,
+        user: { roles: [1], deleted_at: new Date('2026-11-01T00:00:00.000Z') },
+      } as never);
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer token-valido',
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new UnauthorizedException('Sessão encerrada'),
+      );
+      expect(sessionsService.registerUse).not.toHaveBeenCalled();
+    });
+
     it('should register the use of an active session', async () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
