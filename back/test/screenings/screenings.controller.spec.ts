@@ -188,11 +188,10 @@ describe('ScreeningsController', () => {
   });
 
   describe('access levels', () => {
-    it('should allow listing all records to every level except students', () => {
+    it('should allow listing all records to every professional level, not to the Administrator nor students', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findAll);
 
       expect(levels).toEqual([
-        LEVELS.ADMIN,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
         LEVELS.PROFISSIONAL_NAPNE,
@@ -200,11 +199,10 @@ describe('ScreeningsController', () => {
       ]);
     });
 
-    it('should open findOne to every level, relying on the ownership check', () => {
+    it('should open findOne to every level except the Administrator, relying on the ownership check', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
 
       expect(levels).toEqual([
-        LEVELS.ADMIN,
         LEVELS.ALUNO_ESTUDANTE,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
@@ -214,12 +212,11 @@ describe('ScreeningsController', () => {
     });
 
     it.each(['create', 'update', 'remove'] as const)(
-      'should allow %s only to the administrator, the health and the NAPNE professionals',
+      'should allow %s only to the health and the NAPNE professionals',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
         expect(levels).toEqual([
-          LEVELS.ADMIN,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
         ]);
@@ -288,7 +285,7 @@ describe('ScreeningsController', () => {
     it('should update a screening by email', async () => {
       const email = 'joao@example.com';
       const updateDto = { full_name: 'Novo Nome' } as any;
-      const result = { id: 1, email, ...updateDto } as any;
+      const result = { id: 1, email, ...updateDto };
 
       jest.spyOn(service, 'update').mockResolvedValue(result);
 
@@ -310,9 +307,11 @@ describe('ScreeningsController', () => {
   describe('remove', () => {
     it('should remove a screening by email', async () => {
       const email = 'joao@example.com';
-      const result = { message: `Triagem com email ${email} foi removida com sucesso` };
+      const result = {
+        message: `Triagem com email ${email} foi removida com sucesso`,
+      };
 
-      jest.spyOn(service, 'remove').mockResolvedValue(result as any);
+      jest.spyOn(service, 'remove').mockResolvedValue(result);
 
       expect(await controller.remove(email)).toEqual(result);
       expect(service.remove).toHaveBeenCalledWith(email);
