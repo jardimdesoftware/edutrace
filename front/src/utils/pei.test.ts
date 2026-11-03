@@ -441,7 +441,7 @@ describe('validarPeiNovo, subject', () => {
   // subject is compared by its exact text.
   const INVISIVEIS = [
     ['U+200B', 'Mate​mática'],
-    ['U+202E', 'Mate‮mática'],
+    ['U+202E', 'Mate\u202Emática'],
     ['U+FEFF', 'Mate﻿mática'],
     ['U+00AD', 'Mate­mática'],
     ['U+2028', 'Mate mática'],
@@ -459,7 +459,7 @@ describe('validarPeiNovo, subject', () => {
   }
 
   it('refuses the invisible character also at the edge of the subject, when the trim does not remove it', () => {
-    for (const subject of ['​Matemática', 'Matemática​', '‮Matemática', 'Matemática­']) {
+    for (const subject of ['​Matemática', 'Matemática​', '\u202EMatemática', 'Matemática­']) {
       assert.ok('subject' in validarPeiNovo(formulario({ subject })), JSON.stringify(subject));
     }
   });
