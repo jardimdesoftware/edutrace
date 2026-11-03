@@ -40,7 +40,6 @@ const STORED = {
 };
 
 const READERS = [
-  ['Administrador', LEVELS.ADMIN],
   ['Profissional da Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional da Saúde', LEVELS.PROFISSIONAL_SAUDE],
   ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
@@ -342,6 +341,14 @@ describe('PAEE, rotas de /aee-plans', () => {
         expect(response.body).toEqual([STORED]);
       },
     );
+
+    it('should answer 403 to the Administrador reading any student', async () => {
+      sessionLevel = LEVELS.ADMIN;
+
+      const response = await get();
+
+      expect(response.status).toBe(403);
+    });
 
     it('should answer 200 to the student that reads his own plans', async () => {
       sessionLevel = LEVELS.ALUNO_ESTUDANTE;

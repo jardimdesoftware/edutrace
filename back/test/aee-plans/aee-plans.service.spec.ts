@@ -292,7 +292,7 @@ describe('AeePlansService', () => {
       prisma.aeePlan.findMany.mockResolvedValue([]);
 
       await expect(
-        service.findByStudent(STUDENT_EMAIL, requestOf(LEVELS.ADMIN)),
+        service.findByStudent(STUDENT_EMAIL, requestOf(LEVELS.PROFISSIONAL_NAPNE)),
       ).resolves.toEqual([]);
     });
 
@@ -345,7 +345,7 @@ describe('AeePlansService', () => {
       );
 
       await expect(
-        service.findByStudent('prof@example.com', requestOf(LEVELS.ADMIN)),
+        service.findByStudent('prof@example.com', requestOf(LEVELS.PROFISSIONAL_NAPNE)),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.aeePlan.findMany).not.toHaveBeenCalled();
     });

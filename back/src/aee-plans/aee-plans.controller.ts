@@ -41,7 +41,6 @@ export class AeePlansController {
       'Do período letivo mais recente para o mais antigo. A lista é vazia quando o estudante não tem PAEE.',
   })
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
