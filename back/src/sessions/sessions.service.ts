@@ -30,7 +30,7 @@ export class SessionsService {
   async findActive(jti: string) {
     return this.prisma.session.findFirst({
       where: { jti: jti, revoked_at: null },
-      include: { user: { select: { roles: true } } },
+      include: { user: { select: { roles: true, deleted_at: true } } },
     });
   }
 
@@ -38,6 +38,15 @@ export class SessionsService {
     return this.prisma.session.updateMany({
       where: { jti: jti, revoked_at: null },
       data: { revoked_at: new Date() },
+    });
+  }
+
+  // A confirmação de senha vale só para esta sessão: o logout e um login novo
+  // revogam a sessão e a janela cai com ela.
+  async grantReauth(jti: string, until: Date) {
+    return this.prisma.session.updateMany({
+      where: { jti: jti, revoked_at: null },
+      data: { reauth_until: until },
     });
   }
 
