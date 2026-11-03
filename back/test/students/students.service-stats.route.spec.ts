@@ -33,7 +33,7 @@ describe('GET /students/service-stats', () => {
   let statsService: { getStats: jest.Mock };
 
   beforeEach(async () => {
-    sessionLevel = LEVELS.ADMIN;
+    sessionLevel = LEVELS.PROFISSIONAL_NAPNE;
     studentsService = {
       findAll: jest.fn(),
       findOne: jest.fn().mockResolvedValue(null),
@@ -82,7 +82,6 @@ describe('GET /students/service-stats', () => {
     request(app.getHttpServer()).get(path).set('Authorization', 'Bearer token');
 
   it.each([
-    ['Administrador', LEVELS.ADMIN],
     ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
     [
       'NAPNE com Professor do AEE',
@@ -108,6 +107,7 @@ describe('GET /students/service-stats', () => {
   });
 
   it.each([
+    ['Administrador', LEVELS.ADMIN],
     ['Profissional de Educação', LEVELS.PROFISSIONAL_EDUCACAO],
     ['Profissional de Saúde', LEVELS.PROFISSIONAL_SAUDE],
     ['Professor do AEE', LEVELS.PROFESSOR_AEE],
@@ -138,7 +138,7 @@ describe('GET /students/service-stats', () => {
     expect(response.status).toBe(200);
     expect(studentsService.findOne).toHaveBeenCalledWith(
       'estudante@example.com',
-      [LEVELS.ADMIN],
+      [LEVELS.PROFISSIONAL_NAPNE],
     );
     expect(statsService.getStats).not.toHaveBeenCalled();
   });

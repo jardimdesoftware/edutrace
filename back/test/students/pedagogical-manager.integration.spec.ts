@@ -82,7 +82,7 @@ const NO_MANAGER = {
       students.setPedagogicalManager(
         email,
         dto as SetPedagogicalManagerDto,
-        [LEVELS.ADMIN],
+        [LEVELS.PROFISSIONAL_NAPNE],
       );
 
     // Espera até que alguma conexão esteja bloqueada pela transação cujo
@@ -611,12 +611,12 @@ const NO_MANAGER = {
     });
 
     describe('contato do responsável externo por nível', () => {
-      it('should select the phone and the cpf only for the Administrator and the NAPNE', async () => {
+      it('should select the phone and the cpf only for the NAPNE', async () => {
         const student = await createStudent(EXTERNAL);
         const byEmail = <T extends { email: string }>(list: T[]) =>
           list.find((item) => item.email === student.email);
 
-        for (const level of [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]) {
+        for (const level of [LEVELS.PROFISSIONAL_NAPNE]) {
           const one = await students.findOne(student.email, [level]);
           const listed = byEmail(await students.findAll([level]));
 
@@ -626,6 +626,7 @@ const NO_MANAGER = {
         }
 
         for (const level of [
+          LEVELS.ADMIN,
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.ALUNO_ESTUDANTE,

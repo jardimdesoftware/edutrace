@@ -27,7 +27,6 @@ export class StudentsController {
   ) {}
 
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
@@ -40,21 +39,20 @@ export class StudentsController {
 
   // Declarada antes de GET :email: o parâmetro casa com qualquer texto, e a
   // rota que viesse depois dele seria tratada como o e-mail "service-stats".
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Get('service-stats')
   serviceStats() {
     return this.serviceStatsService.getStats();
   }
 
   // Pelo mesmo motivo de service-stats, vem antes de GET :email.
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Get('pedagogical-manager-options')
   pedagogicalManagerOptions() {
     return this.studentsService.findPedagogicalManagerOptions();
   }
 
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
@@ -71,7 +69,7 @@ export class StudentsController {
 
   // Devolve o estudante já atualizado. Responde 200: a ação altera um estudante
   // que já existe, e não cria um registro.
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @HttpCode(HttpStatus.OK)
   @Patch(':email/pedagogical-manager')
   async setPedagogicalManager(
@@ -106,14 +104,14 @@ export class StudentsController {
     );
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFESSOR_AEE)
+  @AllowLevels(LEVELS.PROFESSOR_AEE)
   @HttpCode(HttpStatus.OK)
   @Post(':email/service/close')
   async close(@Param('email') email: string, @Req() req: AuthenticatedRequest) {
     return maskUserCpf(await this.serviceQueueService.close(email, req.user));
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE)
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE)
   @HttpCode(HttpStatus.OK)
   @Post(':email/service/reopen')
   async reopen(

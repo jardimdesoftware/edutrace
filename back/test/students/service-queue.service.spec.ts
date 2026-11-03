@@ -78,8 +78,8 @@ describe('ServiceQueueService', () => {
 
     it.each([
       ['assume', () => service.assume(EMAIL, AEE_ID, [LEVELS.PROFESSOR_AEE])],
-      ['close', () => service.close(EMAIL, { sub: 1, roles: [LEVELS.ADMIN] })],
-      ['reopen', () => service.reopen(EMAIL, [LEVELS.ADMIN])],
+      ['close', () => service.close(EMAIL, { sub: 1, roles: [LEVELS.PROFESSOR_AEE] })],
+      ['reopen', () => service.reopen(EMAIL, [LEVELS.PROFISSIONAL_NAPNE])],
     ])('should answer 404 from %s when the student is gone', async (_, run) => {
       await expect(run()).rejects.toThrow(
         new NotFoundException('Estudante não encontrado'),
@@ -225,21 +225,7 @@ describe('ServiceQueueService', () => {
   });
 
   describe('close', () => {
-    const admin = { sub: 1, roles: [LEVELS.ADMIN] };
     const responsible = { sub: AEE_ID, roles: [LEVELS.PROFESSOR_AEE] };
-
-    it('should let the administrator close any student in service', async () => {
-      await service.close(EMAIL, admin);
-
-      expect(prisma.user.updateMany).toHaveBeenCalledWith({
-        where: {
-          email: EMAIL,
-          roles: { has: LEVELS.ALUNO_ESTUDANTE },
-          service_status: ServiceStatus.IN_SERVICE,
-        },
-        data: { service_status: ServiceStatus.CLOSED, service_closed_at: NOW },
-      });
-    });
 
     it('should restrict the AEE teacher to the students it is responsible for', async () => {
       await service.close(EMAIL, responsible);
@@ -255,9 +241,10 @@ describe('ServiceQueueService', () => {
       });
     });
 
-    // Negação por padrão: só o administrador encerra sem filtro. Qualquer outro
-    // nível que chegue ao service só encerra o que é dele.
+    // Negação por padrão: nenhum nível encerra sem filtro. Qualquer nível que
+    // chegue ao service, o administrador inclusive, só encerra o que é dele.
     it.each([
+      LEVELS.ADMIN,
       LEVELS.ALUNO_ESTUDANTE,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
@@ -277,7 +264,7 @@ describe('ServiceQueueService', () => {
     });
 
     it('should keep the responsible recorded as history', async () => {
-      await service.close(EMAIL, admin);
+      await service.close(EMAIL, responsible);
 
       const { data } = prisma.user.updateMany.mock.calls[0][0];
       expect(data).not.toHaveProperty('aee_responsible_id');
@@ -285,11 +272,8 @@ describe('ServiceQueueService', () => {
     });
 
     it('should return the record of the student read for the level of who closes', async () => {
-      await expect(service.close(EMAIL, admin)).resolves.toBe(STUDENT);
-      expect(students.findOne).toHaveBeenCalledWith(EMAIL, [LEVELS.ADMIN]);
-
-      await service.close(EMAIL, responsible);
-      expect(students.findOne).toHaveBeenLastCalledWith(EMAIL, [
+      await expect(service.close(EMAIL, responsible)).resolves.toBe(STUDENT);
+      expect(students.findOne).toHaveBeenCalledWith(EMAIL, [
         LEVELS.PROFESSOR_AEE,
       ]);
     });
@@ -300,9 +284,6 @@ describe('ServiceQueueService', () => {
         prisma.user.updateMany.mockResolvedValue({ count: 0 });
         prisma.user.findFirst.mockResolvedValue({ service_status });
 
-        await expect(service.close(EMAIL, admin)).rejects.toThrow(
-          new ConflictException('O estudante não está em atendimento.'),
-        );
         await expect(service.close(EMAIL, responsible)).rejects.toThrow(
           new ConflictException('O estudante não está em atendimento.'),
         );
@@ -324,7 +305,7 @@ describe('ServiceQueueService', () => {
       prisma.user.updateMany.mockResolvedValue({ count: 0 });
       prisma.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.close(EMAIL, admin)).rejects.toThrow(
+      await expect(service.close(EMAIL, responsible)).rejects.toThrow(
         new NotFoundException('Estudante não encontrado'),
       );
       expect(prisma.user.findFirst).toHaveBeenCalledWith({
@@ -336,7 +317,7 @@ describe('ServiceQueueService', () => {
 
   describe('reopen', () => {
     it('should send a closed student back to the end of the queue', async () => {
-      await service.reopen(EMAIL, [LEVELS.ADMIN]);
+      await service.reopen(EMAIL, [LEVELS.PROFISSIONAL_NAPNE]);
 
       expect(prisma.user.updateMany).toHaveBeenCalledWith({
         where: {
@@ -354,7 +335,7 @@ describe('ServiceQueueService', () => {
       });
     });
 
-    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE])(
+    it.each([LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE])(
       'should return the record of the student read for the level %s of who reopens',
       async (level) => {
         await expect(service.reopen(EMAIL, [level])).resolves.toBe(STUDENT);
@@ -368,7 +349,7 @@ describe('ServiceQueueService', () => {
         prisma.user.updateMany.mockResolvedValue({ count: 0 });
         prisma.user.findFirst.mockResolvedValue({ service_status });
 
-        await expect(service.reopen(EMAIL, [LEVELS.ADMIN])).rejects.toThrow(
+        await expect(service.reopen(EMAIL, [LEVELS.PROFISSIONAL_NAPNE])).rejects.toThrow(
           new ConflictException('O estudante não está encerrado.'),
         );
       },
@@ -378,7 +359,7 @@ describe('ServiceQueueService', () => {
       prisma.user.updateMany.mockResolvedValue({ count: 0 });
       prisma.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.reopen(EMAIL, [LEVELS.ADMIN])).rejects.toThrow(
+      await expect(service.reopen(EMAIL, [LEVELS.PROFISSIONAL_NAPNE])).rejects.toThrow(
         new NotFoundException('Estudante não encontrado'),
       );
     });

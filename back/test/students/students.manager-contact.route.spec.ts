@@ -37,7 +37,6 @@ const EXTERNAL_BODY = {
 };
 
 const CONTACT_READERS = [
-  ['Administrador', LEVELS.ADMIN],
   ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
 ] as const;
 
@@ -63,7 +62,7 @@ describe('contato do responsável externo, rotas de /students', () => {
   let sessionLevel: number;
 
   beforeEach(async () => {
-    sessionLevel = LEVELS.ADMIN;
+    sessionLevel = LEVELS.PROFISSIONAL_NAPNE;
 
     const user = {
       findMany: jest.fn(({ select }) => Promise.resolve([project(select)])),
@@ -147,13 +146,12 @@ describe('contato do responsável externo, rotas de /students', () => {
   const contactOf = (body: unknown) => (Array.isArray(body) ? body[0] : body);
 
   describe.each(CONTACT_READERS)('%s', (_, level) => {
-    // Assumir é só do Professor do AEE, e encerrar é dele e do Administrador:
-    // o NAPNE e o Administrador não chamam essas rotas.
+    // Assumir e encerrar são só do Professor do AEE: o NAPNE não chama essas
+    // rotas.
     const routes = Object.entries(responses).filter(
       ([route]) =>
         route !== 'POST /students/:email/service/assume' &&
-        (level === LEVELS.ADMIN ||
-          route !== 'POST /students/:email/service/close'),
+        route !== 'POST /students/:email/service/close',
     );
 
     it.each(routes)(
@@ -172,6 +170,19 @@ describe('contato do responsável externo, rotas de /students', () => {
         expect(JSON.stringify(response.body)).not.toMatch(
           /98765432100|12345678910|hash-que-nunca-sai/,
         );
+      },
+    );
+  });
+
+  describe('Administrador', () => {
+    it.each(Object.entries(responses))(
+      'should answer 403 in %s, without any data of the student',
+      async (_route, call) => {
+        sessionLevel = LEVELS.ADMIN;
+
+        const response = await call();
+
+        expect(response.status).toBe(403);
       },
     );
   });

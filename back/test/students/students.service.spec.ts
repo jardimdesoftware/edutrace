@@ -99,7 +99,7 @@ describe('StudentsService', () => {
       expect(result).toEqual(studentsList);
     });
 
-    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])(
+    it.each([LEVELS.PROFISSIONAL_NAPNE])(
       'should select the contact of the external manager for the level %s',
       async (level) => {
         jest.spyOn(prisma.user, 'findMany').mockResolvedValue([] as never);
@@ -160,7 +160,7 @@ describe('StudentsService', () => {
     });
 
     it.each([
-      [LEVELS.ADMIN, USER_WITH_MANAGER_CONTACT_SELECT],
+      [LEVELS.ADMIN, PUBLIC_USER_SELECT],
       [LEVELS.PROFISSIONAL_NAPNE, USER_WITH_MANAGER_CONTACT_SELECT],
       [LEVELS.PROFISSIONAL_EDUCACAO, PUBLIC_USER_SELECT],
       [LEVELS.PROFISSIONAL_SAUDE, PUBLIC_USER_SELECT],
