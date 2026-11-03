@@ -30,7 +30,7 @@ interface PeiFormularioProps {
   onCancelar: () => void;
 }
 
-function DadoFixo({ rotulo, valor }: { rotulo: string; valor: string }) {
+export function DadoFixo({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div>
       <dt className="text-gray-600">{rotulo}</dt>

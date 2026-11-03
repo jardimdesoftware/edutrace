@@ -6,6 +6,7 @@ import {
   BODY_LIMIT_BYTES,
   CONTENT_KEYS,
   Json,
+  OPINION_KEYS,
   PAIRS_MAX,
   SUBJECT_MAX,
   SYLLABUS_CONTENT_MAX,
@@ -19,6 +20,7 @@ import {
   removeAt,
   setAt,
   validBody,
+  validOpinion,
   validPair,
 } from '../pei-entry.fixtures';
 
@@ -66,7 +68,8 @@ describe('CreatePeiEntryDto, corpo completo', () => {
   // limite e a lista cheia (em "ã", 2 bytes cada), a soma dos limites precisa
   // caber nele. O corpo todo em caracteres de 3 bytes (CJK) não cabe: a soma dos
   // limites passa de 42 mil caracteres, e o português acentuado usa 1 ou 2 bytes
-  // por caractere.
+  // por caractere. O POST não leva o parecer semestral, que só o PATCH aceita
+  // (a conta do corpo do PATCH está em update-pei-entry.dto.spec.ts).
   it('should keep the body with every text at its limit under the 100 kb of the body parser', () => {
     expect(byteLengthOf(maxBody())).toBeLessThan(BODY_LIMIT_BYTES);
   });
@@ -189,6 +192,24 @@ describe('CreatePeiEntryDto, subject', () => {
       setAt(validBody(), 'subject', 'a'.repeat(SUBJECT_MAX + 1)),
     );
     expect(messages).toEqual(['subject deve ter no máximo 150 caracteres.']);
+  });
+
+  // O limite conta unidades UTF-16, como o .length do front: o emoji vale 2 e o
+  // seletor de variação (U+FE0F), 1. O MaxLength do class-validator contava o
+  // par surrogate como 1 e o seletor como 0.
+  it('should count the limit of the subject in UTF-16 units', async () => {
+    const message = ['subject deve ter no máximo 150 caracteres.'];
+    const withSubject = (text: string) => setAt(validBody(), 'subject', text);
+
+    expect(
+      await messagesOf(withSubject('\u{1F600}️'.repeat(SUBJECT_MAX))),
+    ).toEqual(message);
+    expect(
+      await messagesOf(withSubject('\u{1F600}'.repeat(SUBJECT_MAX / 2 + 1))),
+    ).toEqual(message);
+    await expect(
+      validate(withSubject('\u{1F600}'.repeat(SUBJECT_MAX / 2))),
+    ).resolves.toBeDefined();
   });
 
   it('should refuse a body without subject', async () => {
@@ -482,6 +503,22 @@ describe('CreatePeiEntryDto, textos do conteúdo', () => {
     expect(result.general_notes).toBe(text);
   });
 
+  it('should count the limit of a text in UTF-16 units, as the front does', async () => {
+    const message = ['general_notes deve ter no máximo 2000 caracteres.'];
+    const withNotes = (text: string) =>
+      setAt(validBody(), 'general_notes', text);
+
+    expect(await messagesOf(withNotes('\u{1F600}️'.repeat(2000)))).toEqual(
+      message,
+    );
+    expect(await messagesOf(withNotes('\u{1F600}'.repeat(1001)))).toEqual(
+      message,
+    );
+    await expect(
+      validate(withNotes('\u{1F600}'.repeat(1000))),
+    ).resolves.toBeDefined();
+  });
+
   // São textos longos, que o professor escreve em mais de uma linha.
   it.each(textPaths)(
     'should accept line breaks and tabs in %s',
@@ -762,5 +799,49 @@ describe('CreatePeiEntryDto, campos fora do contrato', () => {
     const messages = await messagesOf({ ...validBody(), extra: true });
 
     expect(messages).toEqual(['property extra should not exist']);
+  });
+});
+
+// O registro nasce com o parecer semestral em branco: o autor o escreve depois,
+// no PATCH. Os quatro campos do parecer não estão no DTO de criação, então o
+// forbidNonWhitelisted responde 400 a cada um, mesmo vazio.
+describe('CreatePeiEntryDto, parecer semestral', () => {
+  it.each(OPINION_KEYS.map((key) => [key]))(
+    'should refuse the opinion field %s sent in the body',
+    async (key) => {
+      const messages = await messagesOf({
+        ...validBody(),
+        [key]: validOpinion()[key],
+      });
+
+      expect(messages).toEqual([`property ${key} should not exist`]);
+    },
+  );
+
+  it.each(OPINION_KEYS.map((key) => [key]))(
+    'should refuse the opinion field %s even when it is empty',
+    async (key) => {
+      const messages = await messagesOf({ ...validBody(), [key]: '' });
+
+      expect(messages).toEqual([`property ${key} should not exist`]);
+    },
+  );
+
+  it('should name the four opinion fields when they come together', async () => {
+    const messages = await messagesOf({ ...validBody(), ...validOpinion() });
+
+    expect(messages).toHaveLength(4);
+    for (const key of OPINION_KEYS) {
+      expect(messages).toContain(`property ${key} should not exist`);
+    }
+  });
+
+  it('should have the four opinion fields of the contract', () => {
+    expect(OPINION_KEYS).toEqual([
+      'semester_progress',
+      'semester_difficulties',
+      'next_semester_notes',
+      'individual_sessions',
+    ]);
   });
 });

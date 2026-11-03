@@ -36,12 +36,26 @@ const peiEntry: NonNullable<ReportsData['peiEntries']>[number] = {
   adapted_assessments: 'Prova com tempo ampliado',
   adapted_resources: 'Calculadora e abaco',
   general_notes: 'Responde bem a atividades em dupla',
+  semester_progress: 'Resolve as operacoes sozinho',
+  semester_difficulties: 'Perde o foco em provas longas',
+  next_semester_notes: 'Manter o tempo ampliado',
+  individual_sessions: 'Tercas as 14h na sala 3',
   author: { full_name: 'Professora Ana' },
 };
 
 const peiEntries = [
   peiEntry,
-  { ...peiEntry, semester: '2026.1', subject: 'Inglês', syllabus_adaptations: [], author: null },
+  {
+    ...peiEntry,
+    semester: '2026.1',
+    subject: 'Inglês',
+    syllabus_adaptations: [],
+    semester_progress: '',
+    semester_difficulties: '',
+    next_semester_notes: '',
+    individual_sessions: '',
+    author: null,
+  },
 ];
 
 describe('renderReportPdf', () => {
@@ -112,6 +126,29 @@ describe('renderReportPdf', () => {
     assert.match(pdf, /Adequa..o/);
     assert.match(pdf, /Usar material concreto/);
     assert.match(pdf, /Prova com tempo ampliado/);
+  });
+
+  it('draws the semester opinion of the PEI entry, with the four labels and what the teacher wrote', async () => {
+    const doc = await renderReportPdf(estudante, { screening: null, peiEntries: [peiEntry] });
+    const pdf = doc.output();
+
+    assert.match(pdf, /Avan.os no semestre/);
+    assert.match(pdf, /Resolve as operacoes sozinho/);
+    assert.match(pdf, /Dificuldades no semestre/);
+    assert.match(pdf, /Perde o foco em provas longas/);
+    assert.match(pdf, /Apontamentos para o pr.ximo/);
+    assert.match(pdf, /Manter o tempo ampliado/);
+    assert.match(pdf, /Atendimentos individualizados/);
+    assert.match(pdf, /Tercas as 14h na sala 3/);
+  });
+
+  it('draws the four labels of the opinion also when it is blank, so the reader sees that it is missing', async () => {
+    const doc = await renderReportPdf(estudante, { screening: null, peiEntries: [peiEntries[1]] });
+    const pdf = doc.output();
+
+    assert.match(pdf, /Avan.os no semestre/);
+    assert.match(pdf, /Dificuldades no semestre/);
+    assert.match(pdf, /Atendimentos individualizados/);
   });
 
   it('breaks a long answer across pages and numbers them', async () => {

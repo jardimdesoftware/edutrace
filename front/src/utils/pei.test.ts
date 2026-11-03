@@ -9,23 +9,29 @@ import {
   PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
 } from '../consts';
+import { camposDaTabela } from './formularioPorTabela';
 import {
   LIMITES_PEI,
+  SECOES_PARECER,
   SECOES_PEI,
   agruparPorSemestre,
   caminhoDoParDe,
+  formularioDoParecer,
   formularioDoPei,
   formularioVazioDoPei,
   montarCorpoDeAtualizacao,
   montarCorpoDeCriacao,
+  montarCorpoDoParecer,
   paresParaEnvio,
   podeAlterarPei,
   podeCriarPei,
   podeExcluirPei,
   secoesDoPeiParaLeitura,
+  validarParecer,
   validarPeiExistente,
   validarPeiNovo,
   type PeiEntryForm,
+  type PeiOpinionForm,
 } from './pei';
 
 const EMAIL = 'aluno@edutrace.com';
@@ -45,6 +51,29 @@ const CHAVES_DO_POST = ['student_email', 'semester', 'subject', ...CHAVES_DO_CON
 const CHAVES_DE_TEXTO_DO_POST = ['student_email', 'semester', 'subject', ...CHAVES_DE_TEXTO_DO_CONTEUDO];
 const CHAVES_DO_PAR = ['adaptation', 'syllabus_content'];
 
+// Copiados do contrato da issue #707: o parecer semestral grava em quatro
+// colunas do mesmo registro, pelo mesmo PATCH, mas o front o envia à parte do
+// conteúdo (cada corpo fica abaixo do limite de 100 kb do body parser do back).
+const CHAVES_DO_PARECER = [
+  'semester_progress',
+  'semester_difficulties',
+  'next_semester_notes',
+  'individual_sessions',
+];
+const PARECER_EM_BRANCO: PeiOpinionForm = {
+  semester_progress: '',
+  semester_difficulties: '',
+  next_semester_notes: '',
+  individual_sessions: '',
+};
+const ROTULOS_DO_PARECER = [
+  'Avanços no semestre',
+  'Dificuldades no semestre',
+  'Apontamentos para o próximo semestre',
+  'Atendimentos individualizados prestados (datas, horários, salas e meio de convocação)',
+];
+const TITULO_DO_PARECER = 'Parecer semestral';
+
 const TITULOS = [
   'Identificação',
   'Objetivos adaptados',
@@ -55,6 +84,7 @@ const TITULOS = [
   'Recursos adaptados',
   'Observações gerais',
 ];
+const TITULOS_DA_LEITURA = [...TITULOS, TITULO_DO_PARECER];
 
 function registro(sobrescrever: Partial<PeiEntry> = {}): PeiEntry {
   return {
@@ -71,6 +101,10 @@ function registro(sobrescrever: Partial<PeiEntry> = {}): PeiEntry {
     adapted_assessments: 'Prova com tempo ampliado',
     adapted_resources: 'Calculadora e ábaco',
     general_notes: 'Responde bem a atividades em dupla',
+    semester_progress: 'Passou a resolver as operações sozinho',
+    semester_difficulties: 'Perde o foco em provas longas',
+    next_semester_notes: 'Manter o tempo ampliado nas provas',
+    individual_sessions: 'Terças, 14h, sala 3, convocado pela coordenação',
     created_at: '2026-10-17T12:00:00.000Z',
     updated_at: '2026-10-18T12:00:00.000Z',
     id_author: 7,
@@ -81,6 +115,10 @@ function registro(sobrescrever: Partial<PeiEntry> = {}): PeiEntry {
 
 function formulario(sobrescrever: Partial<PeiEntryForm> = {}): PeiEntryForm {
   return { ...formularioDoPei(registro()), ...sobrescrever };
+}
+
+function formularioDoParecerDe(sobrescrever: Partial<PeiOpinionForm> = {}): PeiOpinionForm {
+  return { ...formularioDoParecer(registro()), ...sobrescrever };
 }
 
 const repetir = (tamanho: number) => 'a'.repeat(tamanho);
@@ -106,6 +144,14 @@ describe('SECOES_PEI', () => {
       assert.equal(campo.tipo === 'textoLongo' && campo.max, 2000, campo.caminho);
     }
   });
+
+  it('does not hold the opinion: the content form and its PATCH never carry it', () => {
+    const caminhos = camposDaTabela(SECOES_PEI).map((campo) => campo.caminho);
+
+    for (const chave of CHAVES_DO_PARECER) {
+      assert.equal(caminhos.includes(chave), false, chave);
+    }
+  });
 });
 
 describe('formularioVazioDoPei', () => {
@@ -129,6 +175,14 @@ describe('formularioDoPei', () => {
     assert.equal(form.adapted_objectives, 'Ampliar a autonomia nas operações');
     assert.equal(form.general_notes, 'Responde bem a atividades em dupla');
     assert.deepEqual(form.syllabus_adaptations, registro().syllabus_adaptations);
+  });
+
+  it('does not carry the opinion of the entry into the form of the content', () => {
+    const form = formularioDoPei(registro()) as unknown as Record<string, unknown>;
+
+    for (const chave of CHAVES_DO_PARECER) {
+      assert.equal(chave in form, false, chave);
+    }
   });
 
   it('does not share the list of pairs with the entry', () => {
@@ -245,6 +299,21 @@ describe('montarCorpoDeCriacao', () => {
     assert.equal(montarCorpoDeCriacao(EMAIL, formulario({ subject: composta })).subject, composta);
   });
 
+  // O POST do back recusa os campos do parecer (400, forbidNonWhitelisted): o
+  // registro nasce com o parecer em branco.
+  it('never sends a key of the opinion, even when the form carries them', () => {
+    const comParecer = { ...formulario(), ...formularioDoParecerDe() } as PeiEntryForm;
+
+    for (const form of [formulario(), formularioVazioDoPei(), comParecer]) {
+      const corpo = montarCorpoDeCriacao(EMAIL, form) as unknown as Record<string, unknown>;
+
+      assert.deepEqual(Object.keys(corpo).sort(), [...CHAVES_DO_POST].sort());
+      for (const chave of CHAVES_DO_PARECER) {
+        assert.equal(chave in corpo, false, chave);
+      }
+    }
+  });
+
   it('takes the e-mail of the student from the argument, never from the form', () => {
     const corpo = montarCorpoDeCriacao(
       EMAIL,
@@ -270,6 +339,22 @@ describe('montarCorpoDeAtualizacao', () => {
 
     for (const chave of ['semester', 'subject', 'student_email']) {
       assert.equal(chave in corpo, false, chave);
+    }
+  });
+
+  // O PATCH do conteúdo leva só os 7 campos de conteúdo; o parecer segue em um
+  // PATCH à parte (montarCorpoDoParecer), para cada corpo ficar abaixo do limite
+  // de 100 kb do body parser do back.
+  it('never sends a key of the opinion, even when the form carries them', () => {
+    const comParecer = { ...formulario(), ...formularioDoParecerDe() } as PeiEntryForm;
+
+    for (const form of [formulario(), formularioVazioDoPei(), comParecer]) {
+      const corpo = montarCorpoDeAtualizacao(form) as unknown as Record<string, unknown>;
+
+      assert.deepEqual(Object.keys(corpo).sort(), [...CHAVES_DO_CONTEUDO].sort());
+      for (const chave of CHAVES_DO_PARECER) {
+        assert.equal(chave in corpo, false, chave);
+      }
     }
   });
 
@@ -583,10 +668,52 @@ describe('secoesDoPeiParaLeitura', () => {
   const linhasDe = (secoes: ReturnType<typeof secoesDoPeiParaLeitura>, titulo: string) =>
     secoes.find((secao) => secao.titulo === titulo)?.linhas;
 
-  it('lists the sections in the order of the contract', () => {
+  it('lists the sections in the order of the contract, with the opinion after the general notes', () => {
     assert.deepEqual(
       secoesDoPeiParaLeitura(registro()).map((secao) => secao.titulo),
-      TITULOS,
+      TITULOS_DA_LEITURA,
+    );
+  });
+
+  it('prints the four texts of the opinion under the labels of the contract', () => {
+    assert.deepEqual(linhasDe(secoesDoPeiParaLeitura(registro()), TITULO_DO_PARECER), [
+      { label: ROTULOS_DO_PARECER[0], value: 'Passou a resolver as operações sozinho' },
+      { label: ROTULOS_DO_PARECER[1], value: 'Perde o foco em provas longas' },
+      { label: ROTULOS_DO_PARECER[2], value: 'Manter o tempo ampliado nas provas' },
+      { label: ROTULOS_DO_PARECER[3], value: 'Terças, 14h, sala 3, convocado pela coordenação' },
+    ]);
+  });
+
+  it('prints "Não informado" for an opinion field that is blank, also when the API does not send it', () => {
+    const embranco = Object.fromEntries(CHAVES_DO_PARECER.map((chave) => [chave, '  ']));
+    const semOParecer = Object.fromEntries(
+      Object.entries(registro()).filter(([chave]) => !CHAVES_DO_PARECER.includes(chave)),
+    );
+
+    for (const lido of [registro(embranco as Partial<PeiEntry>), semOParecer as unknown as PeiEntry]) {
+      const linhas = linhasDe(secoesDoPeiParaLeitura(lido), TITULO_DO_PARECER);
+
+      assert.deepEqual(
+        linhas?.map((linha) => linha.value),
+        ['Não informado', 'Não informado', 'Não informado', 'Não informado'],
+      );
+    }
+  });
+
+  it('prints the filled fields of the opinion and "Não informado" only for the blank ones', () => {
+    const linhas = linhasDe(
+      secoesDoPeiParaLeitura(registro({ semester_difficulties: '', individual_sessions: '' })),
+      TITULO_DO_PARECER,
+    );
+
+    assert.deepEqual(
+      linhas?.map((linha) => linha.value),
+      [
+        'Passou a resolver as operações sozinho',
+        'Não informado',
+        'Manter o tempo ampliado nas provas',
+        'Não informado',
+      ],
     );
   });
 
@@ -654,6 +781,175 @@ describe('secoesDoPeiParaLeitura', () => {
 
       assert.equal(new Set(rotulos).size, rotulos.length, secao.titulo);
     }
+  });
+});
+
+describe('SECOES_PARECER', () => {
+  it('is one section, "Parecer semestral", with the four fields in the order of the contract', () => {
+    assert.deepEqual(
+      SECOES_PARECER.map((secao) => secao.titulo),
+      [TITULO_DO_PARECER],
+    );
+    assert.deepEqual(
+      camposDaTabela(SECOES_PARECER).map((campo) => [campo.caminho, campo.rotulo]),
+      CHAVES_DO_PARECER.map((chave, indice) => [chave, ROTULOS_DO_PARECER[indice]]),
+    );
+  });
+
+  it('has text areas with the limit of 2000 characters of the back', () => {
+    for (const campo of camposDaTabela(SECOES_PARECER)) {
+      assert.equal(campo.tipo, 'textoLongo', campo.caminho);
+      assert.equal(campo.tipo === 'textoLongo' && campo.max, 2000, campo.caminho);
+    }
+  });
+});
+
+describe('formularioDoParecer', () => {
+  it('copies the four fields of the opinion of the entry, and nothing else', () => {
+    const form = formularioDoParecer(registro());
+
+    assert.deepEqual(form, {
+      semester_progress: 'Passou a resolver as operações sozinho',
+      semester_difficulties: 'Perde o foco em provas longas',
+      next_semester_notes: 'Manter o tempo ampliado nas provas',
+      individual_sessions: 'Terças, 14h, sala 3, convocado pela coordenação',
+    });
+  });
+
+  it('turns what the API does not send into empty text', () => {
+    const form = formularioDoParecer({ semester_progress: 'Avançou', individual_sessions: null } as never);
+
+    assert.deepEqual(form, {
+      semester_progress: 'Avançou',
+      semester_difficulties: '',
+      next_semester_notes: '',
+      individual_sessions: '',
+    });
+    assert.deepEqual(formularioDoParecer({} as PeiEntry), PARECER_EM_BRANCO);
+  });
+});
+
+// O PATCH do parecer leva só os quatro campos do parecer, todos texto: o do
+// conteúdo é outro PATCH. Estes testes fixam as chaves e o tipo de cada uma.
+describe('montarCorpoDoParecer', () => {
+  it('sends exactly the four keys of the contract, every one a string', () => {
+    for (const form of [formularioDoParecerDe(), PARECER_EM_BRANCO]) {
+      const corpo = montarCorpoDoParecer(form) as unknown as Record<string, unknown>;
+
+      assert.deepEqual(Object.keys(corpo).sort(), [...CHAVES_DO_PARECER].sort());
+      for (const chave of CHAVES_DO_PARECER) {
+        assert.equal(typeof corpo[chave], 'string', chave);
+      }
+    }
+  });
+
+  it('sends every field even when blank, so the PATCH can clear it, with no value lost in the JSON', () => {
+    const corpo = montarCorpoDoParecer(formularioDoParecerDe({ next_semester_notes: '   ' }));
+
+    assert.equal(corpo.next_semester_notes, '');
+    assert.deepEqual(JSON.parse(JSON.stringify(corpo)), corpo);
+    assert.deepEqual(montarCorpoDoParecer(PARECER_EM_BRANCO), PARECER_EM_BRANCO);
+  });
+
+  it('trims the texts and keeps the line breaks inside them', () => {
+    const corpo = montarCorpoDoParecer(
+      formularioDoParecerDe({ semester_progress: '  Avançou\nem leitura  ' }),
+    );
+
+    assert.equal(corpo.semester_progress, 'Avançou\nem leitura');
+  });
+
+  it('never sends a key of the content, the semester, the subject or the e-mail, even when the form carries them', () => {
+    const comConteudo = {
+      ...formulario(),
+      ...formularioDoParecerDe(),
+      student_email: EMAIL,
+    } as unknown as PeiOpinionForm;
+
+    const corpo = montarCorpoDoParecer(comConteudo) as unknown as Record<string, unknown>;
+
+    assert.deepEqual(Object.keys(corpo).sort(), [...CHAVES_DO_PARECER].sort());
+  });
+});
+
+describe('validarParecer', () => {
+  for (const caminho of CHAVES_DO_PARECER) {
+    it(`accepts ${caminho} with 2000 characters and refuses it with 2001`, () => {
+      const noLimite = validarParecer(formularioDoParecerDe({ [caminho]: repetir(LIMITES_PEI.TEXTO) }));
+      const acima = validarParecer(formularioDoParecerDe({ [caminho]: repetir(LIMITES_PEI.TEXTO + 1) }));
+
+      assert.equal(caminho in noLimite, false);
+      assert.deepEqual(Object.keys(acima), [caminho]);
+      assert.match(acima[caminho], /deve ter no máximo 2000 caracteres/);
+    });
+
+    it(`accepts ${caminho} empty`, () => {
+      assert.deepEqual(validarParecer(formularioDoParecerDe({ [caminho]: '' })), {});
+    });
+  }
+
+  it('names the field by its label in the message', () => {
+    const erros = validarParecer(
+      formularioDoParecerDe({ individual_sessions: repetir(LIMITES_PEI.TEXTO + 1) }),
+    );
+
+    assert.equal(
+      erros.individual_sessions,
+      `O campo "${ROTULOS_DO_PARECER[3]}" deve ter no máximo 2000 caracteres.`,
+    );
+  });
+
+  it('counts the length after the trim', () => {
+    const erros = validarParecer(
+      formularioDoParecerDe({ semester_progress: `  ${repetir(LIMITES_PEI.TEXTO)}  ` }),
+    );
+
+    assert.deepEqual(erros, {});
+  });
+
+  it('accepts tabs and line breaks, and refuses the other control characters', () => {
+    assert.deepEqual(
+      validarParecer(formularioDoParecerDe({ semester_progress: 'Linha 1\r\nLinha 2\tcom tab' })),
+      {},
+    );
+    for (const texto of ['a\u0000b', 'a\u001bb', 'a\u007fb', 'a\u0085b']) {
+      assert.match(
+        validarParecer(formularioDoParecerDe({ semester_difficulties: texto })).semester_difficulties,
+        /não pode ter caracteres de controle/,
+        JSON.stringify(texto),
+      );
+    }
+  });
+
+  it('refuses a lone surrogate, also at the edges, and accepts a paired one (an emoji)', () => {
+    for (const texto of ['a\uD800b', 'a\uDFFFb', '\uD800', 'abc\uDC00', '\uDBFFabc']) {
+      assert.deepEqual(
+        Object.keys(validarParecer(formularioDoParecerDe({ next_semester_notes: texto }))),
+        ['next_semester_notes'],
+        JSON.stringify(texto),
+      );
+    }
+    assert.deepEqual(
+      validarParecer(formularioDoParecerDe({ next_semester_notes: 'Gosta de \u{1F916}' })),
+      {},
+    );
+  });
+
+  it('lists the errors in the order of the screen', () => {
+    const erros = validarParecer(
+      formularioDoParecerDe({
+        individual_sessions: repetir(LIMITES_PEI.TEXTO + 1),
+        semester_progress: repetir(LIMITES_PEI.TEXTO + 1),
+        next_semester_notes: 'a\u0000b',
+      }),
+    );
+
+    assert.deepEqual(Object.keys(erros), ['semester_progress', 'next_semester_notes', 'individual_sessions']);
+  });
+
+  it('accepts a complete form and a blank one', () => {
+    assert.deepEqual(validarParecer(formularioDoParecerDe()), {});
+    assert.deepEqual(validarParecer(PARECER_EM_BRANCO), {});
   });
 });
 

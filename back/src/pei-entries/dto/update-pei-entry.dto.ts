@@ -7,6 +7,11 @@ import { SyllabusAdaptationDto } from './syllabus-adaptation.dto';
 
 // Cada campo enviado substitui o valor inteiro, a lista de pares inclusive, e por
 // isso a lista vai completa. Os campos que não vão no corpo ficam como estão.
+// Além dos sete campos de conteúdo, o corpo aceita os quatro do parecer
+// semestral, que só o PATCH escreve (o POST os recusa e o registro nasce com o
+// parecer em branco). Quem escreve o parecer é o autor do registro, a mesma
+// regra da edição do conteúdo. O front envia o conteúdo e o parecer em
+// formulários separados, mas o back aceita qualquer subconjunto dos onze.
 // O estudante, o semestre, a disciplina e o autor não mudam: nenhum dos quatro é
 // aceito aqui, e quem errou o semestre ou a disciplina exclui o registro e cria
 // outro.
@@ -46,4 +51,26 @@ export class UpdatePeiEntryDto {
   @OmittableField()
   @Text(TEXT_MAX_LENGTH, 'Observações gerais.')
   general_notes?: string;
+
+  @OmittableField()
+  @Text(TEXT_MAX_LENGTH, 'Parecer semestral: avanços no semestre.')
+  semester_progress?: string;
+
+  @OmittableField()
+  @Text(TEXT_MAX_LENGTH, 'Parecer semestral: dificuldades no semestre.')
+  semester_difficulties?: string;
+
+  @OmittableField()
+  @Text(
+    TEXT_MAX_LENGTH,
+    'Parecer semestral: apontamentos para o próximo semestre.',
+  )
+  next_semester_notes?: string;
+
+  @OmittableField()
+  @Text(
+    TEXT_MAX_LENGTH,
+    'Parecer semestral: atendimentos individualizados prestados (datas, horários, salas e meio de convocação).',
+  )
+  individual_sessions?: string;
 }

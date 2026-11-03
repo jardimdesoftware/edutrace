@@ -14,6 +14,18 @@ export const PEI_ENTRY_CONTENT_SELECT = {
   general_notes: true,
 } satisfies Prisma.PeiEntrySelect;
 
+// Os quatro campos do parecer semestral do professor: os avanços, as
+// dificuldades, os apontamentos para o próximo semestre e os atendimentos
+// individualizados prestados. Só o autor os escreve, pelo PATCH; o registro
+// nasce com os quatro em branco. As chaves também são as colunas que o service
+// grava ao editar (o create não grava nenhuma).
+export const PEI_ENTRY_OPINION_SELECT = {
+  semester_progress: true,
+  semester_difficulties: true,
+  next_semester_notes: true,
+  individual_sessions: true,
+} satisfies Prisma.PeiEntrySelect;
+
 // Resposta de criar, ler e editar. O autor sai pelo select explícito, só com o
 // nome: o User inteiro traria o CPF, o e-mail e o hash da senha. O estudante e o
 // deleted_at não saem: o estudante já é o da rota, e o registro excluído nunca é
@@ -23,6 +35,7 @@ export const PEI_ENTRY_SELECT = {
   semester: true,
   subject: true,
   ...PEI_ENTRY_CONTENT_SELECT,
+  ...PEI_ENTRY_OPINION_SELECT,
   created_at: true,
   updated_at: true,
   id_author: true,

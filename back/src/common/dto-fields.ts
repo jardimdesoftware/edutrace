@@ -11,7 +11,7 @@ import {
   IsObject,
   IsString,
   Matches,
-  MaxLength,
+  ValidateBy,
   ValidateIf,
   ValidateNested,
   ValidationArguments,
@@ -55,6 +55,26 @@ export const DATE_MAX_LENGTH = 40;
 const named = (text: string) => (args: ValidationArguments) =>
   `${args.property} ${text}`;
 
+// Tamanho máximo em unidades UTF-16, o que o .length do JavaScript conta e o
+// maxLength do textarea do front aplica. O MaxLength do class-validator (a
+// função isLength) conta o par surrogate (um emoji) como 1 e o seletor de
+// variação (U+FE0E e U+FE0F) como 0, então 2000 emojis com seletor passavam num
+// limite de 2000 e ocupavam 6000 unidades, uns 14 kb. A chave da constraint
+// segue sendo maxLength.
+function MaxUtf16Length(maxLength: number) {
+  return ValidateBy(
+    {
+      name: 'maxLength',
+      constraints: [maxLength],
+      validator: {
+        validate: (value: unknown) =>
+          typeof value === 'string' && value.length <= maxLength,
+      },
+    },
+    { message: named(`deve ter no máximo ${maxLength} caracteres.`) },
+  );
+}
+
 // Texto sem espaços nas pontas, com tamanho máximo e sem caracteres de controle
 // (a tabulação e as quebras de linha passam). A string vazia é válida: o campo
 // precisa estar no corpo, mas o conteúdo pode ficar em branco.
@@ -63,9 +83,7 @@ export function Text(maxLength: number, description: string) {
     ApiProperty({ description, maxLength }),
     IsString({ message: named('deve ser uma string.') }),
     Transform(trimText),
-    MaxLength(maxLength, {
-      message: named(`deve ter no máximo ${maxLength} caracteres.`),
-    }),
+    MaxUtf16Length(maxLength),
     Matches(TEXT_PATTERN, {
       message: named(
         'não pode ter caracteres de controle, exceto tabulação e quebra de linha.',
@@ -93,9 +111,7 @@ export function SingleLineText(maxLength: number, description: string) {
     IsString({ message: named('deve ser uma string.') }),
     Transform(trimAndNormalize),
     IsNotEmpty({ message: named('não pode ficar em branco.') }),
-    MaxLength(maxLength, {
-      message: named(`deve ter no máximo ${maxLength} caracteres.`),
-    }),
+    MaxUtf16Length(maxLength),
     Matches(SINGLE_LINE_PATTERN, {
       message: named(
         'não pode ter quebra de linha nem caracteres de controle, de formatação ou inválidos.',
@@ -118,9 +134,7 @@ export function IsoDate(description: string) {
       { strict: true },
       { message: named('deve ser uma data ISO 8601, como 2026-10-17.') },
     ),
-    MaxLength(DATE_MAX_LENGTH, {
-      message: named(`deve ter no máximo ${DATE_MAX_LENGTH} caracteres.`),
-    }),
+    MaxUtf16Length(DATE_MAX_LENGTH),
   );
 }
 
