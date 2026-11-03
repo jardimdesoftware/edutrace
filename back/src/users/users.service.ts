@@ -24,10 +24,7 @@ import {
   GOOGLE_CPF_PREFIX,
 } from './google-account';
 import { Prisma, ServiceStatus } from '@prisma/client';
-import {
-  USER_WITH_MANAGER_CONTACT_SELECT,
-  UserWithManagerContact,
-} from './users.select';
+import { PUBLIC_USER_SELECT, PublicUser } from './users.select';
 import {
   LEAVE_PEDAGOGICAL_MANAGER,
   LEAVE_QUEUE,
@@ -44,9 +41,9 @@ const AEE_IN_SERVICE_MESSAGE =
   'Encerre os atendimentos do Professor do AEE antes de tirar esse papel ou excluir a conta.';
 
 // As rotas que chegam a este serviço são do Administrador (o cadastro, também
-// do NAPNE), que leem o telefone e o CPF do responsável pedagógico externo, e
-// por isso as respostas usam USER_WITH_MANAGER_CONTACT_SELECT. Uma rota nova
-// para outro nível escolhe o select por userSelectFor.
+// do NAPNE), que não leem o telefone e o CPF do responsável pedagógico externo,
+// e por isso as respostas usam PUBLIC_USER_SELECT. Uma rota nova para um nível
+// que leia o contato escolhe o select por userSelectFor.
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -68,11 +65,11 @@ export class UsersService {
     const activation = generateActivationToken();
     const activationExpires = new Date(Date.now() + ACTIVATION_TOKEN_TTL_MS);
 
-    let user: UserWithManagerContact;
+    let user: PublicUser;
 
     try {
       user = await this.prisma.user.create({
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
+        select: PUBLIC_USER_SELECT,
         data: {
           ...userData,
           password: await hash(randomUUID(), 10),
@@ -195,7 +192,7 @@ export class UsersService {
 
   async findAll() {
     return this.prisma.user.findMany({
-      select: USER_WITH_MANAGER_CONTACT_SELECT,
+      select: PUBLIC_USER_SELECT,
     });
   }
 
@@ -216,15 +213,6 @@ export class UsersService {
       where: {
         activation_token: tokenHash,
       },
-    });
-  }
-
-  async findOnePublic(email: string) {
-    return this.prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-      select: USER_WITH_MANAGER_CONTACT_SELECT,
     });
   }
 
@@ -286,7 +274,7 @@ export class UsersService {
   // A transação usa o isolamento padrão (READ COMMITTED), em que cada comando
   // enxerga o que a transação anterior confirmou.
   async update(email: string, updateUserDto: UpdateUserDto) {
-    let result: { user: UserWithManagerContact; rolesChanged: boolean };
+    let result: { user: PublicUser; rolesChanged: boolean };
 
     try {
       result = await this.prisma.$transaction((tx) =>
@@ -325,7 +313,7 @@ export class UsersService {
     const rolesChange = await this.applyRolesChange(tx, current, roles);
 
     const user = await tx.user.update({
-      select: USER_WITH_MANAGER_CONTACT_SELECT,
+      select: PUBLIC_USER_SELECT,
       where: { email: email },
       data: {
         full_name,
@@ -621,7 +609,7 @@ export class UsersService {
       await this.assertNoServiceInProgress(tx, id);
 
       return tx.user.delete({
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
+        select: PUBLIC_USER_SELECT,
         where: {
           id: id,
         },

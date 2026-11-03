@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
 import { UsersController } from 'src/users/users.controller';
 import { UsersService } from 'src/users/users.service';
-import { LEVELS, MANAGER_CONTACT_READERS } from 'src/constants';
+import { LEVELS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
 describe('UsersController', () => {
@@ -34,7 +34,7 @@ describe('UsersController', () => {
     deleted_at: null,
   };
 
-  // Recorte que create, findAll e findOnePublic devolvem: sem a senha, sem os
+  // Recorte que create e findAll devolvem: sem a senha, sem os
   // campos de recuperação e sem os contadores de bloqueio.
   const {
     password: _senha,
@@ -65,7 +65,6 @@ describe('UsersController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
-            findOnePublic: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
           },
@@ -272,27 +271,6 @@ describe('UsersController', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return a user by email with masked cpf', async () => {
-      jest
-        .spyOn(service, 'findOnePublic')
-        .mockResolvedValue(mockPublicUser as never);
-
-      const result = await controller.findOne('test@test.com');
-
-      expect(service.findOnePublic).toHaveBeenCalledWith('test@test.com');
-      expect(result).toEqual(maskedUser);
-    });
-
-    it('should return null when the user does not exist', async () => {
-      jest.spyOn(service, 'findOnePublic').mockResolvedValue(null);
-
-      const result = await controller.findOne('missing@test.com');
-
-      expect(result).toBeNull();
-    });
-  });
-
   describe('access levels', () => {
     it('should open create to the administrator and the NAPNE professional only', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.create);
@@ -300,7 +278,7 @@ describe('UsersController', () => {
       expect(levels).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
     });
 
-    it.each(['findAll', 'findOne', 'update', 'remove'] as const)(
+    it.each(['findAll', 'update', 'remove'] as const)(
       'should restrict %s to the administrator',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
@@ -309,7 +287,7 @@ describe('UsersController', () => {
       },
     );
 
-    it.each(['findAll', 'findOne', 'update', 'remove'] as const)(
+    it.each(['findAll', 'update', 'remove'] as const)(
       'should deny %s to the NAPNE professional',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
@@ -319,10 +297,9 @@ describe('UsersController', () => {
     );
   });
 
-  // UsersService sempre seleciona o telefone e o CPF do responsável externo
-  // (USER_WITH_MANAGER_CONTACT_SELECT), então toda rota que o chama tem de ser
-  // de nível que lê esse contato. Rota nova para outro nível precisa escolher o
-  // select por userSelectFor, e este teste avisa antes de o contato vazar.
+  // UsersService seleciona só os campos públicos (PUBLIC_USER_SELECT), sem o
+  // telefone e o CPF do responsável externo, porque o Administrador não lê esse
+  // contato. O mascaramento do CPF continua valendo caso o campo apareça.
   describe('contato do responsável externo', () => {
     const withContact = {
       ...mockPublicUser,
@@ -340,37 +317,19 @@ describe('UsersController', () => {
       const requester = { user: { roles: [LEVELS.ADMIN] } } as any;
       jest.spyOn(service, 'create').mockResolvedValue(withContact as never);
       jest.spyOn(service, 'findAll').mockResolvedValue([withContact] as never);
-      jest
-        .spyOn(service, 'findOnePublic')
-        .mockResolvedValue(withContact as never);
       jest.spyOn(service, 'update').mockResolvedValue(withContact as never);
       jest.spyOn(service, 'remove').mockResolvedValue(withContact as never);
 
       const results = [
         await controller.create({ roles: [2] } as any, requester),
         await controller.findAll(),
-        await controller.findOne('test@test.com'),
         await controller.update('test@test.com', {} as any),
         await controller.remove('1'),
       ];
 
-      expect(results).toEqual([masked, [masked], masked, masked, masked]);
+      expect(results).toEqual([masked, [masked], masked, masked]);
       expect(JSON.stringify(results)).not.toMatch(/98765432100|12345678900/);
     });
-
-    it.each(['create', 'findAll', 'findOne', 'update', 'remove'] as const)(
-      'should open %s only to levels that read the contact of the external manager',
-      (route) => {
-        const levels: number[] = Reflect.getMetadata(
-          ALLOW_LEVELS_KEY,
-          controller[route],
-        );
-
-        for (const level of levels) {
-          expect(MANAGER_CONTACT_READERS).toContain(level);
-        }
-      },
-    );
   });
 
   describe('update', () => {

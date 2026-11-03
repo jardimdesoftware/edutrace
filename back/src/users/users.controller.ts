@@ -74,13 +74,6 @@ export class UsersController {
   }
 
   @AllowLevels(LEVELS.ADMIN)
-  @Get(':email')
-  async findOne(@Param('email') email: string) {
-    const user = await this.usersService.findOnePublic(email);
-    return user ? maskUserCpf(user) : user;
-  }
-
-  @AllowLevels(LEVELS.ADMIN)
   @ApiBody({
     type: UpdateUserDto,
     description: 'Obejto para atualização de informações de um usuário.',

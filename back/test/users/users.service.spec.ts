@@ -5,7 +5,7 @@ import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { Prisma, ServiceStatus } from '@prisma/client';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { MailService } from 'src/mail/mail.service';
-import { USER_WITH_MANAGER_CONTACT_SELECT } from 'src/users/users.select';
+import { PUBLIC_USER_SELECT } from 'src/users/users.select';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { LEVELS, PHASES } from 'src/constants';
@@ -199,7 +199,7 @@ describe('UsersService', () => {
       );
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          select: USER_WITH_MANAGER_CONTACT_SELECT,
+          select: PUBLIC_USER_SELECT,
           data: expect.objectContaining({
             password: 'hashedPassword',
             roles: [LEVELS.ALUNO_ESTUDANTE],
@@ -377,22 +377,9 @@ describe('UsersService', () => {
       const result = await service.findAll();
 
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
+        select: PUBLIC_USER_SELECT,
       });
       expect(result).toEqual(usersList);
-    });
-  });
-
-  describe('findOnePublic', () => {
-    it('should read the public fields plus the contact of the external manager, for the Administrator', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
-
-      await service.findOnePublic('test@test.com');
-
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@test.com' },
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
-      });
     });
   });
 
@@ -676,7 +663,7 @@ describe('UsersService', () => {
       await service.update('test@test.com', fields);
 
       expect(tx.user.update).toHaveBeenCalledWith({
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
+        select: PUBLIC_USER_SELECT,
         where: { email: 'test@test.com' },
         data: expect.objectContaining(fields),
       });
@@ -788,7 +775,7 @@ describe('UsersService', () => {
       const result = await service.update('test@test.com', updateDto as any);
 
       expect(tx.user.update).toHaveBeenCalledWith({
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
+        select: PUBLIC_USER_SELECT,
         where: { email: 'test@test.com' },
         data: expect.objectContaining({
           full_name: updateDto.full_name,
@@ -1069,7 +1056,7 @@ describe('UsersService', () => {
       const result = await service.remove(1);
 
       expect(tx.user.delete).toHaveBeenCalledWith({
-        select: USER_WITH_MANAGER_CONTACT_SELECT,
+        select: PUBLIC_USER_SELECT,
         where: { id: 1 },
       });
       expect(result).toEqual(mockUser);
