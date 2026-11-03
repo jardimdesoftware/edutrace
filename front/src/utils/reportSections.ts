@@ -1,4 +1,5 @@
 import type { ReportsData } from '@/interfaces/ReportsData';
+import { secoesParaLeitura } from './estudoDeCaso';
 import { REPORT_SECTIONS, type ReportFieldDef } from './reportLabels';
 
 export interface ReportRow {
@@ -14,9 +15,10 @@ export interface ReportSection {
 
 const NAO_INFORMADO = 'Não informado';
 const CHAVES_OUTRO = ['outro', 'outros'];
+const TITULO_ESTUDO_DE_CASO = 'Estudo de Caso';
 
 export function relatorioVazio(report: ReportsData): boolean {
-  return !report.screening && !report.plansEducation;
+  return !report.screening && !report.plansEducation && !report.caseStudy;
 }
 
 // Mesmo texto que a tela do PEI exibe nas opções geradas a partir da chave.
@@ -55,8 +57,21 @@ function formatarValor(value: unknown, field: ReportFieldDef): string {
   return texto || NAO_INFORMADO;
 }
 
+// O estudo de caso é longo, então sai uma seção do relatório por seção da ficha.
+// Os rótulos e os itens marcados são os mesmos da tela. Sem estudo de caso (null,
+// ou ausente quando a API não o envia), sai uma seção sem linhas, como nas
+// outras fichas.
+function secoesDoEstudoDeCaso(estudo: ReportsData['caseStudy']): ReportSection[] {
+  if (!estudo) return [{ title: TITULO_ESTUDO_DE_CASO, rows: null }];
+
+  return secoesParaLeitura(estudo, estudo.student?.course).map((secao) => ({
+    title: `${TITULO_ESTUDO_DE_CASO} - ${secao.titulo}`,
+    rows: secao.linhas,
+  }));
+}
+
 export function buildReportSections(report: ReportsData): ReportSection[] {
-  return REPORT_SECTIONS.map((section) => {
+  const fichas = REPORT_SECTIONS.map((section) => {
     const dados = report[section.key] as Record<string, unknown> | null;
 
     return {
@@ -69,6 +84,8 @@ export function buildReportSections(report: ReportsData): ReportSection[] {
         : null,
     };
   });
+
+  return [...fichas, ...secoesDoEstudoDeCaso(report.caseStudy)];
 }
 
 // Tira os caracteres que o Windows recusa em nome de arquivo.

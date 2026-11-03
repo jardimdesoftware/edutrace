@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { apiRequest } from './http';
+import { ApiError, apiRequest } from './http';
 
 const API_URL = 'http://api.test';
 
@@ -69,5 +69,38 @@ describe('apiRequest', () => {
     });
 
     assert.equal(calls[0].init.credentials, 'include');
+  });
+});
+
+describe('apiRequest errors', () => {
+  it('rejects with an ApiError that carries the status of the response', async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ message: 'Estudo de caso não encontrado' }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch;
+
+    await assert.rejects(apiRequest('/case-studies/aluno%40edutrace.com'), (erro: unknown) => {
+      assert.ok(erro instanceof ApiError);
+      assert.ok(erro instanceof Error);
+      assert.equal(erro.status, 404);
+      assert.equal(erro.message, 'Estudo de caso não encontrado');
+      return true;
+    });
+  });
+
+  // As telas que mostram String(error) (forgot-password) imprimiriam o nome da
+  // classe junto da mensagem.
+  it('prints only the message when the error is turned into text', async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ message: 'Usuário não encontrado' }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch;
+
+    await assert.rejects(apiRequest('/users/x'), (erro: unknown) => {
+      assert.equal(String(erro), 'Error: Usuário não encontrado');
+      return true;
+    });
   });
 });

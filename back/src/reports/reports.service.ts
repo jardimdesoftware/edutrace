@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
+import { CASE_STUDY_SECTIONS_SELECT } from 'src/case-studies/case-study-select';
 
-// O relatório traz a triagem e o PEI, só com os campos que os formulários
-// exibem. A anamnese não faz parte do relatório.
+// O relatório traz a triagem, o PEI e o estudo de caso, só com os campos que os
+// formulários exibem. A anamnese não faz parte do relatório.
 const REPORT_SCREENING_SELECT = {
   report: true,
   specific_need: true,
@@ -33,6 +34,15 @@ const REPORT_PLANS_EDUCATION_SELECT = {
   evaluation_criteria: true,
 } satisfies Prisma.PlansEducationSelect;
 
+// As seções do estudo de caso, o nome de quem o escreveu e o curso do estudante.
+// O autor e o estudante saem pelo select explícito: o User inteiro traria o CPF,
+// o e-mail e o hash da senha. Sem id nem datas, que o PDF não exibe.
+const REPORT_CASE_STUDY_SELECT = {
+  ...CASE_STUDY_SECTIONS_SELECT,
+  author: { select: { full_name: true } },
+  student: { select: { course: true } },
+} satisfies Prisma.CaseStudySelect;
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -41,9 +51,9 @@ export class ReportsService {
   ) {}
 
   async findOne(email: string) {
-    await this.studentsService.findOneOrFail({ email });
+    const student = await this.studentsService.findOneOrFail({ email });
 
-    const [screening, plansEducation] = await Promise.all([
+    const [screening, plansEducation, caseStudy] = await Promise.all([
       this.prisma.screening.findUnique({
         where: { email },
         select: REPORT_SCREENING_SELECT,
@@ -52,8 +62,12 @@ export class ReportsService {
         where: { student_email: email },
         select: REPORT_PLANS_EDUCATION_SELECT,
       }),
+      this.prisma.caseStudy.findUnique({
+        where: { id_student: student.id },
+        select: REPORT_CASE_STUDY_SELECT,
+      }),
     ]);
 
-    return { screening, plansEducation };
+    return { screening, plansEducation, caseStudy };
   }
 }

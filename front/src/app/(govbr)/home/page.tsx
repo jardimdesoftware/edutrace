@@ -7,6 +7,7 @@ import {
   Stethoscope,
   MessagesSquare,
   BookOpenCheck,
+  FileUser,
 } from 'lucide-react';
 import HomeCard from "@/components/HomeCard";
 import PainelAtendimento from "@/components/PainelAtendimento";
@@ -45,6 +46,7 @@ function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <HomeCard label="Triagem" icon={ClipboardPlus} href="/triagem" />
               <HomeCard label="Anamnese" icon={Stethoscope} href="/anamnese" />
+              <HomeCard label="Estudo de Caso" icon={FileUser} href="/estudo-de-caso" />
               <HomeCard label="Anotações Multiprofissionais" icon={MessagesSquare} href="/comentarios" />
               <HomeCard label="PEI" icon={BookOpenCheck} href="/pei" />
             </div>

@@ -16,6 +16,14 @@ const screening = {
   specific_need: { baixa_visao: true, outros: 'Dislexia' },
 } as unknown as NonNullable<ReportsData['screening']>;
 
+const caseStudy = {
+  identification: { grade: '2º ano', age: 16, date: '2026-10-17' },
+  pedagogical_aspects: { language: { verbal: true, notes: 'Fala frases curtas' } },
+  barriers: 'Ruído na sala de aula',
+  author: { id: 7, full_name: 'Marina Duarte' },
+  student: { course: 'Informática' },
+} as unknown as NonNullable<ReportsData['caseStudy']>;
+
 describe('renderReportPdf', () => {
   it('draws the student, the filled sections and marks the missing one', async () => {
     const doc = await renderReportPdf(estudante, { screening, plansEducation: null });
@@ -28,6 +36,19 @@ describe('renderReportPdf', () => {
     assert.match(pdf, /PEI - Plano de Ensino Individualizado/);
     assert.match(pdf, /Ficha n.o preenchida/);
     assert.doesNotMatch(pdf, /Anamnese/);
+  });
+
+  it('draws the sections of the case study with the author and the checked items', async () => {
+    const doc = await renderReportPdf(estudante, { screening: null, plansEducation: null, caseStudy });
+    const pdf = doc.output();
+
+    assert.match(pdf, /Estudo de Caso - Identifica/);
+    assert.match(pdf, /Estudo de Caso - Aspectos pedag/);
+    assert.match(pdf, /Marina Duarte/);
+    assert.match(pdf, /Curso/);
+    assert.match(pdf, /Inform.tica/);
+    assert.match(pdf, /Comunica-se verbalmente/);
+    assert.match(pdf, /Ru.do na sala de aula/);
   });
 
   it('breaks a long answer across pages and numbers them', async () => {
