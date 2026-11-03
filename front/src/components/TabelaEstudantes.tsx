@@ -7,10 +7,11 @@ import {
   encerrarAtendimento,
   getStudentByEmail,
 } from "@/api/students";
-import { updateUser } from "@/api/user";
+import { restoreUser, updateUser } from "@/api/user";
 import { ADMIN } from "@/consts";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
+import { excluirUsuarioComConfirmacao } from "@/lib/excluirUsuarioComConfirmacao";
 import { exportStudentReportPdf } from "@/lib/exportStudentReport";
 import {
   contarPorStatus,
@@ -22,6 +23,13 @@ import {
   textoDaContagem,
 } from "@/utils/atendimento";
 import { errorAlertOptions } from "@/utils/errorAlert";
+import {
+  estaMarcado,
+  motivoDaLixeiraDesativada,
+  podeExcluir,
+  podeRestaurar,
+  textoDaExclusao,
+} from "@/utils/exclusaoDeUsuario";
 import {
   rotulosDosPapeis,
   temPapel,
@@ -35,9 +43,9 @@ import {
   responsavelDaLinha,
   substituirUsuario,
 } from "@/utils/tabelaUsuarios";
-import { Eye, FileDown, UserPlus } from "lucide-react";
+import { Eye, FileDown, Trash2, Undo2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import AtendimentoEstudante from "./AtendimentoEstudante";
 import Loading from "./Loading";
@@ -84,6 +92,9 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
   const [acaoEmAndamento, setAcaoEmAndamento] = useState(false);
+  // Fim da janela de senha que o back abriu com "lembrar". O back é quem vale; o
+  // valor só decide se o modal mostra o campo de senha.
+  const janelaDeSenha = useRef<string | null>(null);
   const router = useRouter();
   const [ students, setStudents ] = useState<StudentData[] | null>(null);
   const { user, loading } = useAuth();
@@ -169,6 +180,71 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
           "Falha ao atualizar os papéis",
           error,
           "Não foi possível atualizar os papéis.",
+        ),
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Entendi",
+      });
+    }
+  };
+
+  const handleExcluir = async (alvo: StudentData): Promise<void> => {
+    try {
+      const resultado = await excluirUsuarioComConfirmacao(alvo, janelaDeSenha.current);
+      if (!resultado) return;
+
+      janelaDeSenha.current = resultado.reauth_until ?? janelaDeSenha.current;
+      setStudents((prev) => prev && substituirUsuario(prev, resultado.user));
+      await Swal.fire({
+        icon: "success",
+        title: "Usuário marcado para exclusão",
+        text: `A conta fica sem acesso e será apagada em definitivo. ${textoDaExclusao(resultado.user.deleted_at ?? new Date().toISOString())}.`,
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Ok",
+      });
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        ...errorAlertOptions(
+          "Falha ao excluir o usuário",
+          error,
+          "Não foi possível excluir o usuário.",
+        ),
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Entendi",
+      });
+    }
+  };
+
+  const handleRestaurar = async (alvo: StudentData): Promise<void> => {
+    const confirmacao = await Swal.fire({
+      icon: "question",
+      title: "Restaurar usuário",
+      text: `Deseja restaurar o acesso de "${alvo.full_name}"?`,
+      showCancelButton: true,
+      confirmButtonColor: "#047857",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sim, restaurar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirmacao.isConfirmed) return;
+
+    try {
+      const restaurado = await restoreUser(alvo.id);
+      setStudents((prev) => prev && substituirUsuario(prev, restaurado));
+      Swal.fire({
+        icon: "success",
+        title: "Usuário restaurado com sucesso!",
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Ok",
+      });
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        ...errorAlertOptions(
+          "Falha ao restaurar o usuário",
+          error,
+          "Não foi possível restaurar o usuário.",
         ),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
@@ -307,6 +383,13 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
           <div key={estudante.id} className="border rounded-lg p-4 shadow-sm">
             <div className="space-y-1 text-sm">
               <p><span className="font-semibold">Nome:</span> {estudante.full_name}</p>
+              {estudante.deleted_at && (
+                <p>
+                  <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">
+                    {textoDaExclusao(estudante.deleted_at)}
+                  </span>
+                </p>
+              )}
               <p><span className="font-semibold">CPF:</span> {estudante.cpf}</p>
               <p className="break-all"><span className="font-semibold">E-mail:</span> {estudante.email}</p>
               <p><span className="font-semibold">Responsável Pedagógico:</span> {renderResponsavel(estudante)}</p>
@@ -349,6 +432,27 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                   Exportar
                 </button>
               )}
+              {isAdmin && podeRestaurar(user, estudante) && (
+                <button
+                  onClick={() => handleRestaurar(estudante)}
+                  title="Restaurar usuário"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
+                >
+                  <Undo2 className="w-4 h-4" />
+                  Restaurar
+                </button>
+              )}
+              {isAdmin && !estaMarcado(estudante) && (
+                <button
+                  onClick={() => handleExcluir(estudante)}
+                  title={motivoDaLixeiraDesativada(user, estudante) ?? "Excluir usuário"}
+                  disabled={!podeExcluir(user, estudante)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-red-700 shadow-sm hover:bg-red-50 hover:shadow disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:shadow-none"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Excluir
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -373,7 +477,14 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
           <tbody>
             {filtrados?.map((estudante) => (
               <tr key={estudante.id} className="border-b hover:bg-gray-50">
-                <td className="p-3">{estudante.full_name}</td>
+                <td className="p-3">
+                  {estudante.full_name}
+                  {estudante.deleted_at && (
+                    <span className="ml-2 inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">
+                      {textoDaExclusao(estudante.deleted_at)}
+                    </span>
+                  )}
+                </td>
                 <td className="p-3">{estudante.cpf}</td>
                 <td className="p-3">{estudante.email}</td>
                 <td className="p-3">{renderResponsavel(estudante)}</td>
@@ -412,6 +523,27 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                         className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
                       >
                         <FileDown className="w-5 h-5" />
+                      </button>
+                    )}
+                    {isAdmin && podeRestaurar(user, estudante) && (
+                      <button
+                        type="button"
+                        title="Restaurar usuário"
+                        onClick={() => handleRestaurar(estudante)}
+                        className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
+                      >
+                        <Undo2 className="w-5 h-5" />
+                      </button>
+                    )}
+                    {isAdmin && !estaMarcado(estudante) && (
+                      <button
+                        type="button"
+                        title={motivoDaLixeiraDesativada(user, estudante) ?? "Excluir usuário"}
+                        disabled={!podeExcluir(user, estudante)}
+                        onClick={() => handleExcluir(estudante)}
+                        className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-red-700 shadow-sm transition hover:bg-red-50 hover:shadow disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:shadow-none"
+                      >
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     )}
                   </div>
