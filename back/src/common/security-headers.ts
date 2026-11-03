@@ -35,6 +35,9 @@ export function securityHeaders(isProduction: boolean): RequestHandler[] {
 // As respostas trazem dados pessoais e de saúde de estudantes e não podem ficar
 // guardadas no cache do navegador nem de um proxy.
 function noStore(_req: Request, res: Response, next: NextFunction): void {
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader(
+    'Cache-Control',
+    'private, no-cache, no-store, max-age=0, must-revalidate',
+  );
   next();
 }

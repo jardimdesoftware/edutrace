@@ -64,7 +64,9 @@ describe('securityHeaders', () => {
     it('should not let browsers or proxies store the response', async () => {
       const response = await request(app.getHttpServer()).get('/dados');
 
-      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['cache-control']).toBe(
+        'private, no-cache, no-store, max-age=0, must-revalidate',
+      );
     });
 
     it('should send the headers on error responses too', async () => {
@@ -72,7 +74,9 @@ describe('securityHeaders', () => {
 
       expect(response.status).toBe(404);
       expect(response.headers['x-powered-by']).toBeUndefined();
-      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['cache-control']).toBe(
+        'private, no-cache, no-store, max-age=0, must-revalidate',
+      );
       expect(response.headers['x-frame-options']).toBe('DENY');
     });
   });
@@ -88,7 +92,9 @@ describe('securityHeaders', () => {
       expect(response.headers['content-security-policy']).toBeUndefined();
       expect(response.headers['x-powered-by']).toBeUndefined();
       expect(response.headers['x-frame-options']).toBe('DENY');
-      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['cache-control']).toBe(
+        'private, no-cache, no-store, max-age=0, must-revalidate',
+      );
     });
   });
 });
