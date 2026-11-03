@@ -9,8 +9,9 @@ import {
 import { temPapel, type Papeis } from "./papeis";
 
 const ANY_LEVEL = "any";
-const TODOS = [
-  ADMIN,
+// O administrador só gerencia usuários: fica fora das telas de estudante, como
+// as rotas correspondentes do back.
+const TODOS_MENOS_ADMIN = [
   ESTUDANTE,
   PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_SAUDE,
@@ -21,7 +22,6 @@ const TODOS = [
 // Papéis que atendem estudantes: listam e visualizam qualquer estudante e
 // escrevem anotações, como GET /students e POST /comments no back.
 export const NIVEIS_PROFISSIONAIS: readonly number[] = [
-  ADMIN,
   PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_SAUDE,
   PROFISSIONAL_NAPNE,
@@ -36,14 +36,14 @@ const PAGE_LEVELS: Record<string, readonly number[] | typeof ANY_LEVEL> = {
   "/home": ANY_LEVEL,
   "/alterar-dados": ANY_LEVEL,
   "/completar-cadastro": ANY_LEVEL,
-  "/triagem": TODOS,
+  "/triagem": TODOS_MENOS_ADMIN,
   "/anamnese": [ESTUDANTE, PROFISSIONAL_NAPNE],
-  "/pei": TODOS,
-  "/comentarios": TODOS,
-  "/estudo-de-caso": TODOS,
-  "/paee": TODOS,
+  "/pei": TODOS_MENOS_ADMIN,
+  "/comentarios": TODOS_MENOS_ADMIN,
+  "/estudo-de-caso": TODOS_MENOS_ADMIN,
+  "/paee": TODOS_MENOS_ADMIN,
   "/estudantes/visualizar": NIVEIS_PROFISSIONAIS,
-  "/editar-triagem": [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
+  "/editar-triagem": [PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
   "/editar-anamnese": [PROFISSIONAL_NAPNE],
   // Vem antes de "/admin": canAccessPage usa a primeira rota cujo prefixo casa.
   "/admin/usuarios/cadastro": [ADMIN, PROFISSIONAL_NAPNE],
@@ -61,7 +61,11 @@ export function canAccessPage(pathname: string, roles: Papeis): boolean {
   return levels === ANY_LEVEL || temPapel(roles, ...levels);
 }
 
-export type ConteudoDaHome = "estudante" | "profissional" | "sem-perfil";
+export type ConteudoDaHome =
+  | "estudante"
+  | "profissional"
+  | "administrador"
+  | "sem-perfil";
 
 // A home abre para qualquer papel, porque é o destino dos redirecionamentos.
 // Quem não tem perfil de atendimento não recebe a tabela de estudantes, que
@@ -70,5 +74,6 @@ export type ConteudoDaHome = "estudante" | "profissional" | "sem-perfil";
 // dele.
 export function conteudoDaHome(roles: Papeis): ConteudoDaHome {
   if (temPapel(roles, ESTUDANTE)) return "estudante";
+  if (temPapel(roles, ADMIN)) return "administrador";
   return temPapel(roles, ...NIVEIS_PROFISSIONAIS) ? "profissional" : "sem-perfil";
 }

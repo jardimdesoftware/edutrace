@@ -28,7 +28,6 @@ const NIVEL_CRIADO_PELO_ADMIN = 7;
 
 describe("fichasDoEstudante", () => {
   for (const [nome, nivel] of [
-    ["administrator", ADMIN],
     ["education professional", PROFISSIONAL_EDUCACAO],
     ["health professional", PROFISSIONAL_SAUDE],
   ] as const) {
@@ -56,6 +55,10 @@ describe("fichasDoEstudante", () => {
 
   it("gives no card to a level that opens none of the pages", () => {
     assert.deepEqual(fichasDoEstudante([NIVEL_CRIADO_PELO_ADMIN]), []);
+  });
+
+  it("gives no card to the administrator, who only manages users", () => {
+    assert.deepEqual(fichasDoEstudante([ADMIN]), []);
   });
 });
 

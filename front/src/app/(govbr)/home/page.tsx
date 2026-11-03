@@ -62,6 +62,7 @@ function HomePage() {
             />
           </>
         )}
+        {conteudo === "administrador" && <TabelaEstudantes />}
         {conteudo === "sem-perfil" && (
           <>
             <h1 className="text-3xl font-light mb-6">Página inicial</h1>
