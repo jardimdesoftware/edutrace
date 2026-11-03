@@ -32,7 +32,6 @@ export class CaseStudiesController {
 
   // O estudante entra na lista, e o service o limita ao próprio estudo de caso.
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,

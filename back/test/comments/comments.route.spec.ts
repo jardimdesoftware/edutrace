@@ -38,7 +38,6 @@ const REPORT = {
 };
 
 const WRITERS = [
-  ['Administrador', LEVELS.ADMIN],
   ['Profissional da Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional da Saúde', LEVELS.PROFISSIONAL_SAUDE],
   ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
@@ -240,6 +239,20 @@ describe('anotações, rotas de /comments', () => {
       });
 
       expect(response.status).toBe(201);
+    });
+
+    it('should answer 403 to the Administrador, for a note and for a report', async () => {
+      sessionLevel = LEVELS.ADMIN;
+
+      for (const type of Object.values(CommentType)) {
+        const response = await post({
+          id_user: STUDENT_ID,
+          comment: 'Relatório',
+          type,
+        });
+
+        expect(response.status).toBe(403);
+      }
     });
 
     it('should answer 403 to the student, for a note and for a report', async () => {

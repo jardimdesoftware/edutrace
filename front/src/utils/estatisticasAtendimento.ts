@@ -1,4 +1,4 @@
-import { ADMIN, PROFISSIONAL_NAPNE } from '@/consts';
+import { PROFISSIONAL_NAPNE } from '@/consts';
 import type { ProfessionalLoad, ServiceQueue, ServiceStats } from '@/interfaces/ServiceStats';
 import type { ServiceStatus } from '@/interfaces/StudentData';
 import { temPapel, type Papeis } from './papeis';
@@ -41,10 +41,10 @@ export interface PainelDeAtendimento {
 }
 
 // Mesmo critério da rota GET /students/service-stats no back
-// (@AllowLevels do Administrador e do Profissional NAPNE). Quem protege o dado
+// (@AllowLevels do Profissional NAPNE). Quem protege o dado
 // é o back; aqui só decide se o painel aparece.
 export function podeVerEstatisticas(roles: Papeis): boolean {
-  return temPapel(roles, ADMIN, PROFISSIONAL_NAPNE);
+  return temPapel(roles, PROFISSIONAL_NAPNE);
 }
 
 function esperaEmDias(dias: number): string {

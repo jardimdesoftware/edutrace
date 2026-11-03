@@ -371,7 +371,7 @@ const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
         // O encerramento libera a vaga do professor.
         await expect(inServiceOf(teacher.id)).resolves.toBe(0);
 
-        await queue.reopen(student.email, [LEVELS.ADMIN]);
+        await queue.reopen(student.email, [LEVELS.PROFISSIONAL_NAPNE]);
         const reopened = await statusOf(student.email);
         expect(reopened).toMatchObject({
           service_status: ServiceStatus.WAITING,
@@ -384,7 +384,7 @@ const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
         );
       });
 
-      it('should let the Administrator close a student of any teacher, and keep another teacher out', async () => {
+      it('should let only the responsible teacher close the student, and keep another teacher out', async () => {
         const teacher = await createTeacher();
         const other = await createTeacher();
         const student = await createStudent();
@@ -400,7 +400,14 @@ const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
           service_status: ServiceStatus.IN_SERVICE,
         });
 
-        await queue.close(student.email, { sub: 1, roles: [LEVELS.ADMIN] });
+        await expect(
+          queue.close(student.email, { sub: 1, roles: [LEVELS.ADMIN] }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        await queue.close(student.email, {
+          sub: teacher.id,
+          roles: [LEVELS.PROFESSOR_AEE],
+        });
         await expect(statusOf(student.email)).resolves.toMatchObject({
           service_status: ServiceStatus.CLOSED,
         });
@@ -619,7 +626,10 @@ const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
           prisma.user.findUniqueOrThrow({ where: { id: teacher.id } }),
         ).resolves.toMatchObject({ roles: [LEVELS.PROFESSOR_AEE] });
 
-        await queue.close(student.email, { sub: 1, roles: [LEVELS.ADMIN] });
+        await queue.close(student.email, {
+          sub: teacher.id,
+          roles: [LEVELS.PROFESSOR_AEE],
+        });
         await expect(
           users.update(teacher.email, { roles: [LEVELS.PROFISSIONAL_SAUDE] }),
         ).resolves.toMatchObject({ roles: [LEVELS.PROFISSIONAL_SAUDE] });

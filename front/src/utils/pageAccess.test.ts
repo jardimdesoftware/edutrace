@@ -21,21 +21,22 @@ const TODOS = [
   PROFISSIONAL_NAPNE,
   PROFESSOR_AEE,
 ];
+const SEM_ADMIN = TODOS.filter((nivel) => nivel !== ADMIN);
 const NIVEL_CRIADO_PELO_ADMIN = 7;
 
 // Página e níveis que podem abri-la, na regra atual de perfis.
 const MATRIZ: [string, number[]][] = [
-  ["/triagem", TODOS],
+  ["/triagem", SEM_ADMIN],
   ["/anamnese", [ESTUDANTE, PROFISSIONAL_NAPNE]],
-  ["/pei", TODOS],
-  ["/comentarios", TODOS],
-  ["/estudo-de-caso", TODOS],
-  ["/paee", TODOS],
+  ["/pei", SEM_ADMIN],
+  ["/comentarios", SEM_ADMIN],
+  ["/estudo-de-caso", SEM_ADMIN],
+  ["/paee", SEM_ADMIN],
   [
     "/estudantes/visualizar",
-    [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE, PROFESSOR_AEE],
+    [PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE, PROFESSOR_AEE],
   ],
-  ["/editar-triagem", [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
+  ["/editar-triagem", [PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
   ["/editar-anamnese", [PROFISSIONAL_NAPNE]],
   ["/admin/usuarios/cadastro", [ADMIN, PROFISSIONAL_NAPNE]],
 ];
@@ -96,7 +97,6 @@ describe("canAccessPage", () => {
 describe("NIVEIS_PROFISSIONAIS", () => {
   it("lists the roles that serve students, as GET /students and POST /comments in the back", () => {
     assert.deepEqual([...NIVEIS_PROFISSIONAIS].sort(), [
-      ADMIN,
       PROFISSIONAL_EDUCACAO,
       PROFISSIONAL_SAUDE,
       PROFISSIONAL_NAPNE,
@@ -112,7 +112,6 @@ describe("conteudoDaHome", () => {
 
   it("shows the student table to the levels that serve students", () => {
     for (const nivel of [
-      ADMIN,
       PROFISSIONAL_EDUCACAO,
       PROFISSIONAL_SAUDE,
       PROFISSIONAL_NAPNE,
@@ -120,6 +119,10 @@ describe("conteudoDaHome", () => {
     ]) {
       assert.equal(conteudoDaHome([nivel]), "profissional", String(nivel));
     }
+  });
+
+  it("shows the user table, and no student data, to the administrator", () => {
+    assert.equal(conteudoDaHome([ADMIN]), "administrador");
   });
 
   it("shows no table to a level created by the administrator, so the home calls no route it cannot access", () => {

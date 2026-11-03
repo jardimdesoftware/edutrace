@@ -7,7 +7,6 @@ import {
 import { ServiceStatus } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { AEE_SERVICE_CAPACITY, LEVELS } from 'src/constants';
-import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from './students.service';
 
 // Quem pede o encerramento: o id da sessão (sub do token) e os papéis atuais.
@@ -88,18 +87,15 @@ export class ServiceQueueService {
   }
 
   // O responsável continua gravado depois do encerramento, como histórico de
-  // quem atendeu. A condição está no próprio UPDATE: só o administrador encerra
-  // sem filtro, o Professor do AEE só encerra quem ele atende, e o status é
-  // conferido na mesma operação.
+  // quem atendeu. A condição está no próprio UPDATE: o Professor do AEE só
+  // encerra quem ele atende, e o status é conferido na mesma operação.
   async close(email: string, requester: ServiceRequester) {
     const { count } = await this.prisma.user.updateMany({
       where: {
         email,
         roles: { has: LEVELS.ALUNO_ESTUDANTE },
         service_status: ServiceStatus.IN_SERVICE,
-        ...(hasAnyRole(requester.roles, [LEVELS.ADMIN])
-          ? {}
-          : { aee_responsible_id: requester.sub }),
+        aee_responsible_id: requester.sub,
       },
       data: {
         service_status: ServiceStatus.CLOSED,
@@ -111,7 +107,7 @@ export class ServiceQueueService {
       const status = await this.statusOf(email);
       throw status === ServiceStatus.IN_SERVICE
         ? new ForbiddenException(
-            'Apenas o Professor do AEE responsável ou o administrador encerra o atendimento.',
+            'Apenas o Professor do AEE responsável encerra o atendimento.',
           )
         : new ConflictException('O estudante não está em atendimento.');
     }

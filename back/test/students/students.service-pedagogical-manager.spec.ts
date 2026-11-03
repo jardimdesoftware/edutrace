@@ -59,7 +59,7 @@ describe('StudentsService, responsável pedagógico', () => {
 
   const set = (
     dto: Partial<SetPedagogicalManagerDto>,
-    requesterLevel: number = LEVELS.ADMIN,
+    requesterLevel: number = LEVELS.PROFISSIONAL_NAPNE,
   ) =>
     service.setPedagogicalManager(EMAIL, dto as SetPedagogicalManagerDto, [
       requesterLevel,
@@ -144,7 +144,7 @@ describe('StudentsService, responsável pedagógico', () => {
     );
 
     it.each([
-      ['Administrador', LEVELS.ADMIN, USER_WITH_MANAGER_CONTACT_SELECT],
+      ['Administrador', LEVELS.ADMIN, PUBLIC_USER_SELECT],
       [
         'Profissional NAPNE',
         LEVELS.PROFISSIONAL_NAPNE,

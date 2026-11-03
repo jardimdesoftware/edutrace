@@ -35,7 +35,6 @@ describe('LEVELS', () => {
 describe('STUDENT_RECORD_READERS', () => {
   it('should list every level that reads the records of any student', () => {
     expect(STUDENT_RECORD_READERS).toEqual([
-      LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
@@ -45,6 +44,14 @@ describe('STUDENT_RECORD_READERS', () => {
 
   it('should not include the student level', () => {
     expect(STUDENT_RECORD_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+  });
+
+  it('should not include the Administrator, who only manages users', () => {
+    expect(STUDENT_RECORD_READERS).not.toContain(LEVELS.ADMIN);
+    expect(CASE_STUDY_READERS).not.toContain(LEVELS.ADMIN);
+    expect(AEE_PLAN_READERS).not.toContain(LEVELS.ADMIN);
+    expect(PEI_ENTRY_READERS).not.toContain(LEVELS.ADMIN);
+    expect(MANAGER_CONTACT_READERS).not.toContain(LEVELS.ADMIN);
   });
 });
 
@@ -62,9 +69,8 @@ describe('ANAMNESIS_READERS', () => {
 });
 
 describe('CASE_STUDY_READERS', () => {
-  it('should list the Administrator, Education, Health, NAPNE and Professor do AEE levels as readers of the case study of any student', () => {
+  it('should list the Education, Health, NAPNE and Professor do AEE levels as readers of the case study of any student', () => {
     expect(CASE_STUDY_READERS).toEqual([
-      LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
@@ -78,9 +84,8 @@ describe('CASE_STUDY_READERS', () => {
 });
 
 describe('AEE_PLAN_READERS', () => {
-  it('should list the Administrator, Education, Health, NAPNE and Professor do AEE levels as readers of the PAEE of any student', () => {
+  it('should list the Education, Health, NAPNE and Professor do AEE levels as readers of the PAEE of any student', () => {
     expect(AEE_PLAN_READERS).toEqual([
-      LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
@@ -94,9 +99,8 @@ describe('AEE_PLAN_READERS', () => {
 });
 
 describe('PEI_ENTRY_READERS', () => {
-  it('should list the Administrator, Education, Health, NAPNE and Professor do AEE levels as readers of the PEI of any student', () => {
+  it('should list the Education, Health, NAPNE and Professor do AEE levels as readers of the PEI of any student', () => {
     expect(PEI_ENTRY_READERS).toEqual([
-      LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
@@ -116,9 +120,8 @@ describe('PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT', () => {
 });
 
 describe('MANAGER_CONTACT_READERS', () => {
-  it('should list only the Administrator and the NAPNE as readers of the phone and the cpf of the external manager', () => {
+  it('should list only the NAPNE as readers of the phone and the cpf of the external manager', () => {
     expect(MANAGER_CONTACT_READERS).toEqual([
-      LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_NAPNE,
     ]);
   });

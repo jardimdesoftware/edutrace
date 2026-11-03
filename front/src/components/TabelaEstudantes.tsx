@@ -329,15 +329,17 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               )}
             </div>
             <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => handleVerEstudante(estudante)}
-                title="Mais informações"
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
-              >
-                <Eye className="w-4 h-4" />
-                Visualizar
-              </button>
-              {podeExportarRelatorio(estudante) && (
+              {!isAdmin && (
+                <button
+                  onClick={() => handleVerEstudante(estudante)}
+                  title="Mais informações"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
+                >
+                  <Eye className="w-4 h-4" />
+                  Visualizar
+                </button>
+              )}
+              {!isAdmin && podeExportarRelatorio(estudante) && (
                 <button
                   onClick={() => handleExportar(estudante)}
                   title="Exportar relatório"
@@ -392,15 +394,17 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                 <td className="p-3">{renderAtendimento(estudante)}</td>
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      title="Mais informações"
-                      onClick={() => handleVerEstudante(estudante)}
-                      className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </button>
-                    {podeExportarRelatorio(estudante) && (
+                    {!isAdmin && (
+                      <button
+                        type="button"
+                        title="Mais informações"
+                        onClick={() => handleVerEstudante(estudante)}
+                        className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                    )}
+                    {!isAdmin && podeExportarRelatorio(estudante) && (
                       <button
                         type="button"
                         title="Exportar relatório"

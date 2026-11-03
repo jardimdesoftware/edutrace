@@ -302,7 +302,7 @@ describe('CaseStudiesService', () => {
       );
 
       await expect(
-        service.findOne('prof@example.com', requestOf(LEVELS.ADMIN)),
+        service.findOne('prof@example.com', requestOf(LEVELS.PROFISSIONAL_NAPNE)),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.caseStudy.findUnique).not.toHaveBeenCalled();
     });

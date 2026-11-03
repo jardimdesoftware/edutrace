@@ -187,12 +187,11 @@ describe('CommentsController', () => {
 
   describe('access levels', () => {
     it.each(['create', 'update'] as const)(
-      'should allow %s to every level except students',
+      'should allow %s to every professional level, not to the Administrator nor students',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
         expect(levels).toEqual([
-          LEVELS.ADMIN,
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
@@ -201,14 +200,13 @@ describe('CommentsController', () => {
       },
     );
 
-    it('should open findAllByIdUser to every level, relying on the ownership check', () => {
+    it('should open findAllByIdUser to every level except the Administrator, relying on the ownership check', () => {
       const levels = Reflect.getMetadata(
         ALLOW_LEVELS_KEY,
         controller.findAllByIdUser,
       );
 
       expect(levels).toEqual([
-        LEVELS.ADMIN,
         LEVELS.ALUNO_ESTUDANTE,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,

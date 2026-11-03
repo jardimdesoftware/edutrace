@@ -24,7 +24,6 @@ export const PROFESSIONAL_ROLES: readonly number[] = [
 ];
 
 export const STUDENT_RECORD_READERS: readonly number[] = [
-  LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
@@ -36,7 +35,6 @@ export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
 // Quem lê o estudo de caso de qualquer estudante. O estudante lê só o próprio, e
 // quem escreve é só o Professor do AEE (declarado nas rotas).
 export const CASE_STUDY_READERS: readonly number[] = [
-  LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
@@ -46,7 +44,6 @@ export const CASE_STUDY_READERS: readonly number[] = [
 // Quem lê os PAEE de qualquer estudante. O estudante lê só os próprios, e quem
 // escreve é só o Professor do AEE (declarado nas rotas).
 export const AEE_PLAN_READERS: readonly number[] = [
-  LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
@@ -56,7 +53,6 @@ export const AEE_PLAN_READERS: readonly number[] = [
 // Quem lê os registros do PEI de qualquer estudante. O estudante lê só os
 // próprios, e quem escreve é só o Profissional da Educação (declarado nas rotas).
 export const PEI_ENTRY_READERS: readonly number[] = [
-  LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_EDUCACAO,
   LEVELS.PROFISSIONAL_SAUDE,
   LEVELS.PROFISSIONAL_NAPNE,
@@ -82,7 +78,6 @@ export const PEDAGOGICAL_MANAGER_LEVELS: readonly number[] = [
 // pessoa que não usa o sistema. Quem não está na lista só lê o nome (menor
 // privilégio, ASVS 5.0 8.2.3).
 export const MANAGER_CONTACT_READERS: readonly number[] = [
-  LEVELS.ADMIN,
   LEVELS.PROFISSIONAL_NAPNE,
 ];
 

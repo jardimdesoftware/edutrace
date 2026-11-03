@@ -35,7 +35,8 @@ const EXTERNAL_BODY = {
   cpf: '01234567890',
 };
 
-const NOT_ADMIN_OR_NAPNE = [
+const NOT_NAPNE = [
+  ['Administrador', LEVELS.ADMIN],
   ['Profissional de Educação', LEVELS.PROFISSIONAL_EDUCACAO],
   ['Profissional de Saúde', LEVELS.PROFISSIONAL_SAUDE],
   ['Professor do AEE', LEVELS.PROFESSOR_AEE],
@@ -63,7 +64,7 @@ describe('responsável pedagógico, rotas de /students', () => {
   };
 
   beforeEach(async () => {
-    sessionLevel = LEVELS.ADMIN;
+    sessionLevel = LEVELS.PROFISSIONAL_NAPNE;
     studentsService = {
       findAll: jest.fn().mockResolvedValue([STUDENT]),
       findOne: jest.fn().mockResolvedValue(STUDENT),
@@ -121,7 +122,6 @@ describe('responsável pedagógico, rotas de /students', () => {
 
   describe('GET /students/pedagogical-manager-options', () => {
     it.each([
-      ['Administrador', LEVELS.ADMIN],
       ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
       [
         'NAPNE com Professor do AEE',
@@ -140,7 +140,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       },
     );
 
-    it.each(NOT_ADMIN_OR_NAPNE)(
+    it.each(NOT_NAPNE)(
       'should answer 403 to the %s',
       async (_, level) => {
         sessionLevel = level;
@@ -161,7 +161,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       expect(response.status).toBe(200);
       expect(studentsService.findOne).toHaveBeenCalledWith(
         'estudante@example.com',
-        [LEVELS.ADMIN],
+        [LEVELS.PROFISSIONAL_NAPNE],
       );
       expect(
         studentsService.findPedagogicalManagerOptions,
@@ -171,7 +171,6 @@ describe('responsável pedagógico, rotas de /students', () => {
 
   describe('PATCH /students/:email/pedagogical-manager', () => {
     it.each([
-      ['Administrador', LEVELS.ADMIN],
       ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
       [
         'NAPNE com Professor do AEE',
@@ -190,7 +189,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       );
     });
 
-    it.each(NOT_ADMIN_OR_NAPNE)(
+    it.each(NOT_NAPNE)(
       'should answer 403 to the %s',
       async (_, level) => {
         sessionLevel = level;
@@ -228,7 +227,7 @@ describe('responsável pedagógico, rotas de /students', () => {
       expect(studentsService.setPedagogicalManager).toHaveBeenCalledWith(
         'estudante@example.com',
         expect.objectContaining({ phone: '81999998888', cpf: '01234567890' }),
-        [LEVELS.ADMIN],
+        [LEVELS.PROFISSIONAL_NAPNE],
       );
     });
 
@@ -268,7 +267,7 @@ describe('responsável pedagógico, rotas de /students', () => {
         expect(studentsService.setPedagogicalManager).toHaveBeenCalledWith(
           'estudante@example.com',
           expect.objectContaining(body),
-          [LEVELS.ADMIN],
+          [LEVELS.PROFISSIONAL_NAPNE],
         );
       },
     );

@@ -116,13 +116,13 @@ describe('USER_WITH_MANAGER_CONTACT_SELECT', () => {
 
 describe('userSelectFor', () => {
   it.each([
-    ['Administrador', LEVELS.ADMIN],
     ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
   ])('should give the %s the select with the contact', (_, level) => {
     expect(userSelectFor([level])).toBe(USER_WITH_MANAGER_CONTACT_SELECT);
   });
 
   it.each([
+    ['Administrador', LEVELS.ADMIN],
     ['Profissional de Educação', LEVELS.PROFISSIONAL_EDUCACAO],
     ['Profissional de Saúde', LEVELS.PROFISSIONAL_SAUDE],
     ['Estudante', LEVELS.ALUNO_ESTUDANTE],

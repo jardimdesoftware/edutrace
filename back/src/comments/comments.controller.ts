@@ -23,7 +23,6 @@ export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
@@ -51,7 +50,6 @@ export class CommentsController {
   }
 
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
@@ -71,7 +69,6 @@ export class CommentsController {
   }
 
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,

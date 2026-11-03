@@ -128,19 +128,18 @@ describe('PlansEducationController', () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(null);
 
       expect(
-        await controller.findOne('admin@edutrace.com', request(LEVELS.ADMIN)),
+        await controller.findOne('admin@edutrace.com', request(LEVELS.PROFISSIONAL_NAPNE)),
       ).toBeNull();
     });
   });
 
   describe('access levels', () => {
     it.each(['findAll', 'findOne'] as const)(
-      'should allow %s to every level except students',
+      'should allow %s to every professional level, not to the Administrator nor students',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
         expect(levels).toEqual([
-          LEVELS.ADMIN,
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
           LEVELS.PROFISSIONAL_NAPNE,
@@ -169,10 +168,10 @@ describe('PlansEducationController', () => {
       expect(serviceStats.getStats).toHaveBeenCalledTimes(1);
     });
 
-    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+    it('should open only to the NAPNE, which leaves the Administrator, Education, Health and student levels with 403', () => {
       expect(
         Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.serviceStats),
-      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+      ).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
     });
 
     it('should expose GET service-stats', () => {
@@ -210,7 +209,7 @@ describe('PlansEducationController', () => {
       expect(result).toEqual(masked);
     });
 
-    it.each([LEVELS.ADMIN, LEVELS.PROFESSOR_AEE])(
+    it.each([LEVELS.PROFESSOR_AEE])(
       'should close the service on behalf of the level %s and mask the CPF',
       async (id_level) => {
         serviceQueue.close.mockResolvedValue(student);
@@ -233,21 +232,21 @@ describe('PlansEducationController', () => {
 
       const result = await controller.reopen(
         'luizin@hotmail.com',
-        request(LEVELS.ADMIN),
+        request(LEVELS.PROFISSIONAL_NAPNE),
       );
 
       expect(serviceQueue.reopen).toHaveBeenCalledWith('luizin@hotmail.com', [
-        LEVELS.ADMIN,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
       expect(result).toEqual(masked);
     });
 
     it.each([
       ['assume', [LEVELS.PROFESSOR_AEE]],
-      ['close', [LEVELS.ADMIN, LEVELS.PROFESSOR_AEE]],
+      ['close', [LEVELS.PROFESSOR_AEE]],
       [
         'reopen',
-        [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE],
+        [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE],
       ],
     ] as const)(
       'should open %s only to %j, which leaves the Education, Health, student and (except reopen) NAPNE levels with 403',
@@ -302,7 +301,7 @@ describe('PlansEducationController', () => {
       external_manager_cpf: '***.654.321-**',
     };
 
-    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])(
+    it.each([LEVELS.PROFISSIONAL_NAPNE])(
       'should ask the service for the level %s and mask both cpfs',
       async (level) => {
         jest
@@ -340,7 +339,7 @@ describe('PlansEducationController', () => {
 
       const found = await controller.findOne(
         'luizin@hotmail.com',
-        request(LEVELS.ADMIN),
+        request(LEVELS.PROFISSIONAL_NAPNE),
       );
 
       expect(JSON.stringify(found)).not.toContain('98765432100');
@@ -359,13 +358,13 @@ describe('PlansEducationController', () => {
       expect(await controller.pedagogicalManagerOptions()).toBe(options);
     });
 
-    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+    it('should open only to the NAPNE, which leaves the Administrator, Education, Health and student levels with 403', () => {
       expect(
         Reflect.getMetadata(
           ALLOW_LEVELS_KEY,
           controller.pedagogicalManagerOptions,
         ),
-      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+      ).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
     });
 
     it('should expose GET pedagogical-manager-options', () => {
@@ -423,10 +422,10 @@ describe('PlansEducationController', () => {
       });
     });
 
-    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+    it('should open only to the NAPNE, which leaves the Administrator, Education, Health and student levels with 403', () => {
       expect(
         Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.setPedagogicalManager),
-      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+      ).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
     });
 
     it('should expose PATCH :email/pedagogical-manager', () => {
