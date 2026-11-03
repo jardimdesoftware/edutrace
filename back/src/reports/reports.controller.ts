@@ -8,7 +8,6 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,

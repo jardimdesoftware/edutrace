@@ -46,11 +46,10 @@ describe('ReportsController', () => {
       expect(result).toEqual(mockReport);
     });
 
-    it('should allow the export to every level except students', () => {
+    it('should allow the export to every professional level, not to the Administrator nor students', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
 
       expect(levels).toEqual([
-        LEVELS.ADMIN,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
         LEVELS.PROFISSIONAL_NAPNE,
