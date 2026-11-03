@@ -26,7 +26,6 @@ function profissional(extra: Partial<ProfessionalLoad> = {}): ProfessionalLoad {
 
 describe('podeVerEstatisticas', () => {
   for (const [nivel, nome] of [
-    [ADMIN, 'Administrador'],
     [PROFISSIONAL_NAPNE, 'Profissional NAPNE'],
   ] as const) {
     it(`allows ${nome}`, () => {
@@ -35,6 +34,7 @@ describe('podeVerEstatisticas', () => {
   }
 
   for (const [nivel, nome] of [
+    [ADMIN, 'Administrador'],
     [PROFISSIONAL_EDUCACAO, 'Profissional da Educação'],
     [PROFISSIONAL_SAUDE, 'Profissional da Saúde'],
     [ESTUDANTE, 'Estudante'],
