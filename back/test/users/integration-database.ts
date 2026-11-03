@@ -25,10 +25,12 @@ function databaseNameOf(url: URL): string {
   }
 }
 
-// O spec de integração apaga a tabela User inteira. Recusa qualquer banco cujo
-// nome não termine em "_it", para que um INTEGRATION_DATABASE_URL apontado por
-// engano para o testdb, o banco de desenvolvimento ou o de produção não perca
-// os dados. As mensagens citam só o nome do banco: a URL carrega a senha.
+// Os specs de integração gravam e apagam dados no banco (cada um apaga as
+// contas do próprio domínio de e-mail), então o banco precisa ser descartável.
+// Recusa qualquer banco cujo nome não termine em "_it", para que um
+// INTEGRATION_DATABASE_URL apontado por engano para o testdb, o banco de
+// desenvolvimento ou o de produção não receba nem perca dados. As mensagens
+// citam só o nome do banco: a URL carrega a senha.
 export function requireIntegrationDatabaseUrl(url: string | undefined): string {
   if (!url || !url.trim()) {
     throw new Error('INTEGRATION_DATABASE_URL não está definida.');
@@ -44,7 +46,7 @@ export function requireIntegrationDatabaseUrl(url: string | undefined): string {
   const name = databaseNameOf(parsed);
   if (!INTEGRATION_DATABASE_NAME.test(name)) {
     throw new Error(
-      `INTEGRATION_DATABASE_URL aponta para o banco "${name}". O nome do banco precisa terminar em "_it", porque o spec apaga todos os usuários dele.`,
+      `INTEGRATION_DATABASE_URL aponta para o banco "${name}". O nome do banco precisa terminar em "_it", porque os specs de integração gravam e apagam dados nele.`,
     );
   }
 

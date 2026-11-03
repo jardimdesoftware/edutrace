@@ -2,18 +2,24 @@
 
 "use client";
 
-import { updateUser } from "@/api/user";
-import { ADMIN } from "@/consts";
+import { updateServiceCapacity, updateUser } from "@/api/user";
+import { ADMIN, PROFISSIONAL_NAPNE } from "@/consts";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
 import { exportStudentReportPdf } from "@/lib/exportStudentReport";
+import { errorAlertOptions } from "@/utils/errorAlert";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { canAccessPage } from "@/utils/pageAccess";
-import { listarUsuariosDaTabela, podeExportarRelatorio } from "@/utils/tabelaUsuarios";
+import {
+  listarUsuariosDaTabela,
+  podeExportarRelatorio,
+  substituirUsuario,
+} from "@/utils/tabelaUsuarios";
 import { Eye, FileDown, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import LimiteAtendimento from "./LimiteAtendimento";
 import Loading from "./Loading";
 
 export default function TabelaEstudantes() {
@@ -72,14 +78,8 @@ export default function TabelaEstudantes() {
     if (!confirmacao.isConfirmed) return;
 
     try {
-      await updateUser(estudante.email, novoNivel);
-      setStudents((prev) =>
-        prev
-          ? prev.map((e) =>
-              e.email === estudante.email ? { ...e, id_level: Number(novoNivel) } : e,
-            )
-          : prev,
-      );
+      const atualizado = await updateUser(estudante.email, novoNivel);
+      setStudents((prev) => prev && substituirUsuario(prev, atualizado));
       Swal.fire({
         icon: "success",
         title: "Nível de acesso atualizado com sucesso!",
@@ -89,11 +89,40 @@ export default function TabelaEstudantes() {
     } catch (error) {
       console.error(error);
       Swal.fire({
-        icon: "error",
-        title: "Falha ao atualizar o nível de acesso",
+        ...errorAlertOptions(
+          "Falha ao atualizar o nível de acesso",
+          error,
+          "Não foi possível atualizar o nível de acesso.",
+        ),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
       });
+    }
+  };
+
+  const handleAlterarLimite = async (estudante: StudentData, limite: number) => {
+    try {
+      const atualizado = await updateServiceCapacity(estudante.email, limite);
+      setStudents((prev) => prev && substituirUsuario(prev, atualizado));
+      Swal.fire({
+        icon: "success",
+        title: "Limite de atendimento atualizado com sucesso!",
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Ok",
+      });
+      return true;
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        ...errorAlertOptions(
+          "Falha ao atualizar o limite de atendimento",
+          error,
+          "Não foi possível atualizar o limite de atendimento.",
+        ),
+        confirmButtonColor: "#047857",
+        confirmButtonText: "Entendi",
+      });
+      return false;
     }
   };
 
@@ -176,6 +205,17 @@ export default function TabelaEstudantes() {
               ) : (
                 <p><span className="font-semibold">Nível de Acesso:</span> {getLevelName(estudante.id_level)}</p>
               )}
+              {isAdmin && estudante.id_level === PROFISSIONAL_NAPNE && (
+                <div>
+                  <span className="font-semibold">Limite de atendimento:</span>
+                  <LimiteAtendimento
+                    key={estudante.email}
+                    nome={estudante.full_name}
+                    limiteAtual={estudante.service_capacity}
+                    onSalvar={(limite) => handleAlterarLimite(estudante, limite)}
+                  />
+                </div>
+              )}
             </div>
             <div className="mt-3 flex gap-2">
               <button
@@ -210,6 +250,7 @@ export default function TabelaEstudantes() {
               <th className="p-3">E-mail</th>
               <th className="p-3">Responsável Pedagógico</th>
               <th className="p-3">Nível de Acesso</th>
+              {isAdmin && <th className="p-3">Limite de atendimento</th>}
               <th className="p-3"></th>
             </tr>
           </thead>
@@ -237,6 +278,18 @@ export default function TabelaEstudantes() {
                     getLevelName(estudante.id_level)
                   )}
                 </td>
+                {isAdmin && (
+                  <td className="p-3">
+                    {estudante.id_level === PROFISSIONAL_NAPNE && (
+                      <LimiteAtendimento
+                        key={estudante.email}
+                        nome={estudante.full_name}
+                        limiteAtual={estudante.service_capacity}
+                        onSalvar={(limite) => handleAlterarLimite(estudante, limite)}
+                      />
+                    )}
+                  </td>
+                )}
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-2">
                     <button

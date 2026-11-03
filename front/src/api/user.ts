@@ -1,3 +1,4 @@
+import type { StudentData } from "@/interfaces/StudentData";
 import { apiRequest } from "@/services/http";
 
 export async function getAllUsers() {
@@ -5,10 +6,20 @@ export async function getAllUsers() {
 }
 
 // vai dar certo 2
-export async function updateUser(email: string, id_level: string) {
+export async function updateUser(email: string, id_level: string): Promise<StudentData> {
   return apiRequest(`/users/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: { id_level: Number(id_level) },
+  });
+}
+
+export async function updateServiceCapacity(
+  email: string,
+  service_capacity: number,
+): Promise<StudentData> {
+  return apiRequest(`/users/${encodeURIComponent(email)}`, {
+    method: 'PATCH',
+    body: { service_capacity },
   });
 }
 

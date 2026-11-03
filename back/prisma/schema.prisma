@@ -12,6 +12,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ServiceStatus {
+  WAITING
+  IN_SERVICE
+  CLOSED
+}
+
 model User {
   id                      Int        @id @default(autoincrement())
   full_name               String
@@ -38,11 +44,23 @@ model User {
   updated_at              DateTime?  @updatedAt
   deleted_at              DateTime?
 
+  service_status       ServiceStatus?
+  queued_at            DateTime?
+  service_started_at   DateTime?
+  service_closed_at    DateTime?
+  service_capacity     Int?
+  napne_responsible_id Int?
+  napne_responsible    User?          @relation("NapneStudents", fields: [napne_responsible_id], references: [id], onDelete: SetNull)
+  napne_students       User[]         @relation("NapneStudents")
+
   id_level Int
   level    Level @relation(fields: [id_level], references: [id])
 
   id_current_phase Int
   current_phase    CurrentPhases @relation(fields: [id_current_phase], references: [id])
+
+  @@index([napne_responsible_id, service_status])
+  @@index([service_status, queued_at])
 }
 
 model Session {

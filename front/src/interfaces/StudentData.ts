@@ -1,3 +1,5 @@
+export type ServiceStatus = "WAITING" | "IN_SERVICE" | "CLOSED";
+
 export interface StudentData {
   id: number;
   full_name: string;
@@ -12,4 +14,10 @@ export interface StudentData {
   deleted_at: string | null;
   id_level: number;
   id_current_phase: number;
+  service_status?: ServiceStatus | null;
+  queued_at?: string | null;
+  service_started_at?: string | null;
+  service_closed_at?: string | null;
+  service_capacity?: number | null;
+  napne_responsible?: { id: number; full_name: string } | null;
 }
