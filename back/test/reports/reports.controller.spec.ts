@@ -8,7 +8,12 @@ describe('ReportsController', () => {
   let controller: ReportsController;
   let service: ReportsService;
 
-  const mockReport = { screening: null, plansEducation: null, caseStudy: null };
+  const mockReport = {
+    screening: null,
+    plansEducation: null,
+    caseStudy: null,
+    aeePlans: [],
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

@@ -29,6 +29,15 @@ export const CASE_STUDY_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_NAPNE,
 ];
 
+// Quem lê os PAEE de qualquer estudante. O estudante lê só os próprios, e quem
+// escreve é só o Profissional NAPNE (declarado nas rotas).
+export const AEE_PLAN_READERS: readonly number[] = [
+  LEVELS.ADMIN,
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_SAUDE,
+  LEVELS.PROFISSIONAL_NAPNE,
+];
+
 // Servidores que podem ser o responsável pedagógico de um estudante.
 export const PEDAGOGICAL_MANAGER_LEVELS: readonly number[] = [
   LEVELS.PROFISSIONAL_EDUCACAO,

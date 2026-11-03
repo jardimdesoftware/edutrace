@@ -1,4 +1,5 @@
 import {
+  AEE_PLAN_READERS,
   ANAMNESIS_READERS,
   CASE_STUDY_READERS,
   LEVELS,
@@ -58,6 +59,21 @@ describe('CASE_STUDY_READERS', () => {
 
   it('should not include the student level, which reads only his own', () => {
     expect(CASE_STUDY_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+  });
+});
+
+describe('AEE_PLAN_READERS', () => {
+  it('should list the Administrator, Education, Health and NAPNE levels as readers of the PAEE of any student', () => {
+    expect(AEE_PLAN_READERS).toEqual([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ]);
+  });
+
+  it('should not include the student level, which reads only his own', () => {
+    expect(AEE_PLAN_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
   });
 });
 

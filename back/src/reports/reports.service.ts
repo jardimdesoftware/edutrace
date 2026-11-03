@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
+import { AEE_PLAN_SECTIONS_SELECT } from 'src/aee-plans/aee-plan-select';
 import { CASE_STUDY_SECTIONS_SELECT } from 'src/case-studies/case-study-select';
 
-// O relatório traz a triagem, o PEI e o estudo de caso, só com os campos que os
-// formulários exibem. A anamnese não faz parte do relatório.
+// O relatório traz a triagem, o PEI, o estudo de caso e os PAEE, só com os
+// campos que os formulários exibem. A anamnese não faz parte do relatório.
 const REPORT_SCREENING_SELECT = {
   report: true,
   specific_need: true,
@@ -43,6 +44,17 @@ const REPORT_CASE_STUDY_SELECT = {
   student: { select: { course: true } },
 } satisfies Prisma.CaseStudySelect;
 
+// O período letivo, as seções do PAEE, o nome de quem o escreveu e o curso do
+// estudante. O autor e o estudante saem pelo select explícito: o User inteiro
+// traria o CPF, o e-mail e o hash da senha. Sem id nem datas, que o PDF não
+// exibe.
+const REPORT_AEE_PLAN_SELECT = {
+  semester: true,
+  ...AEE_PLAN_SECTIONS_SELECT,
+  author: { select: { full_name: true } },
+  student: { select: { course: true } },
+} satisfies Prisma.AeePlanSelect;
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -53,7 +65,7 @@ export class ReportsService {
   async findOne(email: string) {
     const student = await this.studentsService.findOneOrFail({ email });
 
-    const [screening, plansEducation, caseStudy] = await Promise.all([
+    const [screening, plansEducation, caseStudy, aeePlans] = await Promise.all([
       this.prisma.screening.findUnique({
         where: { email },
         select: REPORT_SCREENING_SELECT,
@@ -66,8 +78,13 @@ export class ReportsService {
         where: { id_student: student.id },
         select: REPORT_CASE_STUDY_SELECT,
       }),
+      this.prisma.aeePlan.findMany({
+        where: { id_student: student.id },
+        orderBy: { semester: 'desc' },
+        select: REPORT_AEE_PLAN_SELECT,
+      }),
     ]);
 
-    return { screening, plansEducation, caseStudy };
+    return { screening, plansEducation, caseStudy, aeePlans };
   }
 }

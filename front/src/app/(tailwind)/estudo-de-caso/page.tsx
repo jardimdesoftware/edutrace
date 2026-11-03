@@ -8,6 +8,14 @@ import AppLayout from '@/components/AppLayout';
 import EstudoDeCasoFormulario from '@/components/EstudoDeCasoFormulario';
 import EstudoDeCasoLeitura from '@/components/EstudoDeCasoLeitura';
 import Loading from '@/components/Loading';
+import {
+  BOTAO_PERIGO,
+  BOTAO_PRIMARIO,
+  BOTAO_SECUNDARIO,
+  COR_CANCELAR,
+  COR_CONFIRMAR,
+  COR_EXCLUIR,
+} from '@/components/form/botoes';
 import { createCaseStudy, deleteCaseStudy, updateCaseStudy } from '@/api/caseStudies';
 import { ESTUDANTE } from '@/consts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,17 +29,6 @@ import {
   formularioVazio,
   podeEditarEstudoDeCaso,
 } from '@/utils/estudoDeCaso';
-
-const COR_CONFIRMAR = '#047857';
-const COR_EXCLUIR = '#b91c1c';
-const COR_CANCELAR = '#6b7280';
-
-const BOTAO_PRIMARIO =
-  'inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2';
-const BOTAO_SECUNDARIO =
-  'inline-flex items-center gap-2 rounded-full border px-4 py-2 font-semibold text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600';
-const BOTAO_PERIGO =
-  'inline-flex items-center gap-2 rounded-full border border-red-300 px-4 py-2 font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600';
 
 export default function EstudoDeCasoPageWrapper() {
   return (

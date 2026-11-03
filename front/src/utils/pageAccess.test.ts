@@ -28,6 +28,7 @@ const MATRIZ: [string, number[]][] = [
   ["/pei", TODOS],
   ["/comentarios", TODOS],
   ["/estudo-de-caso", TODOS],
+  ["/paee", TODOS],
   [
     "/estudantes/visualizar",
     [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],

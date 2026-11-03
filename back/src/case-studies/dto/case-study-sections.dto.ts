@@ -1,16 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, Max, Min } from 'class-validator';
 import {
-  AGE_MAX,
   Flag,
-  GRADE_MAX_LENGTH,
   IsoDate,
   OmittableField,
-  OPINION_MAX_LENGTH,
   Section,
+  Text,
+} from 'src/common/dto-fields';
+import {
+  AGE_MAX,
+  GRADE_MAX_LENGTH,
+  OPINION_MAX_LENGTH,
   SHORT_TEXT_MAX_LENGTH,
   TEXT_MAX_LENGTH,
-  Text,
 } from './case-study-fields';
 
 // O curso vem do cadastro do estudante (User.course) e o professor do AEE é o

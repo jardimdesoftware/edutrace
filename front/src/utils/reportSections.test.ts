@@ -6,6 +6,7 @@ import { buildReportSections, relatorioVazio, reportFileName } from './reportSec
 type Screening = NonNullable<ReportsData['screening']>;
 type PlansEducation = NonNullable<ReportsData['plansEducation']>;
 type CaseStudyReport = NonNullable<ReportsData['caseStudy']>;
+type AeePlansReport = NonNullable<ReportsData['aeePlans']>;
 
 const screening = { report: 'Laudo' } as Screening;
 const plansEducation = { objectives: 'Objetivos' } as PlansEducation;
@@ -16,6 +17,35 @@ const caseStudy = {
   author: { id: 7, full_name: 'Marina Duarte' },
   student: { course: 'Informática' },
 } as unknown as CaseStudyReport;
+
+// O relatório traz o período, as seções, só o nome do autor e só o curso do
+// estudante.
+const aeePlans = [
+  {
+    semester: '2026.2',
+    identification: { subject: 'Matemática', weekly_hours: 4, enrolled_subjects: 'Matemática e Física' },
+    basis: 'Embasamento do segundo semestre',
+    has_diagnosis: true,
+    supports: { psychology: true, medical: true, medical_specialty: 'Neurologia', other: 'Monitoria' },
+    purpose: { systematic_follow_up: true, other: '' },
+    objectives: { general: 'Ampliar a autonomia', specific: '' },
+    evaluation_procedures: 'Registro semanal',
+    author: { full_name: 'Marina Duarte' },
+    student: { course: 'Informática' },
+  },
+  {
+    semester: '2026.1',
+    identification: { subject: 'Português', enrolled_subjects: '' },
+    basis: 'Embasamento do primeiro semestre',
+    has_diagnosis: false,
+    supports: {},
+    purpose: {},
+    objectives: {},
+    evaluation_procedures: '',
+    author: null,
+    student: { course: 'Informática' },
+  },
+] as unknown as AeePlansReport;
 
 const TITULO_PEI = 'PEI - Plano de Ensino Individualizado';
 const TITULOS_ESTUDO_DE_CASO = [
@@ -53,6 +83,14 @@ describe('relatorioVazio', () => {
     assert.equal(relatorioVazio({ screening: null, plansEducation: null, caseStudy }), false);
   });
 
+  it('is not empty with only the PAEE', () => {
+    assert.equal(relatorioVazio({ screening: null, plansEducation: null, aeePlans }), false);
+  });
+
+  it('is empty when the API sends an empty PAEE list', () => {
+    assert.equal(relatorioVazio({ screening: null, plansEducation: null, aeePlans: [] }), true);
+  });
+
   it('is not empty with only the screening', () => {
     assert.equal(relatorioVazio({ screening, plansEducation: null }), false);
   });
@@ -63,21 +101,104 @@ describe('relatorioVazio', () => {
 });
 
 describe('buildReportSections', () => {
-  it('lists the screening, the PEI and the case study, in this order and without the anamnesis', () => {
-    const titles = buildReportSections({ screening, plansEducation, caseStudy }).map((s) => s.title);
+  it('lists the screening, the PEI, the case study and the PAEE, in this order and without the anamnesis', () => {
+    const titles = buildReportSections({ screening, plansEducation, caseStudy, aeePlans }).map(
+      (s) => s.title,
+    );
 
-    assert.deepEqual(titles, ['Triagem', TITULO_PEI, ...TITULOS_ESTUDO_DE_CASO]);
+    assert.deepEqual(titles, [
+      'Triagem',
+      TITULO_PEI,
+      ...TITULOS_ESTUDO_DE_CASO,
+      'PAEE - 2026.2',
+      'PAEE - 2026.1',
+    ]);
   });
 
   it('marks a missing case study with a single section without rows, also when the API does not send it', () => {
     for (const data of [{ caseStudy: null }, {}]) {
       const sections = buildReportSections({ screening, plansEducation, ...data });
+      const estudo = sections.find((s) => s.title === 'Estudo de Caso');
+
+      assert.ok(estudo);
+      assert.equal(estudo.rows, null);
+      assert.deepEqual(
+        sections.map((s) => s.title),
+        ['Triagem', TITULO_PEI, 'Estudo de Caso', 'PAEE'],
+      );
+    }
+  });
+
+  it('marks a missing PAEE with a single section without rows, also when the list is empty or the API does not send it', () => {
+    for (const data of [{ aeePlans: [] }, {}]) {
+      const sections = buildReportSections({ screening, plansEducation, caseStudy, ...data });
       const last = sections[sections.length - 1];
 
-      assert.equal(last.title, 'Estudo de Caso');
+      assert.equal(last.title, 'PAEE');
       assert.equal(last.rows, null);
-      assert.equal(sections.length, 3);
+      assert.equal(sections.length, 2 + TITULOS_ESTUDO_DE_CASO.length + 1);
     }
+  });
+
+  it('prints one section per period with the course first and then the identification in the order of the screen', () => {
+    const report = { screening: null, plansEducation: null, aeePlans };
+
+    assert.deepEqual(rowsOf(report, 'PAEE - 2026.2')?.slice(0, 6), [
+      { label: 'Curso', value: 'Informática' },
+      { label: 'Disciplina', value: 'Matemática' },
+      { label: 'Período letivo', value: '2026.2' },
+      { label: 'Professor(a) do AEE', value: 'Marina Duarte' },
+      { label: 'Carga horária semanal do AEE', value: '4 horas' },
+      { label: 'Disciplinas em que o estudante está matriculado', value: 'Matemática e Física' },
+    ]);
+  });
+
+  it('prints "Não informado" for the course of a student without course, and no course row when the API does not send the student', () => {
+    const titulo = 'PAEE - 2026.2';
+    const [recente, anterior] = aeePlans;
+    const semCurso = { ...recente, student: { course: null } };
+    const semEstudante = { ...recente, student: undefined } as unknown as AeePlansReport[number];
+
+    assert.equal(
+      valueOf({ screening: null, plansEducation: null, aeePlans: [semCurso, anterior] }, titulo, 'Curso'),
+      'Não informado',
+    );
+    assert.equal(
+      rowsOf({ screening: null, plansEducation: null, aeePlans: [semEstudante, anterior] }, titulo)?.some(
+        (row) => row.label === 'Curso',
+      ),
+      false,
+    );
+  });
+
+  it('prints the diagnosis, the checked supports and purposes and the texts of the PAEE, with the labels of the screen', () => {
+    const report = { screening: null, plansEducation: null, aeePlans };
+    const titulo = 'PAEE - 2026.2';
+    const apoios = 'Outros apoios e serviços, internos e externos';
+
+    assert.equal(valueOf(report, titulo, 'Há laudo/diagnóstico?'), 'Sim');
+    assert.equal(valueOf(report, titulo, apoios), '• Psicologia\n• Área médica');
+    assert.equal(valueOf(report, titulo, `${apoios}: especialidade`), 'Neurologia');
+    assert.equal(valueOf(report, titulo, `${apoios}: outros`), 'Monitoria');
+    assert.equal(
+      valueOf(report, titulo, 'Finalidade do AEE'),
+      '• Acompanhamento sistemático do estudante',
+    );
+    assert.equal(valueOf(report, titulo, 'Objetivo geral do AEE'), 'Ampliar a autonomia');
+    assert.equal(valueOf(report, titulo, 'Objetivos específicos do AEE'), 'Não informado');
+  });
+
+  it('prints "Não informado" for the author and the weekly hours of a PAEE that lacks them', () => {
+    const report = { screening: null, plansEducation: null, aeePlans };
+    const titulo = 'PAEE - 2026.1';
+
+    assert.equal(valueOf(report, titulo, 'Professor(a) do AEE'), 'Não informado');
+    assert.equal(valueOf(report, titulo, 'Carga horária semanal do AEE'), 'Não informado');
+    assert.equal(valueOf(report, titulo, 'Há laudo/diagnóstico?'), 'Não');
+    assert.equal(
+      valueOf(report, titulo, 'Outros apoios e serviços, internos e externos'),
+      'Nenhuma opção marcada',
+    );
   });
 
   it('prints the identification of the case study with the author as the AEE teacher', () => {

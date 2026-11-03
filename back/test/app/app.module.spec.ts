@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { AeePlansModule } from 'src/aee-plans/aee-plans.module';
 import { AppController } from 'src/app.controller';
 import { AppModule } from 'src/app.module';
 import { AppService } from 'src/app.service';
+import { CaseStudiesModule } from 'src/case-studies/case-studies.module';
 import { PrismaService } from 'src/database/prisma.service';
 import { APP_GUARD } from '@nestjs/core';
 import { getOptionsToken } from '@nestjs/throttler';
@@ -32,6 +34,17 @@ describe('AppModule', () => {
   it('should have App Service defined', () => {
     const service = module.get<AppService>(AppService);
     expect(service).toBeDefined();
+  });
+
+  // Um módulo que falta nos imports do AppModule some da API em silêncio: os
+  // testes de cada módulo o montam sozinho e passam, mas as rotas respondem 404.
+  it.each([
+    ['CaseStudiesModule', CaseStudiesModule],
+    ['AeePlansModule', AeePlansModule],
+  ])('should import the %s', (_name, importedModule) => {
+    const imports = Reflect.getMetadata('imports', AppModule) as unknown[];
+
+    expect(imports).toContain(importedModule);
   });
 
   // O Nest executa os guards globais na ordem em que são registrados: o
