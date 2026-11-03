@@ -73,6 +73,8 @@ sudo apt-get update && sudo apt-get install k6
    BASE_URL=http://localhost:3000
    ADMIN_EMAIL=seu-admin@email.com
    ADMIN_PASSWORD=suaSenha123
+   NAPNE_EMAIL=seu-napne@email.com
+   NAPNE_PASSWORD=suaSenha123
    USER_EMAIL=usuario@email.com
    USER_PASSWORD=suaSenha123
    TEST_STUDENT_EMAIL=estudante-existente@email.com
@@ -139,8 +141,8 @@ k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=..
 # Screenings
 k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... k6/tests/endpoints/screenings.test.js
 
-# Anamnesis
-k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... k6/tests/endpoints/anamnesis.test.js
+# Anamnesis (o cadastro do estudante usa o admin; as rotas de anamnese usam o Profissional NAPNE)
+k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... -e NAPNE_EMAIL=... -e NAPNE_PASSWORD=... k6/tests/endpoints/anamnesis.test.js
 
 # Plans Education
 k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... k6/tests/endpoints/plans-education.test.js
@@ -173,6 +175,8 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 | `BASE_URL`          | URL base da API                              | `http://localhost:3000`   |
 | `ADMIN_EMAIL`       | Email do usuário administrador               | `admin@edutrace.com`      |
 | `ADMIN_PASSWORD`    | Senha do administrador                       | `senhaSegura123`          |
+| `NAPNE_EMAIL`       | Email do Profissional NAPNE (`id_level: 5`)  | `napne@edutrace.com`      |
+| `NAPNE_PASSWORD`    | Senha do Profissional NAPNE                  | `senhaSegura123`          |
 | `USER_EMAIL`        | Email de usuário comum (não-admin)           | `usuario@edutrace.com`    |
 | `USER_PASSWORD`     | Senha do usuário comum                       | `senhaSegura123`          |
 | `TEST_STUDENT_EMAIL`| Email de estudante com dados no banco        | `estudante@edutrace.com`  |
@@ -181,7 +185,7 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 
 ## ⚠️ Observações Importantes
 
-1. **Triagem, anamnese e PEI**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail e matrícula (`enrollment_number`) únicos por iteração, mais o curso (`course`), e o removem no fim. O cadastro de estudante exige os dois campos e responde 400 sem eles; a matrícula vem de `helpers/enrollment.js`, só com letras maiúsculas e dígitos e no máximo 30 caracteres, e o CPF de `helpers/cpf.js`. O `POST /anamnesis` também atualiza `id_current_phase` do estudante.
+1. **Triagem, anamnese e PEI**: a API só aceita ficha de estudante cadastrado (`id_level` 2) e responde 404 para outro titular. Os testes de endpoint cadastram um estudante com e-mail e matrícula (`enrollment_number`) únicos por iteração, mais o curso (`course`), e o removem no fim. O cadastro de estudante exige os dois campos e responde 400 sem eles; a matrícula vem de `helpers/enrollment.js`, só com letras maiúsculas e dígitos e no máximo 30 caracteres, e o CPF de `helpers/cpf.js`. O `POST /anamnesis` também atualiza `id_current_phase` do estudante. Só o Profissional NAPNE (`id_level` 5) acessa as rotas de anamnese (o administrador recebe 403), então `anamnesis.test.js` faz login com `NAPNE_EMAIL` e `NAPNE_PASSWORD`, uma conta que precisa existir com a senha já definida, e usa o administrador só para cadastrar e remover o estudante.
 
 2. **Users - Criação**: Apenas admins (`id_level: 1`) podem criar usuários. O teste `users.test.js` usa as credenciais de admin.
 

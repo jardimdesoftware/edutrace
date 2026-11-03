@@ -582,33 +582,32 @@ describe('AnamnesisController', () => {
   });
 
   describe('access levels', () => {
-    it('should allow listing all records to every level except students', () => {
-      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findAll);
-
-      expect(levels).toEqual([
-        LEVELS.ADMIN,
-        LEVELS.PROFISSIONAL_EDUCACAO,
-        LEVELS.PROFISSIONAL_SAUDE,
-      ]);
-    });
-
-    it('should open findOne to the four levels, relying on the ownership check', () => {
-      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
-
-      expect(levels).toEqual([
-        LEVELS.ADMIN,
-        LEVELS.ALUNO_ESTUDANTE,
-        LEVELS.PROFISSIONAL_EDUCACAO,
-        LEVELS.PROFISSIONAL_SAUDE,
-      ]);
-    });
-
-    it.each(['create', 'update', 'remove'] as const)(
-      'should allow %s only to the administrator and the health professional',
+    it.each(['create', 'findAll', 'update', 'remove'] as const)(
+      'should allow %s only to the NAPNE professional',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
-        expect(levels).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE]);
+        expect(levels).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
+      },
+    );
+
+    it('should open findOne to the student and the NAPNE professional, relying on the ownership check', () => {
+      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
+
+      expect(levels).toEqual([
+        LEVELS.ALUNO_ESTUDANTE,
+        LEVELS.PROFISSIONAL_NAPNE,
+      ]);
+    });
+
+    it.each(['create', 'findAll', 'findOne', 'update', 'remove'] as const)(
+      'should deny %s to the administrator, the education and the health professionals',
+      (route) => {
+        const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
+
+        expect(levels).not.toContain(LEVELS.ADMIN);
+        expect(levels).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
+        expect(levels).not.toContain(LEVELS.PROFISSIONAL_SAUDE);
       },
     );
   });
