@@ -93,6 +93,7 @@ describe('StudentsService', () => {
       expect(prisma.user.findMany).toHaveBeenCalledWith({
         where: {
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
         },
         select: PUBLIC_USER_SELECT,
       });
@@ -107,7 +108,7 @@ describe('StudentsService', () => {
         await service.findAll([level]);
 
         expect(prisma.user.findMany).toHaveBeenCalledWith({
-          where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+          where: { roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
           select: USER_WITH_MANAGER_CONTACT_SELECT,
         });
       },
@@ -126,7 +127,7 @@ describe('StudentsService', () => {
         await service.findAll([level]);
 
         expect(prisma.user.findMany).toHaveBeenCalledWith({
-          where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+          where: { roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
           select: PUBLIC_USER_SELECT,
         });
       },
@@ -153,6 +154,7 @@ describe('StudentsService', () => {
         where: {
           email: 'luizin@hotmail.com',
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
         },
         select: PUBLIC_USER_SELECT,
       });
@@ -201,7 +203,7 @@ describe('StudentsService', () => {
           email: 'estudante@example.com',
         });
         expect(prisma.user.findFirst).toHaveBeenCalledWith({
-          where: { ...where, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+          where: { ...where, roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
           select: { id: true, email: true },
         });
       },
@@ -232,7 +234,7 @@ describe('StudentsService', () => {
         'b@example.com',
       ]);
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+        where: { roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
         select: { email: true },
       });
     });

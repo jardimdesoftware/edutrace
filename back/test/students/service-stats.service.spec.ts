@@ -74,7 +74,7 @@ describe('ServiceStatsService', () => {
 
       expect(prisma.user.groupBy).toHaveBeenCalledWith({
         by: ['service_status'],
-        where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
+        where: { roles: { has: LEVELS.ALUNO_ESTUDANTE }, deleted_at: null },
         _count: { _all: true },
       });
     });
@@ -135,7 +135,7 @@ describe('ServiceStatsService', () => {
       await service.getStats();
 
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { roles: { has: LEVELS.PROFESSOR_AEE } },
+        where: { roles: { has: LEVELS.PROFESSOR_AEE }, deleted_at: null },
         orderBy: [{ full_name: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
@@ -177,6 +177,7 @@ describe('ServiceStatsService', () => {
         _min: { queued_at: true },
         where: {
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
+          deleted_at: null,
           service_status: ServiceStatus.WAITING,
         },
       });
