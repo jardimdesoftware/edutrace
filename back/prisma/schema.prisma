@@ -25,7 +25,6 @@ model User {
   email                   String     @unique
   password                String
   affliation              String?
-  pedagogical_manager     String?
   password_reset_token    String?
   password_reset_expires  DateTime?
   password_reset_attempts Int        @default(0)
@@ -53,6 +52,14 @@ model User {
   napne_responsible    User?          @relation("NapneStudents", fields: [napne_responsible_id], references: [id], onDelete: SetNull)
   napne_students       User[]         @relation("NapneStudents")
 
+  pedagogical_manager_id     Int?
+  pedagogical_manager        User?   @relation("PedagogicalManager", fields: [pedagogical_manager_id], references: [id], onDelete: SetNull)
+  managed_students           User[]  @relation("PedagogicalManager")
+  external_manager_name      String?
+  external_manager_phone     String?
+  external_manager_cpf       String?
+  pedagogical_manager_legacy String? @ignore
+
   id_level Int
   level    Level @relation(fields: [id_level], references: [id])
 
@@ -61,6 +68,7 @@ model User {
 
   @@index([napne_responsible_id, service_status])
   @@index([service_status, queued_at])
+  @@index([pedagogical_manager_id])
 }
 
 model Session {

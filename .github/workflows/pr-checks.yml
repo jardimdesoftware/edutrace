@@ -366,6 +366,60 @@ jobs:
 
           echo "OK: a migration coloca o estudante existente na fila como WAITING com queued_at igual ao created_at e não toca no profissional."
 
+      # A migration do responsável pedagógico RENOMEIA a coluna de texto
+      # User.pedagogical_manager para pedagogical_manager_legacy, porque os
+      # valores já gravados não têm como virar um vínculo e um DROP COLUMN os
+      # apagaria sem volta. O banco do job nasce vazio, então no migrate deploy
+      # não há valor para perder, e um DROP COLUMN seguido de ADD COLUMN no lugar
+      # do RENAME passaria despercebido. Este passo monta o caso real num
+      # edutrace_legacy à parte: aplica as migrations anteriores a ela, insere um
+      # estudante com o texto livre 'Fulano', e só então aplica a migration. O
+      # texto precisa estar em pedagogical_manager_legacy, e a coluna
+      # pedagogical_manager, que agora é só o nome da relação no Prisma, não pode
+      # existir no banco.
+      - name: Verificar que a migration do responsável pedagógico preserva o texto antigo
+        working-directory: ./back
+        run: |
+          vinculo=20261016150000_link_pedagogical_manager
+          legacy_url=postgresql://test:test@localhost:5432/edutrace_legacy
+          email=estudante.legado@example.test
+
+          colunas() {
+            psql "$legacy_url" -tA -c "SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'User' AND column_name = '$1'"
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_legacy'
+
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$vinculo" ]; then
+              break
+            fi
+            if ! psql "$legacy_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou ao ser aplicada antes do texto do responsável pedagógico."
+              exit 1
+            fi
+          done
+
+          psql "$legacy_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"Level\" (id, name, updated_at) VALUES (2, 'Estudante/Família', now()); INSERT INTO \"CurrentPhases\" (id, name, updated_at) VALUES (1, 'Triagem', now()); INSERT INTO \"User\" (full_name, cpf, email, password, pedagogical_manager, id_level, id_current_phase, service_status, queued_at, updated_at) VALUES ('Estudante antigo', '11111111111', '$email', 'x', 'Fulano', 2, 1, 'WAITING', now(), now())"
+
+          if ! psql "$legacy_url" -q -v ON_ERROR_STOP=1 -f "prisma/migrations/$vinculo/migration.sql" > /dev/null; then
+            echo "ERRO: a migration $vinculo falhou num banco que já tem estudante com responsável pedagógico em texto."
+            exit 1
+          fi
+
+          legado=$(psql "$legacy_url" -tA -c "SELECT pedagogical_manager_legacy FROM \"User\" WHERE email = '$email'")
+          if [ "$legado" != "Fulano" ]; then
+            echo "ERRO: pedagogical_manager_legacy terminou como '$legado'; o esperado é 'Fulano', o texto que o estudante já tinha."
+            exit 1
+          fi
+          if [ "$(colunas pedagogical_manager)" != "0" ]; then
+            echo "ERRO: a coluna pedagogical_manager continua no banco; a migration devia renomeá-la para pedagogical_manager_legacy."
+            exit 1
+          fi
+
+          echo "OK: a migration preserva em pedagogical_manager_legacy o texto do responsável pedagógico que o estudante já tinha e remove a coluna antiga."
+
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------
 # --------------------------------------------------------------------

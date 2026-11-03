@@ -21,6 +21,16 @@ const CLEARED = {
   napne_responsible_id: null,
 };
 
+// O responsável pedagógico (servidor ou pessoa externa) é dado do estudante.
+// O telefone e o CPF do externo são dados de terceiro, e não ficam numa conta
+// que deixou de ser estudante.
+const MANAGER_CLEARED = {
+  pedagogical_manager_id: null,
+  external_manager_name: null,
+  external_manager_phone: null,
+  external_manager_cpf: null,
+};
+
 const BUSY_NAPNE_MESSAGE =
   'Encerre os atendimentos do Profissional NAPNE antes de trocar o nível ou excluir a conta.';
 
@@ -29,7 +39,12 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
   let prisma: { user: { create: jest.Mock }; $transaction: jest.Mock };
   let tx: {
     $queryRaw: jest.Mock;
-    user: { update: jest.Mock; count: jest.Mock; delete: jest.Mock };
+    user: {
+      update: jest.Mock;
+      updateMany: jest.Mock;
+      count: jest.Mock;
+      delete: jest.Mock;
+    };
   };
   let sessions: { revokeAllFromUser: jest.Mock };
   let events: string[];
@@ -54,6 +69,7 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
           events.push('update');
           return Promise.resolve({ id: 7 });
         }),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         count: jest.fn().mockResolvedValue(0),
         delete: jest.fn().mockResolvedValue({ id: 7 }),
       },
@@ -190,6 +206,184 @@ describe('UsersService, fila de atendimento do NAPNE', () => {
       });
 
       expect(updateData()).toMatchObject({ ...CLEARED, service_capacity: 3 });
+    });
+  });
+
+  describe('update, responsável pedagógico do estudante que deixa de ser estudante', () => {
+    it.each([
+      LEVELS.ADMIN,
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+    ])(
+      'should clear the server link and the three external fields, in the same write that clears the queue, when the student becomes the level %s',
+      async (to) => {
+        lockedAccount(LEVELS.ALUNO_ESTUDANTE);
+
+        await service.update('novo@test.com', { id_level: to });
+
+        expect(tx.user.update).toHaveBeenCalledTimes(1);
+        expect(updateData()).toMatchObject({ ...CLEARED, ...MANAGER_CLEARED });
+      },
+    );
+
+    it('should keep the matrícula and the course while clearing the manager', async () => {
+      lockedAccount(LEVELS.ALUNO_ESTUDANTE);
+
+      await service.update('novo@test.com', {
+        id_level: LEVELS.PROFISSIONAL_SAUDE,
+      });
+
+      expect(updateData()).toMatchObject(MANAGER_CLEARED);
+      expect(updateData().enrollment_number).toBeUndefined();
+      expect(updateData().course).toBeUndefined();
+    });
+
+    it.each([
+      [
+        'the level sent is the one the student already has',
+        { id_level: LEVELS.ALUNO_ESTUDANTE },
+      ],
+      ['the request has no level', { full_name: 'Outro nome' }],
+    ])('should leave the manager alone when %s', async (_, dto) => {
+      lockedAccount(LEVELS.ALUNO_ESTUDANTE);
+
+      await service.update('novo@test.com', dto);
+
+      for (const field of Object.keys(MANAGER_CLEARED)) {
+        expect(updateData()).not.toHaveProperty(field);
+      }
+    });
+
+    it.each([
+      [LEVELS.ADMIN, LEVELS.ALUNO_ESTUDANTE],
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.ALUNO_ESTUDANTE],
+      [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_EDUCACAO],
+    ])(
+      'should not write the student manager fields when the level %s becomes %s',
+      async (from, to) => {
+        lockedAccount(from);
+
+        await service.update('novo@test.com', { id_level: to });
+
+        for (const field of Object.keys(MANAGER_CLEARED)) {
+          expect(updateData()).not.toHaveProperty(field);
+        }
+      },
+    );
+  });
+
+  // O servidor que deixa os níveis 3 e 5 não pode continuar como responsável
+  // pedagógico. A limpeza roda na transação do update, com a linha dele já
+  // travada, para que um vínculo gravado ao mesmo tempo não escape dela.
+  describe('update, estudantes do responsável pedagógico', () => {
+    const CLEAR_LINKS = {
+      where: { pedagogical_manager_id: 7 },
+      data: { pedagogical_manager_id: null },
+    };
+
+    it.each([
+      ['Profissional de Educação', LEVELS.PROFISSIONAL_EDUCACAO],
+      ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
+    ])(
+      'should unlink the students when the %s leaves the manager levels',
+      async (_, from) => {
+        lockedAccount(from);
+
+        await service.update('novo@test.com', {
+          id_level: LEVELS.PROFISSIONAL_SAUDE,
+        });
+
+        expect(tx.user.updateMany).toHaveBeenCalledTimes(1);
+        expect(tx.user.updateMany).toHaveBeenCalledWith(CLEAR_LINKS);
+      },
+    );
+
+    it.each([LEVELS.ADMIN, LEVELS.ALUNO_ESTUDANTE])(
+      'should unlink the students when the Education professional becomes the level %s',
+      async (to) => {
+        lockedAccount(LEVELS.PROFISSIONAL_EDUCACAO);
+
+        await service.update('novo@test.com', { id_level: to });
+
+        expect(tx.user.updateMany).toHaveBeenCalledWith(CLEAR_LINKS);
+      },
+    );
+
+    it('should unlink the students before updating the account, inside the transaction', async () => {
+      lockedAccount(LEVELS.PROFISSIONAL_EDUCACAO);
+
+      await service.update('novo@test.com', {
+        id_level: LEVELS.PROFISSIONAL_SAUDE,
+      });
+
+      expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        tx.user.updateMany.mock.invocationCallOrder[0],
+      );
+      expect(tx.user.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
+        tx.user.update.mock.invocationCallOrder[0],
+      );
+    });
+
+    it.each([
+      [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE],
+      [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFISSIONAL_EDUCACAO],
+    ])(
+      'should keep the students linked when the level %s changes to %s, which is still a manager level',
+      async (from, to) => {
+        lockedAccount(from);
+
+        await service.update('novo@test.com', { id_level: to });
+
+        expect(tx.user.updateMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      [
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        { id_level: LEVELS.PROFISSIONAL_EDUCACAO },
+      ],
+      [LEVELS.PROFISSIONAL_EDUCACAO, { full_name: 'Outro nome' }],
+      [LEVELS.PROFISSIONAL_NAPNE, { id_level: LEVELS.PROFISSIONAL_NAPNE }],
+    ])(
+      'should keep the students linked when the level %s does not change',
+      async (current, dto) => {
+        lockedAccount(current);
+
+        await service.update('novo@test.com', dto);
+
+        expect(tx.user.updateMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      [LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO],
+      [LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_NAPNE],
+      [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_EDUCACAO],
+      [LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE],
+    ])(
+      'should not touch any student when the level %s changes to %s',
+      async (from, to) => {
+        lockedAccount(from);
+
+        await service.update('novo@test.com', { id_level: to });
+
+        expect(tx.user.updateMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should unlink nothing when a NAPNE with students in service is refused', async () => {
+      lockedAccount(LEVELS.PROFISSIONAL_NAPNE);
+      tx.user.count.mockResolvedValue(2);
+
+      await expect(
+        service.update('novo@test.com', {
+          id_level: LEVELS.PROFISSIONAL_SAUDE,
+        }),
+      ).rejects.toThrow(new ConflictException(BUSY_NAPNE_MESSAGE));
+
+      expect(tx.user.updateMany).not.toHaveBeenCalled();
     });
   });
 

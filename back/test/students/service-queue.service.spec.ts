@@ -81,7 +81,7 @@ describe('ServiceQueueService', () => {
     it.each([
       ['assume', () => service.assume(EMAIL, NAPNE_ID)],
       ['close', () => service.close(EMAIL, { sub: 1, id_level: LEVELS.ADMIN })],
-      ['reopen', () => service.reopen(EMAIL)],
+      ['reopen', () => service.reopen(EMAIL, LEVELS.ADMIN)],
     ])('should answer 404 from %s when the student is gone', async (_, run) => {
       await expect(run()).rejects.toThrow(
         new NotFoundException('Estudante não encontrado'),
@@ -141,9 +141,12 @@ describe('ServiceQueueService', () => {
       });
     });
 
-    it('should return the public record of the student', async () => {
+    it('should return the record of the student read for the NAPNE level, which the transaction proved', async () => {
       await expect(service.assume(EMAIL, NAPNE_ID)).resolves.toBe(STUDENT);
-      expect(students.findOne).toHaveBeenCalledWith(EMAIL);
+      expect(students.findOne).toHaveBeenCalledWith(
+        EMAIL,
+        LEVELS.PROFISSIONAL_NAPNE,
+      );
     });
 
     it('should use the default isolation level of the transaction', async () => {
@@ -296,9 +299,15 @@ describe('ServiceQueueService', () => {
       expect(data).not.toHaveProperty('service_started_at');
     });
 
-    it('should return the public record of the student', async () => {
+    it('should return the record of the student read for the level of who closes', async () => {
       await expect(service.close(EMAIL, admin)).resolves.toBe(STUDENT);
-      expect(students.findOne).toHaveBeenCalledWith(EMAIL);
+      expect(students.findOne).toHaveBeenCalledWith(EMAIL, LEVELS.ADMIN);
+
+      await service.close(EMAIL, responsible);
+      expect(students.findOne).toHaveBeenLastCalledWith(
+        EMAIL,
+        LEVELS.PROFISSIONAL_NAPNE,
+      );
     });
 
     it.each([ServiceStatus.WAITING, ServiceStatus.CLOSED])(
@@ -343,7 +352,7 @@ describe('ServiceQueueService', () => {
 
   describe('reopen', () => {
     it('should send a closed student back to the end of the queue', async () => {
-      await service.reopen(EMAIL);
+      await service.reopen(EMAIL, LEVELS.ADMIN);
 
       expect(prisma.user.updateMany).toHaveBeenCalledWith({
         where: {
@@ -361,10 +370,13 @@ describe('ServiceQueueService', () => {
       });
     });
 
-    it('should return the public record of the student', async () => {
-      await expect(service.reopen(EMAIL)).resolves.toBe(STUDENT);
-      expect(students.findOne).toHaveBeenCalledWith(EMAIL);
-    });
+    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])(
+      'should return the record of the student read for the level %s of who reopens',
+      async (level) => {
+        await expect(service.reopen(EMAIL, level)).resolves.toBe(STUDENT);
+        expect(students.findOne).toHaveBeenCalledWith(EMAIL, level);
+      },
+    );
 
     it.each([ServiceStatus.WAITING, ServiceStatus.IN_SERVICE])(
       'should answer 409 when the student is %s',
@@ -372,7 +384,7 @@ describe('ServiceQueueService', () => {
         prisma.user.updateMany.mockResolvedValue({ count: 0 });
         prisma.user.findFirst.mockResolvedValue({ service_status });
 
-        await expect(service.reopen(EMAIL)).rejects.toThrow(
+        await expect(service.reopen(EMAIL, LEVELS.ADMIN)).rejects.toThrow(
           new ConflictException('O estudante não está encerrado.'),
         );
       },
@@ -382,7 +394,7 @@ describe('ServiceQueueService', () => {
       prisma.user.updateMany.mockResolvedValue({ count: 0 });
       prisma.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.reopen(EMAIL)).rejects.toThrow(
+      await expect(service.reopen(EMAIL, LEVELS.ADMIN)).rejects.toThrow(
         new NotFoundException('Estudante não encontrado'),
       );
     });

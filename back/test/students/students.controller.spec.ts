@@ -6,12 +6,16 @@ import {
   PATH_METADATA,
 } from '@nestjs/common/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { SetPedagogicalManagerDto } from 'src/students/dto/set-pedagogical-manager.dto';
 import { ServiceQueueService } from 'src/students/service-queue.service';
 import { ServiceStatsService } from 'src/students/service-stats.service';
 import { StudentsController } from 'src/students/students.controller';
 import { StudentsService } from 'src/students/students.service';
 import { LEVELS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
+
+const request = (id_level: number) =>
+  ({ user: { sub: 9, id_level } }) as AuthenticatedRequest;
 
 describe('PlansEducationController', () => {
   let controller: StudentsController;
@@ -32,6 +36,8 @@ describe('PlansEducationController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            findPedagogicalManagerOptions: jest.fn(),
+            setPedagogicalManager: jest.fn(),
           },
         },
         { provide: ServiceQueueService, useValue: serviceQueue },
@@ -56,7 +62,7 @@ describe('PlansEducationController', () => {
           cpf: '12345678910',
           email: 'luizin@hotmail.com',
           affliation: 'Filiação',
-          pedagogical_manager: 'Luizin',
+          pedagogical_manager: { id: 9, full_name: 'Ana' },
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
@@ -71,7 +77,7 @@ describe('PlansEducationController', () => {
           cpf: '12345678910',
           email: 'luizin@hotmail.com',
           affliation: 'Filiação',
-          pedagogical_manager: 'Luizin',
+          pedagogical_manager: { id: 9, full_name: 'Ana' },
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
@@ -88,8 +94,10 @@ describe('PlansEducationController', () => {
         cpf: '***.456.789-**',
       }));
 
-      expect(await controller.findAll()).toEqual(masked);
-      expect(service.findAll).toHaveBeenCalled();
+      expect(
+        await controller.findAll(request(LEVELS.PROFISSIONAL_SAUDE)),
+      ).toEqual(masked);
+      expect(service.findAll).toHaveBeenCalledWith(LEVELS.PROFISSIONAL_SAUDE);
     });
   });
 
@@ -104,17 +112,27 @@ describe('PlansEducationController', () => {
       };
       jest.spyOn(service, 'findOne').mockResolvedValue(student as never);
 
-      expect(await controller.findOne('luizin@hotmail.com')).toEqual({
+      expect(
+        await controller.findOne(
+          'luizin@hotmail.com',
+          request(LEVELS.PROFISSIONAL_SAUDE),
+        ),
+      ).toEqual({
         ...student,
         cpf: '***.456.789-**',
       });
-      expect(service.findOne).toHaveBeenCalledWith('luizin@hotmail.com');
+      expect(service.findOne).toHaveBeenCalledWith(
+        'luizin@hotmail.com',
+        LEVELS.PROFISSIONAL_SAUDE,
+      );
     });
 
     it('should return null when the email is not a student', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(null);
 
-      expect(await controller.findOne('admin@edutrace.com')).toBeNull();
+      expect(
+        await controller.findOne('admin@edutrace.com', request(LEVELS.ADMIN)),
+      ).toBeNull();
     });
   });
 
@@ -178,9 +196,6 @@ describe('PlansEducationController', () => {
       id_level: 2,
     };
     const masked = { ...student, cpf: '***.456.789-**' };
-    const request = (id_level: number) =>
-      ({ user: { sub: 9, id_level } }) as AuthenticatedRequest;
-
     it('should assume the student for the NAPNE of the session and mask the CPF', async () => {
       serviceQueue.assume.mockResolvedValue(student);
 
@@ -214,9 +229,15 @@ describe('PlansEducationController', () => {
     it('should reopen the service and mask the CPF', async () => {
       serviceQueue.reopen.mockResolvedValue(student);
 
-      const result = await controller.reopen('luizin@hotmail.com');
+      const result = await controller.reopen(
+        'luizin@hotmail.com',
+        request(LEVELS.ADMIN),
+      );
 
-      expect(serviceQueue.reopen).toHaveBeenCalledWith('luizin@hotmail.com');
+      expect(serviceQueue.reopen).toHaveBeenCalledWith(
+        'luizin@hotmail.com',
+        LEVELS.ADMIN,
+      );
       expect(result).toEqual(masked);
     });
 
@@ -227,9 +248,9 @@ describe('PlansEducationController', () => {
     ] as const)(
       'should open %s only to %j, which leaves the Education, Health and student levels with 403',
       (route, levels) => {
-        expect(Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route])).toEqual(
-          levels,
-        );
+        expect(
+          Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]),
+        ).toEqual(levels);
       },
     );
 
@@ -254,5 +275,173 @@ describe('PlansEducationController', () => {
         );
       },
     );
+  });
+
+  // A decisão de quem lê o telefone e o CPF do responsável externo é do select
+  // que o serviço usa (userSelectFor). O controller só repassa o nível de quem
+  // pede e mascara os dois CPFs do que o serviço devolveu.
+  describe('responsável pedagógico externo nas leituras', () => {
+    const withManager = {
+      id: 1,
+      full_name: 'Luizin',
+      cpf: '12345678910',
+      email: 'luizin@hotmail.com',
+      id_level: 2,
+      pedagogical_manager: null,
+      external_manager_name: 'Maria da Silva',
+      external_manager_phone: '81999998888',
+      external_manager_cpf: '98765432100',
+    };
+    const masked = {
+      ...withManager,
+      cpf: '***.456.789-**',
+      external_manager_cpf: '***.654.321-**',
+    };
+
+    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])(
+      'should ask the service for the level %s and mask both cpfs',
+      async (level) => {
+        jest
+          .spyOn(service, 'findAll')
+          .mockResolvedValue([withManager] as never);
+        jest.spyOn(service, 'findOne').mockResolvedValue(withManager as never);
+
+        expect(await controller.findAll(request(level))).toEqual([masked]);
+        expect(
+          await controller.findOne('luizin@hotmail.com', request(level)),
+        ).toEqual(masked);
+        expect(service.findAll).toHaveBeenCalledWith(level);
+        expect(service.findOne).toHaveBeenCalledWith(
+          'luizin@hotmail.com',
+          level,
+        );
+      },
+    );
+
+    it('should return the student without the contact keys as the service returned it', async () => {
+      const { external_manager_phone: _phone, ...withoutContact } = withManager;
+      const { external_manager_cpf: _cpf, ...visible } = withoutContact;
+      jest.spyOn(service, 'findOne').mockResolvedValue(visible as never);
+
+      const found = await controller.findOne(
+        'luizin@hotmail.com',
+        request(LEVELS.PROFISSIONAL_SAUDE),
+      );
+
+      expect(found).not.toHaveProperty('external_manager_phone');
+      expect(found).not.toHaveProperty('external_manager_cpf');
+    });
+
+    it('should never return the external cpf unmasked', async () => {
+      jest.spyOn(service, 'findOne').mockResolvedValue(withManager as never);
+
+      const found = await controller.findOne(
+        'luizin@hotmail.com',
+        request(LEVELS.ADMIN),
+      );
+
+      expect(JSON.stringify(found)).not.toContain('98765432100');
+    });
+  });
+
+  describe('pedagogicalManagerOptions', () => {
+    it('should return the options as they come from the service', async () => {
+      const options = [
+        { id: 4, full_name: 'Ana', id_level: LEVELS.PROFISSIONAL_NAPNE },
+      ];
+      jest
+        .spyOn(service, 'findPedagogicalManagerOptions')
+        .mockResolvedValue(options);
+
+      expect(await controller.pedagogicalManagerOptions()).toBe(options);
+    });
+
+    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+      expect(
+        Reflect.getMetadata(
+          ALLOW_LEVELS_KEY,
+          controller.pedagogicalManagerOptions,
+        ),
+      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+    });
+
+    it('should expose GET pedagogical-manager-options', () => {
+      expect(
+        Reflect.getMetadata(
+          METHOD_METADATA,
+          controller.pedagogicalManagerOptions,
+        ),
+      ).toBe(RequestMethod.GET);
+      expect(
+        Reflect.getMetadata(
+          PATH_METADATA,
+          controller.pedagogicalManagerOptions,
+        ),
+      ).toBe('pedagogical-manager-options');
+    });
+  });
+
+  describe('setPedagogicalManager', () => {
+    const dto = {
+      kind: 'EXTERNAL',
+      name: 'Maria da Silva',
+      phone: '81999998888',
+      cpf: '98765432100',
+    } as SetPedagogicalManagerDto;
+    const saved = {
+      id: 2,
+      full_name: 'Luizin',
+      cpf: '12345678910',
+      external_manager_name: 'Maria da Silva',
+      external_manager_phone: '81999998888',
+      external_manager_cpf: '98765432100',
+    };
+
+    it('should pass the e-mail and the body to the service and mask both cpfs', async () => {
+      jest
+        .spyOn(service, 'setPedagogicalManager')
+        .mockResolvedValue(saved as never);
+
+      const result = await controller.setPedagogicalManager(
+        'luizin@hotmail.com',
+        dto,
+        request(LEVELS.PROFISSIONAL_NAPNE),
+      );
+
+      expect(service.setPedagogicalManager).toHaveBeenCalledWith(
+        'luizin@hotmail.com',
+        dto,
+        LEVELS.PROFISSIONAL_NAPNE,
+      );
+      expect(result).toEqual({
+        ...saved,
+        cpf: '***.456.789-**',
+        external_manager_cpf: '***.654.321-**',
+      });
+    });
+
+    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+      expect(
+        Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.setPedagogicalManager),
+      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+    });
+
+    it('should expose PATCH :email/pedagogical-manager', () => {
+      expect(
+        Reflect.getMetadata(METHOD_METADATA, controller.setPedagogicalManager),
+      ).toBe(RequestMethod.PATCH);
+      expect(
+        Reflect.getMetadata(PATH_METADATA, controller.setPedagogicalManager),
+      ).toBe(':email/pedagogical-manager');
+    });
+
+    it('should answer 200, because it changes a student instead of creating one', () => {
+      expect(
+        Reflect.getMetadata(
+          HTTP_CODE_METADATA,
+          controller.setPedagogicalManager,
+        ),
+      ).toBe(200);
+    });
   });
 });

@@ -20,6 +20,20 @@ export const STUDENT_RECORD_READERS: readonly number[] = [
 
 export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
 
+// Servidores que podem ser o responsável pedagógico de um estudante.
+export const PEDAGOGICAL_MANAGER_LEVELS: readonly number[] = [
+  LEVELS.PROFISSIONAL_EDUCACAO,
+  LEVELS.PROFISSIONAL_NAPNE,
+];
+
+// Quem lê o telefone e o CPF do responsável pedagógico externo, dados de uma
+// pessoa que não usa o sistema. Quem não está na lista só lê o nome (menor
+// privilégio, ASVS 5.0 8.2.3).
+export const MANAGER_CONTACT_READERS: readonly number[] = [
+  LEVELS.ADMIN,
+  LEVELS.PROFISSIONAL_NAPNE,
+];
+
 export const COMMENT_EDIT_LIMIT = 10;
 
 export type Phase = keyof typeof PHASES;
