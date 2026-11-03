@@ -3,13 +3,21 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
-import { LEVELS, PEDAGOGICAL_MANAGER_LEVELS, PHASES } from 'src/constants';
+import {
+  LEVELS,
+  PEDAGOGICAL_MANAGER_LEVELS,
+  PHASES,
+  REAUTH_WINDOW_MS,
+  USER_DELETION_GRACE_DAYS,
+} from 'src/constants';
 import { hasAnyRole } from 'src/auth/roles';
 import { sameRoles, sortRoles } from './roles';
 import { SessionsService } from 'src/sessions/sessions.service';
@@ -25,6 +33,7 @@ import {
 } from './google-account';
 import { Prisma, ServiceStatus } from '@prisma/client';
 import { PUBLIC_USER_SELECT, PublicUser } from './users.select';
+import type { DeleteUserDto } from './dto/delete-user.dto';
 import {
   LEAVE_PEDAGOGICAL_MANAGER,
   LEAVE_QUEUE,
@@ -39,6 +48,24 @@ const UNIQUE_FIELD_MESSAGES = [
 
 const AEE_IN_SERVICE_MESSAGE =
   'Encerre os atendimentos do Professor do AEE antes de tirar esse papel ou excluir a conta.';
+
+const OWN_ACCOUNT_MESSAGE = 'Você não pode excluir a própria conta.';
+
+const LAST_ADMIN_MESSAGE = 'Não é possível excluir o último administrador.';
+
+const ALREADY_MARKED_MESSAGE = 'Este usuário já está marcado para exclusão.';
+
+const NOT_MARKED_MESSAGE = 'Este usuário não está marcado para exclusão.';
+
+const HAS_RECORDS_MESSAGE =
+  'Este usuário tem registros no sistema (anotações, triagem, anamnese, estudo de caso, PAEE ou PEI) e não pode ser excluído.';
+
+export const REAUTH_REQUIRED_MESSAGE =
+  'Informe sua senha para excluir o usuário.';
+
+export const WRONG_PASSWORD_MESSAGE = 'Senha incorreta.';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // As rotas que chegam a este serviço são do Administrador (o cadastro, também
 // do NAPNE), que não leem o telefone e o CPF do responsável pedagógico externo,
@@ -598,15 +625,169 @@ export class UsersService {
     });
   }
 
+  // Exige a senha do administrador, a menos que a confirmação anterior ainda
+  // valha. Com remember, a confirmação passa a valer por REAUTH_WINDOW_MS nesta
+  // sessão. A janela fica no servidor: um sinal só do navegador deixaria o
+  // DELETE aceitar a exclusão sem senha.
+  async confirmDeletionCredentials(
+    requester: { sub: number; jti: string },
+    dto: DeleteUserDto,
+  ): Promise<Date | null> {
+    const now = new Date();
+    const session = await this.sessionsService.findActive(requester.jti);
+
+    if (session?.reauth_until && session.reauth_until > now) {
+      return session.reauth_until;
+    }
+
+    if (!dto.currentPassword) {
+      throw new UnauthorizedException(REAUTH_REQUIRED_MESSAGE);
+    }
+
+    const admin = await this.prisma.user.findUnique({
+      where: { id: requester.sub },
+      select: { password: true },
+    });
+
+    const isPasswordValid = await compare(
+      dto.currentPassword,
+      admin?.password ?? '',
+    );
+
+    if (!admin || !isPasswordValid) {
+      throw new UnauthorizedException(WRONG_PASSWORD_MESSAGE);
+    }
+
+    if (!dto.remember) {
+      return null;
+    }
+
+    const until = new Date(now.getTime() + REAUTH_WINDOW_MS);
+    await this.sessionsService.grantReauth(requester.jti, until);
+
+    return until;
+  }
+
+  // O usuário não é apagado na hora: fica marcado por USER_DELETION_GRACE_DAYS
+  // dias, sem acesso, e o administrador pode restaurá-lo até a limpeza. As
+  // travas rodam já aqui, para o erro chegar a quem pediu. O alvo e todos os
+  // administradores são travados em ordem de id, o que impede dois pedidos
+  // simultâneos de excluírem os dois últimos administradores.
+  async markForDeletion(id: number, requesterId: number): Promise<PublicUser> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${id} OR ${LEVELS.ADMIN} = ANY("roles") ORDER BY "id" FOR UPDATE`;
+
+      const target = await tx.user.findUnique({
+        where: { id: id },
+        select: { id: true, email: true, roles: true, deleted_at: true },
+      });
+
+      if (!target) {
+        throw new NotFoundException('Usuário não encontrado.');
+      }
+
+      if (target.deleted_at) {
+        throw new ConflictException(ALREADY_MARKED_MESSAGE);
+      }
+
+      if (target.id === requesterId) {
+        throw new ConflictException(OWN_ACCOUNT_MESSAGE);
+      }
+
+      await this.assertNotLastAdmin(tx, target);
+      await this.assertNoServiceInProgress(tx, id);
+      await this.assertNoLinkedRecords(tx, target);
+
+      await tx.session.updateMany({
+        where: { id_user: id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+
+      return tx.user.update({
+        select: PUBLIC_USER_SELECT,
+        where: { id: id },
+        data: { deleted_at: new Date() },
+      });
+    });
+  }
+
+  async restore(id: number): Promise<PublicUser> {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id: id, deleted_at: { not: null } },
+      data: { deleted_at: null },
+    });
+
+    if (count === 0) {
+      const exists = await this.prisma.user.count({ where: { id: id } });
+      throw exists > 0
+        ? new ConflictException(NOT_MARKED_MESSAGE)
+        : new NotFoundException('Usuário não encontrado.');
+    }
+
+    return this.prisma.user.findUniqueOrThrow({
+      select: PUBLIC_USER_SELECT,
+      where: { id: id },
+    });
+  }
+
+  // Apaga de vez quem passou do prazo. As travas rodam de novo, porque desde a
+  // marcação o usuário pode ter ganhado um registro ou um atendimento. A falha
+  // de um usuário é registrada e não interrompe os demais.
+  async purgeExpired(now: Date = new Date()): Promise<number> {
+    const limit = new Date(now.getTime() - USER_DELETION_GRACE_DAYS * DAY_MS);
+
+    const expired = await this.prisma.user.findMany({
+      where: { deleted_at: { lte: limit } },
+      select: { id: true },
+    });
+
+    let purged = 0;
+
+    for (const { id } of expired) {
+      try {
+        if (await this.remove(id, limit)) {
+          purged += 1;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Falha ao apagar o usuário ${id} marcado para exclusão`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    return purged;
+  }
+
+  // Exclusão definitiva. Com expiredBefore, só apaga quem continua marcado
+  // desde antes dessa data, o que deixa um usuário restaurado a salvo.
+  //
   // Mesma trava e mesma recusa do update, mas sem condicionar ao papel 6: uma
   // conta que perdeu o papel com estudantes em atendimento ainda é responsável
   // por eles, e excluí-la quebraria o CHECK da chave estrangeira (500). Quem
   // tem estudantes em atendimento não é excluído até encerrar os atendimentos.
-  async remove(id: number) {
+  async remove(id: number, expiredBefore?: Date) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
 
+      const target = await tx.user.findUnique({
+        where: { id: id },
+        select: { id: true, email: true, deleted_at: true },
+      });
+
+      if (!target) {
+        return null;
+      }
+
+      if (
+        expiredBefore &&
+        (!target.deleted_at || target.deleted_at > expiredBefore)
+      ) {
+        return null;
+      }
+
       await this.assertNoServiceInProgress(tx, id);
+      await this.assertNoLinkedRecords(tx, target);
 
       return tx.user.delete({
         select: PUBLIC_USER_SELECT,
@@ -615,5 +796,47 @@ export class UsersService {
         },
       });
     });
+  }
+
+  private async assertNotLastAdmin(
+    tx: Prisma.TransactionClient,
+    target: { id: number; roles: number[] },
+  ) {
+    if (!target.roles.includes(LEVELS.ADMIN)) {
+      return;
+    }
+
+    const others = await tx.user.count({
+      where: {
+        roles: { has: LEVELS.ADMIN },
+        deleted_at: null,
+        id: { not: target.id },
+      },
+    });
+
+    if (others === 0) {
+      throw new ConflictException(LAST_ADMIN_MESSAGE);
+    }
+  }
+
+  // Triagem e anamnese ligam-se ao usuário só pelo e-mail, sem chave
+  // estrangeira, e ficariam órfãs com dados pessoais. As demais tabelas têm
+  // chave estrangeira que o banco recusaria com 500.
+  private async assertNoLinkedRecords(
+    tx: Prisma.TransactionClient,
+    target: { id: number; email: string },
+  ) {
+    const counts = await Promise.all([
+      tx.comments.count({ where: { id_user: target.id } }),
+      tx.caseStudy.count({ where: { id_student: target.id } }),
+      tx.aeePlan.count({ where: { id_student: target.id } }),
+      tx.peiEntry.count({ where: { id_student: target.id } }),
+      tx.screening.count({ where: { email: target.email } }),
+      tx.anamnesis.count({ where: { email: target.email } }),
+    ]);
+
+    if (counts.some((count) => count > 0)) {
+      throw new ConflictException(HAS_RECORDS_MESSAGE);
+    }
   }
 }

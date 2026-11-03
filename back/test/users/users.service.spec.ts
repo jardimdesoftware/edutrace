@@ -84,9 +84,15 @@ describe('UsersService', () => {
       updateMany: jest.Mock;
       count: jest.Mock;
       delete: jest.Mock;
+      findUnique: jest.Mock;
     };
-    screening: { updateMany: jest.Mock };
-    anamnesis: { updateMany: jest.Mock };
+    comments: { count: jest.Mock };
+    caseStudy: { count: jest.Mock };
+    aeePlan: { count: jest.Mock };
+    peiEntry: { count: jest.Mock };
+    session: { updateMany: jest.Mock };
+    screening: { updateMany: jest.Mock; count: jest.Mock };
+    anamnesis: { updateMany: jest.Mock; count: jest.Mock };
     plansEducationLegacy: { updateMany: jest.Mock };
   };
 
@@ -102,9 +108,26 @@ describe('UsersService', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         count: jest.fn().mockResolvedValue(0),
         delete: jest.fn().mockResolvedValue(mockUser),
+        findUnique: jest.fn().mockResolvedValue({
+          id: mockUser.id,
+          email: mockUser.email,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
+          deleted_at: null,
+        }),
       },
-      screening: { updateMany: jest.fn() },
-      anamnesis: { updateMany: jest.fn() },
+      comments: { count: jest.fn().mockResolvedValue(0) },
+      caseStudy: { count: jest.fn().mockResolvedValue(0) },
+      aeePlan: { count: jest.fn().mockResolvedValue(0) },
+      peiEntry: { count: jest.fn().mockResolvedValue(0) },
+      session: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      screening: {
+        updateMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      anamnesis: {
+        updateMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
       plansEducationLegacy: { updateMany: jest.fn() },
     };
 
