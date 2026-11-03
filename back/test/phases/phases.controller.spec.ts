@@ -152,5 +152,14 @@ describe('PhasesController', () => {
         ]);
       },
     );
+
+    it.each(['create', 'update', 'remove', 'findAll', 'findOne'] as const)(
+      'should not open %s to the NAPNE professional',
+      (route) => {
+        expect(
+          Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]),
+        ).not.toContain(LEVELS.PROFISSIONAL_NAPNE);
+      },
+    );
   });
 });

@@ -68,7 +68,7 @@ describe('CreateUserDto, campo cpf', () => {
 describe('CreateUserDto, campo id_level', () => {
   const valid = { ...base, cpf: '01234567890' };
 
-  it.each([1, 2, 3, 4])('should accept the level %s', (id_level) => {
+  it.each([1, 2, 3, 4, 5])('should accept the level %s', (id_level) => {
     expect(
       validateSync(plainToInstance(CreateUserDto, { ...valid, id_level })),
     ).toHaveLength(0);

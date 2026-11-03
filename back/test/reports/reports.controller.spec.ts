@@ -48,6 +48,7 @@ describe('ReportsController', () => {
         LEVELS.ADMIN,
         LEVELS.PROFISSIONAL_EDUCACAO,
         LEVELS.PROFISSIONAL_SAUDE,
+        LEVELS.PROFISSIONAL_NAPNE,
       ]);
     });
   });

@@ -20,7 +20,8 @@ async function main() {
     { id: LEVELS.ADMIN, name: 'Administrador' },
     { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
     { id: LEVELS.PROFISSIONAL_EDUCACAO, name: 'Profissional da Educação' },
-    { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' }
+    { id: LEVELS.PROFISSIONAL_SAUDE, name: 'Profissional da Saúde' },
+    { id: LEVELS.PROFISSIONAL_NAPNE, name: 'Profissional NAPNE' },
   ];
 
   for (const level of levels) {

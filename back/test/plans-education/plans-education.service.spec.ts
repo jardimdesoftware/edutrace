@@ -865,6 +865,27 @@ describe('PlansEducationService', () => {
       expect(prisma.plansEducation.findUnique).not.toHaveBeenCalled();
     });
 
+    it("should let the NAPNE professional read another student's PEI", async () => {
+      const email = 'other@example.com';
+      const request = {
+        user: {
+          email: 'napne@example.com',
+          id_level: LEVELS.PROFISSIONAL_NAPNE,
+        },
+      } as any;
+      const planEducation = { id: 1, student_email: email } as any;
+      jest
+        .spyOn(prisma.plansEducation, 'findUnique')
+        .mockResolvedValue(planEducation);
+
+      const result = await service.findOne(email, request);
+
+      expect(prisma.plansEducation.findUnique).toHaveBeenCalledWith({
+        where: { student_email: email },
+      });
+      expect(result).toEqual(planEducation);
+    });
+
     it('should throw NotFoundException when plans education is not found', async () => {
       const email = 'notfound@example.com';
       const request = {

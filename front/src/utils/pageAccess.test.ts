@@ -8,20 +8,30 @@ import {
   ADMIN,
   ESTUDANTE,
   PROFISSIONAL_EDUCACAO,
+  PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
 } from "../consts";
 
-const TODOS = [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE];
+const TODOS = [
+  ADMIN,
+  ESTUDANTE,
+  PROFISSIONAL_EDUCACAO,
+  PROFISSIONAL_SAUDE,
+  PROFISSIONAL_NAPNE,
+];
 const NIVEL_CRIADO_PELO_ADMIN = 7;
 
 // Página e níveis que podem abri-la, na regra atual de perfis.
 const MATRIZ: [string, number[]][] = [
   ["/triagem", TODOS],
-  ["/anamnese", TODOS],
+  ["/anamnese", [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]],
   ["/pei", TODOS],
   ["/comentarios", TODOS],
-  ["/estudantes/visualizar", [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]],
-  ["/editar-triagem", [ADMIN, PROFISSIONAL_SAUDE]],
+  [
+    "/estudantes/visualizar",
+    [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
+  ],
+  ["/editar-triagem", [ADMIN, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
   ["/editar-anamnese", [ADMIN, PROFISSIONAL_SAUDE]],
   ["/editar-pei", [ADMIN, PROFISSIONAL_EDUCACAO]],
   ["/admin/usuarios/cadastro", [ADMIN]],
@@ -73,6 +83,7 @@ describe("NIVEIS_PROFISSIONAIS", () => {
       ADMIN,
       PROFISSIONAL_EDUCACAO,
       PROFISSIONAL_SAUDE,
+      PROFISSIONAL_NAPNE,
     ]);
   });
 });
@@ -83,7 +94,12 @@ describe("conteudoDaHome", () => {
   });
 
   it("shows the student table to the levels that serve students", () => {
-    for (const nivel of [ADMIN, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]) {
+    for (const nivel of [
+      ADMIN,
+      PROFISSIONAL_EDUCACAO,
+      PROFISSIONAL_SAUDE,
+      PROFISSIONAL_NAPNE,
+    ]) {
       assert.equal(conteudoDaHome(nivel), "profissional", String(nivel));
     }
   });

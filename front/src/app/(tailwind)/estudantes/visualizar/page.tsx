@@ -8,6 +8,8 @@ import Loading from "@/components/Loading";
 import { Suspense } from "react";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
+import { fichasDoEstudante } from "@/utils/fichasDoEstudante";
+import { useAuth } from "@/contexts/AuthContext";
 
 function Card({ label, url }: { label: string, url: string }) {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function VisualizarPageWrapper() {
 
 function VisualizarEstudante() {
   const { id, registro, carregando } = useEstudanteDaUrl();
+  const { user } = useAuth();
   const nome = registro?.full_name;
   const cpf = registro?.cpf;
   const email = registro?.email;
@@ -48,6 +51,8 @@ function VisualizarEstudante() {
         return "Profissional da Educação";
       case 4:
         return "Profissional da Saúde";
+      case 5:
+        return "Profissional NAPNE";
       default:
         return "Nível desconhecido";
     }
@@ -94,10 +99,9 @@ function VisualizarEstudante() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 max-w-5xl mx-auto">
-          <Card label="Triagem" url={rotaDoEstudante('/triagem', id)} />
-          <Card label="Anamnese" url={rotaDoEstudante('/anamnese', id)} />
-          <Card label="Anotações Multiprofissionais" url={rotaDoEstudante('/comentarios', id)}/>
-          <Card label="PEI" url={rotaDoEstudante('/pei', id)} />
+          {(user ? fichasDoEstudante(user.id_level) : []).map((ficha) => (
+            <Card key={ficha.rota} label={ficha.label} url={rotaDoEstudante(ficha.rota, id)} />
+          ))}
         </div>
       </div>
     </AppLayout>

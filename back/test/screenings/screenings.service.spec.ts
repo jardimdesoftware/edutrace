@@ -311,6 +311,7 @@ describe('ScreeningsService', () => {
       LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
     ])(
       'should allow level %s to read any student screening',
       async (id_level) => {

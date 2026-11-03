@@ -10,7 +10,7 @@ function validate(value: object) {
 }
 
 describe('UpdateUserDto, campo id_level', () => {
-  it.each([1, 2, 3, 4])('should accept the level %s', async (id_level) => {
+  it.each([1, 2, 3, 4, 5])('should accept the level %s', async (id_level) => {
     await expect(validate({ id_level })).resolves.toEqual({ id_level });
   });
 

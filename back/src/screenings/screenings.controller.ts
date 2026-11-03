@@ -19,7 +19,11 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 export class ScreeningsController {
   constructor(private readonly screeningsService: ScreeningsService) {}
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+  )
   @Post()
   create(@Body() createScreeningDto: CreateScreeningDto) {
     return this.screeningsService.create(createScreeningDto);
@@ -29,6 +33,7 @@ export class ScreeningsController {
     LEVELS.ADMIN,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get()
   findAll() {
@@ -40,6 +45,7 @@ export class ScreeningsController {
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
   )
   @Get(':email')
   findOne(
@@ -49,7 +55,11 @@ export class ScreeningsController {
     return this.screeningsService.findOne(email, request);
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+  )
   @Patch(':email')
   update(
     @Param('email') email: string,
@@ -58,7 +68,11 @@ export class ScreeningsController {
     return this.screeningsService.update(email, updateScreeningDto);
   }
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_SAUDE)
+  @AllowLevels(
+    LEVELS.ADMIN,
+    LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+  )
   @Delete(':email')
   remove(@Param('email') email: string) {
     return this.screeningsService.remove(email);
