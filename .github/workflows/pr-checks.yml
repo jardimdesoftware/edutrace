@@ -924,7 +924,7 @@ jobs:
             "x-frame-options: DENY" \
             "strict-transport-security: max-age=63072000; includeSubDomains" \
             "content-security-policy: default-src 'none';frame-ancestors 'none'" \
-            "cache-control: no-store"; do
+            "cache-control: private, no-cache, no-store, max-age=0, must-revalidate"; do
             if ! grep -qixF "$esperado" <<< "$headers"; then
               echo "ERRO: falta o cabeçalho '$esperado'."
               status=1
