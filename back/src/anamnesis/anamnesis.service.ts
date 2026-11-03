@@ -6,6 +6,7 @@ import {
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { ANAMNESIS_READERS, PHASES } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { StudentsService } from 'src/students/students.service';
 
@@ -43,7 +44,7 @@ export class AnamnesisService {
   }
 
   async findOne(email: string, request: AuthenticatedRequest) {
-    const readsAnyStudent = ANAMNESIS_READERS.includes(request.user.id_level);
+    const readsAnyStudent = hasAnyRole(request.user.roles, ANAMNESIS_READERS);
     const isOwnRecord = request.user.email === email;
 
     if (!readsAnyStudent && !isOwnRecord) {

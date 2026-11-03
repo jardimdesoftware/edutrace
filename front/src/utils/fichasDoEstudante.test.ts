@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { fichasDoEstudante } from "./fichasDoEstudante";
 import {
   ADMIN,
+  PROFESSOR_AEE,
   PROFISSIONAL_EDUCACAO,
   PROFISSIONAL_NAPNE,
   PROFISSIONAL_SAUDE,
@@ -33,7 +34,7 @@ describe("fichasDoEstudante", () => {
   ] as const) {
     it(`does not give the ${nome} the anamnesis card, whose page the middleware denies`, () => {
       assert.deepEqual(
-        fichasDoEstudante(nivel).map((ficha) => ficha.label),
+        fichasDoEstudante([nivel]).map((ficha) => ficha.label),
         ROTULOS_SEM_ANAMNESE,
       );
     });
@@ -41,19 +42,35 @@ describe("fichasDoEstudante", () => {
 
   it("gives the NAPNE professional the six cards", () => {
     assert.deepEqual(
-      fichasDoEstudante(PROFISSIONAL_NAPNE).map((ficha) => ficha.label),
+      fichasDoEstudante([PROFISSIONAL_NAPNE]).map((ficha) => ficha.label),
       ROTULOS,
     );
   });
 
   it("keeps the route of each card", () => {
     assert.deepEqual(
-      fichasDoEstudante(PROFISSIONAL_NAPNE).map((ficha) => ficha.rota),
+      fichasDoEstudante([PROFISSIONAL_NAPNE]).map((ficha) => ficha.rota),
       ["/triagem", "/anamnese", "/estudo-de-caso", "/paee", "/comentarios", "/pei"],
     );
   });
 
   it("gives no card to a level that opens none of the pages", () => {
-    assert.deepEqual(fichasDoEstudante(NIVEL_CRIADO_PELO_ADMIN), []);
+    assert.deepEqual(fichasDoEstudante([NIVEL_CRIADO_PELO_ADMIN]), []);
+  });
+});
+
+describe("fichasDoEstudante with the AEE teacher", () => {
+  it("gives the AEE teacher alone the cards of the reads, without the anamnesis", () => {
+    assert.deepEqual(
+      fichasDoEstudante([PROFESSOR_AEE]).map((ficha) => ficha.label),
+      ROTULOS_SEM_ANAMNESE,
+    );
+  });
+
+  it("gives the six cards to NAPNE plus AEE", () => {
+    assert.deepEqual(
+      fichasDoEstudante([PROFISSIONAL_NAPNE, PROFESSOR_AEE]).map((ficha) => ficha.label),
+      ROTULOS,
+    );
   });
 });

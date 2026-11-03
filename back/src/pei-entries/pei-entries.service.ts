@@ -10,6 +10,7 @@ import {
   PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT,
   PEI_ENTRY_READERS,
 } from 'src/constants';
+import { hasAnyRole } from 'src/auth/roles';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
 import { CreatePeiEntryDto } from './dto/create-pei-entry.dto';
@@ -158,7 +159,7 @@ export class PeiEntriesService {
 
   // Só os registros ativos: o excluído continua no banco e sai da listagem.
   async findByStudent(email: string, request: AuthenticatedRequest) {
-    const readsAnyStudent = PEI_ENTRY_READERS.includes(request.user.id_level);
+    const readsAnyStudent = hasAnyRole(request.user.roles, PEI_ENTRY_READERS);
     const isOwnRecord = request.user.email === email;
 
     // O 403 vem antes de consultar o banco, para que o estudante receba a

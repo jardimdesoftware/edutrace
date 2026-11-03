@@ -150,7 +150,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/home', request.url))
   }
 
-  if (!isPublicPage && !canAccessPage(pathname, payload.id_level)) {
+  if (!isPublicPage && !canAccessPage(pathname, payload.roles)) {
     return NextResponse.redirect(new URL('/home', request.url))
   }
 

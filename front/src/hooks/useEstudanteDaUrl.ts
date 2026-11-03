@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { temPapel } from "@/utils/papeis";
 import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,9 +19,9 @@ export function useEstudanteDaUrl() {
   const id = useSearchParams().get("id");
   const router = useRouter();
   const { user, loading } = useAuth();
-  const isStudent = user?.id_level === ESTUDANTE;
+  const isStudent = temPapel(user?.roles, ESTUDANTE);
   const precisaBuscar = !!user && !isStudent;
-  const nivel = user?.id_level;
+  const roles = user?.roles;
 
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
@@ -28,7 +29,7 @@ export function useEstudanteDaUrl() {
     if (!precisaBuscar) return;
 
     let ativo = true;
-    resolverEstudanteDaUrl(id, nivel).then((resolvido) => {
+    resolverEstudanteDaUrl(id, roles).then((resolvido) => {
       if (!ativo) return;
       if ("registro" in resolvido) {
         setResultado({ id, registro: resolvido.registro });
@@ -45,7 +46,7 @@ export function useEstudanteDaUrl() {
     return () => {
       ativo = false;
     };
-  }, [id, nivel, precisaBuscar, router]);
+  }, [id, roles, precisaBuscar, router]);
 
   if (isStudent && user) {
     return { id, email: user.email, nome: user.name, registro: null, carregando: false };

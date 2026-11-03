@@ -132,7 +132,7 @@ jobs:
       # Também cobre os ids fixos dos níveis (LEVELS em src/constants.ts): a
       # sequence da tabela Level é avançada antes do seed, como num banco em
       # que o autoincrement não começa em 1, e os níveis precisam terminar com
-      # os ids 1 a 5. O seed antigo, que gravava por nome, os criaria a partir
+      # os ids 1 a 6. O seed antigo, que gravava por nome, os criaria a partir
       # do 11 e reprovaria a checagem. Junto com a troca do e-mail, o nível 2 é
       # renomeado, e a execução seguinte precisa devolver o nome do código.
       - name: Smoke test do seed
@@ -142,7 +142,7 @@ jobs:
             psql "$DATABASE_URL" -tA -c 'SELECT count(*) FROM "User"'
           }
           administradores() {
-            psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM \"User\" u JOIN \"Level\" l ON l.id = u.id_level WHERE l.name = 'Administrador'"
+            psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM \"User\" u JOIN \"Level\" l ON l.id = ANY(u.roles) WHERE l.name = 'Administrador'"
           }
 
           niveis() {
@@ -184,7 +184,7 @@ jobs:
             exit 1
           fi
 
-          esperado="1:Administrador,2:Estudante/Família,3:Profissional da Educação,4:Profissional da Saúde,5:Profissional NAPNE"
+          esperado="1:Administrador,2:Estudante/Família,3:Profissional da Educação,4:Profissional da Saúde,5:Profissional NAPNE,6:Professor do AEE"
           if [ "$(niveis)" != "$esperado" ]; then
             echo "ERRO: os níveis terminaram como '$(niveis)'; o esperado é '$esperado'."
             exit 1
@@ -202,7 +202,7 @@ jobs:
         run: |
           migration=prisma/migrations/20261012120000_add_user_google_sub/migration.sql
 
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, updated_at) VALUES ('Cadastro pendente', 'google:109876543210', 'pendente@discente.ifpe.edu.br', 'x', (SELECT min(id) FROM \"Level\"), (SELECT min(id) FROM \"CurrentPhases\"), now())"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO \"User\" (full_name, cpf, email, password, roles, id_current_phase, updated_at) VALUES ('Cadastro pendente', 'google:109876543210', 'pendente@discente.ifpe.edu.br', 'x', ARRAY[3], (SELECT min(id) FROM \"CurrentPhases\"), now())"
           grep '^UPDATE' "$migration" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
 
           sub=$(psql "$DATABASE_URL" -tA -c "SELECT google_sub FROM \"User\" WHERE email = 'pendente@discente.ifpe.edu.br'")
@@ -215,32 +215,52 @@ jobs:
 
       # A migration de reserva do id 5 (LEVELS.PROFISSIONAL_NAPNE) só age num
       # banco que já tem um nível nesse id, e o banco do job nasce vazio: no
-      # migrate deploy ela não faz nada. Este passo monta, sobre o banco que já
-      # passou pelo seed, o caso mais difícil: um nível 5 anterior à mudança que
-      # já se chama Profissional NAPNE (a antiga rota PATCH /levels permitia
-      # esse nome) e tem um usuário. A migration é lida do próprio arquivo. Todo
-      # nível que já esteja no id 5 sai dele com os usuários, mesmo com esse
-      # nome, porque a autorização decide pelo id e daria a eles o acesso do
-      # NAPNE sem que ninguém o tenha concedido. O nível realocado recebe o
-      # sufixo com o próprio id, e o seed seguinte precisa gravar o NAPNE no id
-      # 5 sem colidir com o nome único e sem devolver o usuário.
+      # migrate deploy ela não faz nada. Este passo monta o caso mais difícil
+      # num edutrace_nivel5 à parte, com as migrations anteriores a ela (a
+      # coluna id_level, que ela move junto com o nível, deixa de existir na
+      # migration dos papéis): um nível 5 anterior à mudança que já se chama
+      # Profissional NAPNE (a antiga rota PATCH /levels permitia esse nome) e tem
+      # um usuário. A migration é lida do próprio arquivo. Todo nível que já
+      # esteja no id 5 sai dele com os usuários, mesmo com esse nome, porque a
+      # autorização decide pelo id e daria a eles o acesso do NAPNE sem que
+      # ninguém o tenha concedido. O nível realocado recebe o sufixo com o
+      # próprio id. O usuário dele fica num nível sem papel equivalente, e a
+      # migration dos papéis o recusa (rollback inteiro, no -1); com a conta
+      # excluída ela passa, as migrations posteriores a ela (se houver) são
+      # aplicadas, e o seed seguinte precisa gravar o NAPNE no id 5 sem colidir
+      # com o nome único.
       - name: Verificar a reserva do nível 5 pela migration
         working-directory: ./back
         run: |
-          migration=prisma/migrations/20261016120000_reserve_level_napne/migration.sql
+          reserva=20261016120000_reserve_level_napne
+          papeis=20261026100000_add_user_roles
+          n5_url=postgresql://test:test@localhost:5432/edutrace_nivel5
           email=professor.nivel5@example.test
 
           nivel_do_usuario() {
-            psql "$DATABASE_URL" -tA -c "SELECT l.id || '|' || l.name FROM \"User\" u JOIN \"Level\" l ON l.id = u.id_level WHERE u.email = '$email'"
+            psql "$n5_url" -tA -c "SELECT l.id || '|' || l.name FROM \"User\" u JOIN \"Level\" l ON l.id = u.id_level WHERE u.email = '$email'"
           }
           nome_do_nivel() {
-            psql "$DATABASE_URL" -tA -c "SELECT name FROM \"Level\" WHERE id = $1"
+            psql "$n5_url" -tA -c "SELECT name FROM \"Level\" WHERE id = $1"
           }
 
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM \"Level\" WHERE id = 5; INSERT INTO \"Level\" (id, name, updated_at) VALUES (5, 'Profissional NAPNE', now()); INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, updated_at) VALUES ('Professor do nível 5', '98765432100', '$email', 'x', 5, (SELECT min(id) FROM \"CurrentPhases\"), now())"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_nivel5'
 
-          if [ "$(psql "$DATABASE_URL" -tA -c 'SELECT count(*) FROM "Level" WHERE id = 5')" != "0" ]; then
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$reserva" ]; then
+              break
+            fi
+            if ! psql "$n5_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou ao ser aplicada antes da reserva do nível 5."
+              exit 1
+            fi
+          done
+
+          psql "$n5_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"CurrentPhases\" (name, updated_at) VALUES ('Triagem', now()); INSERT INTO \"Level\" (id, name, updated_at) VALUES (5, 'Profissional NAPNE', now()); INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, updated_at) VALUES ('Professor do nível 5', '98765432100', '$email', 'x', 5, (SELECT min(id) FROM \"CurrentPhases\"), now())"
+          psql "$n5_url" -v ON_ERROR_STOP=1 -f "prisma/migrations/$reserva/migration.sql"
+
+          if [ "$(psql "$n5_url" -tA -c 'SELECT count(*) FROM "Level" WHERE id = 5')" != "0" ]; then
             echo "ERRO: a migration deixou um nível no id 5, reservado ao Profissional NAPNE."
             exit 1
           fi
@@ -252,7 +272,58 @@ jobs:
             exit 1
           fi
 
-          if ! npm run seed > seed-output.log 2>&1 || ! grep -q "Seed concluída" seed-output.log; then
+          seguir=false
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$reserva" ]; then
+              seguir=true
+              continue
+            fi
+            if [ "$seguir" != true ]; then
+              continue
+            fi
+            if [ "$nome" = "$papeis" ]; then
+              break
+            fi
+            if ! psql "$n5_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou depois da reserva do nível 5."
+              exit 1
+            fi
+          done
+
+          if saida=$(psql "$n5_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$papeis/migration.sql" 2>&1); then
+            echo "ERRO: a migration dos papéis converteu em papel a conta de um nível fora de 1 a 6."
+            exit 1
+          fi
+          if ! echo "$saida" | grep -q "fora de 1 a 6"; then
+            echo "$saida"
+            echo "ERRO: a migration dos papéis recusou a conta por outro motivo; o esperado é a mensagem de nível fora de 1 a 6, que lista as contas."
+            exit 1
+          fi
+
+          psql "$n5_url" -v ON_ERROR_STOP=1 -c "DELETE FROM \"User\" WHERE email = '$email'"
+          if ! psql "$n5_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$papeis/migration.sql" > /dev/null; then
+            echo "ERRO: a migration dos papéis falhou depois de a conta do nível realocado ser excluída."
+            exit 1
+          fi
+
+          depois=false
+          for migration in prisma/migrations/*/migration.sql; do
+            nome=$(basename "$(dirname "$migration")")
+            if [ "$nome" = "$papeis" ]; then
+              depois=true
+              continue
+            fi
+            if [ "$depois" != true ]; then
+              continue
+            fi
+            if ! psql "$n5_url" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+              echo "ERRO: a migration $nome falhou depois da migration dos papéis."
+              exit 1
+            fi
+          done
+
+          if ! DATABASE_URL="$n5_url" npm run seed > seed-output.log 2>&1 || ! grep -q "Seed concluída" seed-output.log; then
             cat seed-output.log
             echo "ERRO: o seed falhou no banco que a migration de reserva do nível 5 acabou de ajustar."
             exit 1
@@ -262,12 +333,8 @@ jobs:
             echo "ERRO: o nível 5 terminou como '$(nome_do_nivel 5)'; o esperado é 'Profissional NAPNE'."
             exit 1
           fi
-          if [ "$(nivel_do_usuario)" != "$nivel" ]; then
-            echo "ERRO: o usuário mudou de nível depois do seed: era '$nivel' e ficou '$(nivel_do_usuario)'."
-            exit 1
-          fi
 
-          echo "OK: a migration move para um id livre o nível que já estava no id 5, mesmo chamado Profissional NAPNE, com seus usuários, e o seed grava o Profissional NAPNE no id 5."
+          echo "OK: a migration move para um id livre o nível que já estava no id 5, mesmo chamado Profissional NAPNE, com seus usuários, a dos papéis recusa a conta que ficou num nível sem papel, e o seed grava o Profissional NAPNE no id 5."
 
       # Os testes unitários mockam o Prisma e só provam o que o mock devolve. Os
       # specs *.integration.spec.ts rodam contra um PostgreSQL de verdade, e só
@@ -477,6 +544,132 @@ jobs:
           fi
 
           echo "OK: a migration preserva em PlansEducation_legacy os registros do PEI antigo e remove o nome PlansEducation."
+
+      # A migration dos papéis troca User.id_level por User.roles e faz o
+      # backfill: cada conta vira {id_level}, e as contas do nível 5 (NAPNE)
+      # viram {5, 6}, porque o NAPNE de hoje faz o que o Professor do AEE faz.
+      # O banco do job nasce vazio, então no migrate deploy o backfill não
+      # afeta nenhuma linha, e um backfill errado ou ausente passaria
+      # despercebido. Este passo monta o caso real num edutrace_roles à parte:
+      # aplica as migrations anteriores a ela, insere uma conta de cada um dos 5
+      # níveis antigos, um nível já no id 6 com uma conta nele, e um nível
+      # Professor do AEE no id 7 sem contas, e só então aplica a migration. A
+      # conta do nível 6 antigo fica sem papel equivalente, e a migration
+      # precisa recusá-la, com rollback inteiro (o -1 faz o psql rodar numa
+      # transação, como o Prisma roda a migration). Sem essa conta ela passa, e
+      # o passo confere os papéis de cada conta, a realocação do nível antigo do
+      # id 6, o sufixo do Professor do AEE do id 7, o nível 6 novo e a ausência
+      # de id_level. A reserva do id 6 não olha o nome: num segundo banco, o
+      # nível já chamado Professor do AEE no id 6, com uma conta, também é
+      # realocado, e a migration recusa a conta. Os CHECKs de User.roles não
+      # são exercitados aqui: quem os prova, contra o banco migrado, é o
+      # user-roles.integration.spec.ts, no passo dos testes de integração.
+      - name: Verificar o backfill dos papéis pela migration
+        working-directory: ./back
+        run: |
+          papeis=20261026100000_add_user_roles
+          rl_url=postgresql://test:test@localhost:5432/edutrace_roles
+
+          campo() {
+            psql "$rl_url" -tA -c "SELECT $1 FROM \"User\" WHERE email = '$2'"
+          }
+          colunas() {
+            psql "$rl_url" -tA -c "SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'User' AND column_name = '$1'"
+          }
+
+          aee_url=postgresql://test:test@localhost:5432/edutrace_roles_aee
+
+          aplicar_anteriores() {
+            for migration in prisma/migrations/*/migration.sql; do
+              nome=$(basename "$(dirname "$migration")")
+              if [ "$nome" = "$papeis" ]; then
+                break
+              fi
+              if ! psql "$1" -q -v ON_ERROR_STOP=1 -f "$migration" > /dev/null; then
+                echo "ERRO: a migration $nome falhou ao ser aplicada antes do backfill dos papéis."
+                exit 1
+              fi
+            done
+          }
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_roles'
+          aplicar_anteriores "$rl_url"
+
+          psql "$rl_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"Level\" (id, name, updated_at) VALUES (1, 'Administrador', now()), (2, 'Estudante/Família', now()), (3, 'Profissional da Educação', now()), (4, 'Profissional da Saúde', now()), (5, 'Profissional NAPNE', now()), (6, 'Legado', now()), (7, 'Professor do AEE', now()); INSERT INTO \"CurrentPhases\" (id, name, updated_at) VALUES (1, 'Triagem', now()); INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, service_status, queued_at, service_capacity, updated_at) VALUES ('Admin antigo', '11111111101', 'nivel1@example.test', 'x', 1, 1, NULL, NULL, NULL, now()), ('Estudante antigo', '11111111102', 'nivel2@example.test', 'x', 2, 1, 'WAITING', now(), NULL, now()), ('Educação antigo', '11111111103', 'nivel3@example.test', 'x', 3, 1, NULL, NULL, NULL, now()), ('Saúde antigo', '11111111104', 'nivel4@example.test', 'x', 4, 1, NULL, NULL, NULL, now()), ('NAPNE antigo', '11111111105', 'nivel5@example.test', 'x', 5, 1, NULL, NULL, 7, now()), ('Conta do nível 6 antigo', '11111111106', 'nivel6@example.test', 'x', 6, 1, NULL, NULL, NULL, now())"
+
+          if saida=$(psql "$rl_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$papeis/migration.sql" 2>&1); then
+            echo "ERRO: a migration dos papéis converteu em papel a conta de um nível fora de 1 a 6."
+            exit 1
+          fi
+          if ! echo "$saida" | grep -q "fora de 1 a 6"; then
+            echo "$saida"
+            echo "ERRO: a migration dos papéis recusou a conta por outro motivo; o esperado é a mensagem de nível fora de 1 a 6, que lista as contas."
+            exit 1
+          fi
+          if [ "$(colunas roles)" != "0" ] || [ "$(colunas id_level)" != "1" ] || [ "$(psql "$rl_url" -tA -c "SELECT name FROM \"Level\" WHERE id = 6")" != "Legado" ]; then
+            echo "ERRO: a migration dos papéis recusou a conta, mas deixou alterações no banco; ela precisa desfazer tudo."
+            exit 1
+          fi
+
+          psql "$rl_url" -v ON_ERROR_STOP=1 -c "DELETE FROM \"User\" WHERE email = 'nivel6@example.test'"
+          if ! psql "$rl_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$papeis/migration.sql" > /dev/null; then
+            echo "ERRO: a migration $papeis falhou num banco que já tem usuários dos 5 níveis antigos."
+            exit 1
+          fi
+
+          for esperado in "1:1" "2:2" "3:3" "4:4" "5:5,6"; do
+            nivel="${esperado%%:*}"
+            roles="${esperado#*:}"
+            obtido=$(campo "array_to_string(roles, ',')" "nivel$nivel@example.test")
+            if [ "$obtido" != "$roles" ]; then
+              echo "ERRO: a conta do nível $nivel terminou com roles='$obtido'; o esperado é '$roles'."
+              exit 1
+            fi
+          done
+
+          if [ "$(colunas id_level)" != "0" ]; then
+            echo "ERRO: a coluna id_level continua no banco; a migration devia removê-la."
+            exit 1
+          fi
+          if [ "$(campo service_capacity nivel5@example.test)" != "7" ]; then
+            echo "ERRO: o limite de atendimentos do NAPNE terminou como '$(campo service_capacity nivel5@example.test)'; o esperado é 7, o que ele já tinha."
+            exit 1
+          fi
+          if [ "$(campo service_status nivel2@example.test)" != "WAITING" ]; then
+            echo "ERRO: o estudante existente terminou com service_status='$(campo service_status nivel2@example.test)'; o esperado é WAITING."
+            exit 1
+          fi
+
+          legado=$(psql "$rl_url" -tA -c "SELECT id FROM \"Level\" WHERE name = 'Legado'")
+          professor=$(psql "$rl_url" -tA -c "SELECT id || '|' || name FROM \"Level\" WHERE id = 6")
+          if [ -z "$legado" ] || [ "$legado" -lt 100 ] || [ "$professor" != "6|Professor do AEE" ]; then
+            echo "ERRO: o nível que já estava no id 6 terminou no id '$legado' e o id 6 ficou como '$professor'; o esperado é o nível antigo a partir de 100 e o id 6 como '6|Professor do AEE'."
+            exit 1
+          fi
+
+          if [ "$(psql "$rl_url" -tA -c "SELECT name FROM \"Level\" WHERE id = 7")" != "Professor do AEE (nível 7)" ]; then
+            echo "ERRO: o Professor do AEE do id 7 terminou como '$(psql "$rl_url" -tA -c "SELECT name FROM \"Level\" WHERE id = 7")'; o esperado é 'Professor do AEE (nível 7)', para o nome único liberar o nível 6."
+            exit 1
+          fi
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE edutrace_roles_aee'
+          aplicar_anteriores "$aee_url"
+          psql "$aee_url" -v ON_ERROR_STOP=1 -c "INSERT INTO \"Level\" (id, name, updated_at) VALUES (6, 'Professor do AEE', now()); INSERT INTO \"CurrentPhases\" (id, name, updated_at) VALUES (1, 'Triagem', now()); INSERT INTO \"User\" (full_name, cpf, email, password, id_level, id_current_phase, updated_at) VALUES ('Conta do nível 6 antigo', '11111111107', 'nivel6aee@example.test', 'x', 6, 1, now())"
+          if saida=$(psql "$aee_url" -q -1 -v ON_ERROR_STOP=1 -f "prisma/migrations/$papeis/migration.sql" 2>&1); then
+            echo "ERRO: a migration dos papéis deu o papel 6 à conta de um nível que já estava no id 6 e se chamava Professor do AEE; o nome não prova que ela tenha o papel."
+            exit 1
+          fi
+          if ! echo "$saida" | grep -q "fora de 1 a 6"; then
+            echo "$saida"
+            echo "ERRO: a migration dos papéis recusou a conta do nível 6 chamado Professor do AEE por outro motivo; o esperado é a mensagem de nível fora de 1 a 6."
+            exit 1
+          fi
+          if [ "$(psql "$aee_url" -tA -c "SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'User' AND column_name = 'roles'")" != "0" ] || [ "$(psql "$aee_url" -tA -c "SELECT id FROM \"Level\" WHERE name = 'Professor do AEE'")" != "6" ]; then
+            echo "ERRO: a migration dos papéis recusou a conta do nível 6, mas deixou alterações no banco; ela precisa desfazer tudo."
+            exit 1
+          fi
+
+          echo "OK: a migration dos papéis converte as contas dos 5 níveis antigos (o NAPNE vira 5 e 6), recusa e desfaz tudo para a conta de um nível sem papel, inclusive o já chamado Professor do AEE no id 6, reserva o id 6, renomeia o Professor do AEE de outro id e remove id_level."
 
 # --------------------------------------------------------------------
 # BACKEND DOCKER BUILD -----------------------------------------------

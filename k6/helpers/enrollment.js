@@ -1,7 +1,7 @@
 /**
  * Geração de matrícula para os testes de carga.
  *
- * O cadastro de estudante (POST /users com id_level 2) exige matrícula e curso.
+ * O cadastro de estudante (POST /users com roles [2]) exige matrícula e curso.
  * A matrícula é única no banco e a API só aceita letras maiúsculas sem acento,
  * dígitos, ponto, hífen e barra, com no máximo 30 caracteres; duas iterações
  * com a mesma matrícula recebem 409 no lugar do 201 esperado. Este helper usa

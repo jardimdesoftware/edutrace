@@ -44,7 +44,7 @@ describe('POST /users, validação do cpf', () => {
               switchToHttp: () => { getRequest: () => { user?: unknown } };
             }) => {
               context.switchToHttp().getRequest().user = {
-                id_level: LEVELS.ADMIN,
+                roles: [LEVELS.ADMIN],
               };
               return true;
             },

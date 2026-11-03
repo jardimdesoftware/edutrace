@@ -106,7 +106,7 @@ describe('SQL da lista de anotações', () => {
       const sql = pageIdsSql(STUDENT, query({ area: 4 }), 5);
 
       expect(sql.text).toContain(
-        'EXISTS (SELECT 1 FROM "User" u WHERE u."id" = c."id_author" AND u."id_level" = $2)',
+        'EXISTS (SELECT 1 FROM "User" u WHERE u."id" = c."id_author" AND $2 = ANY(u."roles"))',
       );
       expect(sql.values).toEqual([STUDENT, 4, 6]);
     });

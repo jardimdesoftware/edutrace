@@ -23,8 +23,11 @@ import {
   cadastraEstudante,
 } from "@/utils/registerForm";
 import { EMAIL_PATTERN } from "@/utils/emailPattern";
-import { niveisDoCadastro } from "@/utils/niveisDoCadastro";
+import SeletorDePapeis from "@/components/SeletorDePapeis";
+import { papeisDoCadastro } from "@/utils/papeisDoCadastro";
+import { ROTULO_DO_PAPEL } from "@/utils/papeis";
 import { canAccessPage } from "@/utils/pageAccess";
+import { ESTUDANTE } from "@/consts";
 
 const ROTA_CADASTRO = "/admin/usuarios/cadastro";
 
@@ -41,14 +44,14 @@ function AdminUserCreatePage() {
     nome: "",
     email: "",
     cpf: "",
-    id_level: "2",
+    roles: [ESTUDANTE] as number[],
     matricula: "",
     curso: "",
   });
   const router = useRouter();
   const { user, loading } = useAuth();
-  const podeCadastrar = !!user && canAccessPage(ROTA_CADASTRO, user.id_level);
-  const niveis = niveisDoCadastro(user?.id_level);
+  const podeCadastrar = !!user && canAccessPage(ROTA_CADASTRO, user.roles);
+  const papeis = papeisDoCadastro(user?.roles);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [mostrarTermos, setMostrarTermos] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -59,7 +62,7 @@ function AdminUserCreatePage() {
     }
   }, [loading, podeCadastrar, router]);
 
-  const setCampo = (campo: keyof typeof formData) => (valor: string) =>
+  const setCampo = (campo: Exclude<keyof typeof formData, "roles">) => (valor: string) =>
     setFormData((atual) => ({ ...atual, [campo]: valor }));
 
   const avisarErro = (mensagem: string) => {
@@ -168,8 +171,8 @@ function AdminUserCreatePage() {
                   Cadastrar pessoas
                 </h1>
                 <p className="mt-2.5 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
-                  {niveis.length > 1
-                    ? "Crie a conta e defina o nível de acesso. A pessoa recebe por e-mail um link para definir a própria senha."
+                  {papeis.length > 1
+                    ? "Crie a conta e defina os papéis. A pessoa recebe por e-mail um link para definir a própria senha."
                     : "Crie a conta do estudante. A pessoa recebe por e-mail um link para definir a própria senha."}
                 </p>
 
@@ -206,39 +209,32 @@ function AdminUserCreatePage() {
                     onChange={setCampo("cpf")}
                   />
 
-                  <label className="block">
-                    <span className={fieldLabelClass}>Nível de acesso</span>
-                    <span className={fieldBoxClass}>
-                      <Image
-                        width={23}
-                        height={23}
-                        src="/user.svg"
-                        alt=""
-                        className="mr-3 h-[20px] w-[20px] opacity-80"
-                      />
-                      {niveis.length === 1 ? (
+                  {papeis.length === 1 ? (
+                    <div className="block">
+                      <span className={fieldLabelClass}>Papel</span>
+                      <span className={fieldBoxClass}>
+                        <Image
+                          width={23}
+                          height={23}
+                          src="/user.svg"
+                          alt=""
+                          className="mr-3 h-[20px] w-[20px] opacity-80"
+                        />
                         <output className={`${fieldInputClass} flex items-center`}>
-                          <span className="min-w-0 truncate">{niveis[0].label}</span>
+                          <span className="min-w-0 truncate">{ROTULO_DO_PAPEL[papeis[0]]}</span>
                         </output>
-                      ) : (
-                        <select
-                          name="id_level"
-                          required
-                          value={formData.id_level}
-                          onChange={(e) => setCampo("id_level")(e.target.value)}
-                          className={fieldInputClass}
-                        >
-                          {niveis.map((nivel) => (
-                            <option key={nivel.value} value={nivel.value}>
-                              {nivel.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </span>
-                  </label>
+                      </span>
+                    </div>
+                  ) : (
+                    <SeletorDePapeis
+                      legenda="Papéis"
+                      opcoes={papeis}
+                      valor={formData.roles}
+                      onChange={(roles) => setFormData((atual) => ({ ...atual, roles }))}
+                    />
+                  )}
 
-                  {cadastraEstudante(formData.id_level) && (
+                  {cadastraEstudante(formData.roles) && (
                     <>
                       <TextField
                         label="Matrícula"

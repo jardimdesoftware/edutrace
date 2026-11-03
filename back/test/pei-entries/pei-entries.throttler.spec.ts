@@ -56,7 +56,7 @@ describe('PeiEntriesController create rate limit', () => {
               const req = context.switchToHttp().getRequest();
               req.user = {
                 sub: Number(req.headers['x-session-user']),
-                id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+                roles: [LEVELS.PROFISSIONAL_EDUCACAO],
                 email: 'professora@example.com',
               };
               return true;

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { rotulosDosPapeis, temPapel } from '@/utils/papeis';
 import AppLayout from '@/components/AppLayout';
 import Loading from '@/components/Loading';
 import { postComment, updateComment } from '@/api/comments';
@@ -90,7 +91,7 @@ function AnotacoesMultiprofissionais() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const { user, loading } = useAuth();
   const token = user;
-  const isStudent = token?.id_level === ESTUDANTE;
+  const isStudent = temPapel(token?.roles, ESTUDANTE);
 
   useEffect(() => {
     if (!loading && !token) {
@@ -126,7 +127,7 @@ function AnotacoesMultiprofissionais() {
   const limparFiltros = () => setFiltros(FILTROS_VAZIOS);
 
   const podeAnotar =
-    !!token && NIVEIS_PROFISSIONAIS.includes(token.id_level) && targetId !== null;
+    !!token && temPapel(token.roles, ...NIVEIS_PROFISSIONAIS) && targetId !== null;
   const alvoDaAnotacao = nomeEstudante?.trim() || 'o estudante';
 
   const erroNovaAnotacao = erroDeTexto(novaAnotacao, tipoNovo);
@@ -508,6 +509,11 @@ function AnotacoesMultiprofissionais() {
                         <p className="text-sm font-semibold text-gray-800">
                           {anotacao.author_name}
                         </p>
+                        {rotulosDosPapeis(anotacao.author_roles).length > 0 && (
+                          <span className="text-xs text-gray-600">
+                            {rotulosDosPapeis(anotacao.author_roles).join(', ')}
+                          </span>
+                        )}
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ESTILO_DO_ROTULO_DO_TIPO[anotacao.type]}`}
                         >

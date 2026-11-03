@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { rotulosDosPapeis } from '@/utils/papeis';
 import { LogOut, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -8,17 +9,9 @@ import { clearCookie } from '@/services/auth/tokenCookie';
 import { logout } from '@/services/auth/login';
 
 export default function Navbar() {
-  const levelNames: Record<number, string> = {
-    1: "Admin",
-    2: "Aluno/Estudante",
-    3: "Profissional Educação",
-    4: "Profissional Saúde",
-    5: "Profissional NAPNE",
-  };
-
   const router = useRouter();
   const { user, setUser } = useAuth();
-  const levelLabel = user?.id_level ? levelNames[user.id_level] : "Não informado";
+  const levelLabel = rotulosDosPapeis(user?.roles).join(", ") || "Não informado";
 
   // Função para limpar todos os cookies acessíveis pelo cliente
   const clearAllCookies = () => {

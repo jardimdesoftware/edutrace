@@ -22,7 +22,7 @@ const STUDENT_ROW: Record<string, unknown> = {
   full_name: 'Estudante',
   cpf: '12345678910',
   password: 'hash-que-nunca-sai',
-  id_level: LEVELS.ALUNO_ESTUDANTE,
+  roles: [LEVELS.ALUNO_ESTUDANTE],
   pedagogical_manager: null,
   external_manager_name: 'Maria da Silva',
   external_manager_phone: '81999998888',
@@ -76,7 +76,7 @@ describe('contato do responsável externo, rotas de /students', () => {
       user,
       $queryRaw: jest
         .fn()
-        .mockResolvedValue([{ id: 2, id_level: 3, service_capacity: 3 }]),
+        .mockResolvedValue([{ id: 2, roles: [3], service_capacity: 3 }]),
     };
     const prisma = {
       user,
@@ -105,7 +105,7 @@ describe('contato do responsável externo, rotas de /students', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: SUB,
-                user: { id_level: sessionLevel },
+                user: { roles: [sessionLevel] },
               }),
             ),
             registerUse: jest.fn(),

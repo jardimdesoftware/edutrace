@@ -37,7 +37,7 @@ const sessaoAtiva = {
   created_at: new Date(),
   last_used_at: new Date(),
   revoked_at: null,
-  user: { id_level: 2 },
+  user: { roles: [2] },
 };
 
 describe('AuthGuard', () => {
@@ -100,7 +100,7 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockResolvedValue({ sub: 1, id_level: 1, jti: 'sessao-revogada' });
+        .mockResolvedValue({ sub: 1, roles: [1], jti: 'sessao-revogada' });
       jest.spyOn(sessionsService, 'findActive').mockResolvedValue(null);
 
       const context = createMockExecutionContext({
@@ -116,7 +116,7 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockResolvedValue({ sub: 1, id_level: 1, jti: 'sessao-valida' });
+        .mockResolvedValue({ sub: 1, roles: [1], jti: 'sessao-valida' });
 
       const context = createMockExecutionContext({
         authorization: 'Bearer token-valido',
@@ -146,7 +146,7 @@ describe('AuthGuard', () => {
     });
 
     it('should allow access with a valid token on a route open to any level', async () => {
-      const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
+      const payload = { sub: 1, email: 'user@test.com', roles: [2] };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
 
@@ -172,10 +172,10 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', id_level: 1 });
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', roles: [1] });
       jest
         .spyOn(sessionsService, 'findActive')
-        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 1 } } as never);
+        .mockResolvedValue({ ...sessaoAtiva, user: { roles: [1] } } as never);
       jest.spyOn(reflector, 'get').mockReturnValue(levels);
 
       const context = createMockExecutionContext({
@@ -191,10 +191,10 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', id_level: 7 });
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', roles: [7] });
       jest
         .spyOn(sessionsService, 'findActive')
-        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 7 } } as never);
+        .mockResolvedValue({ ...sessaoAtiva, user: { roles: [7] } } as never);
 
       const context = createMockExecutionContext({
         authorization: 'Bearer valid.token',
@@ -207,10 +207,10 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', id_level: 7 });
+        .mockResolvedValue({ sub: 1, jti: 'sessao-valida', roles: [7] });
       jest
         .spyOn(sessionsService, 'findActive')
-        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 7 } } as never);
+        .mockResolvedValue({ ...sessaoAtiva, user: { roles: [7] } } as never);
       jest.spyOn(reflector, 'get').mockReturnValue([1, 2, 3, 4]);
 
       const context = createMockExecutionContext({
@@ -238,7 +238,7 @@ describe('AuthGuard', () => {
     });
 
     it('should throw ForbiddenException when the level is not in the allowed list', async () => {
-      const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
+      const payload = { sub: 1, email: 'user@test.com', roles: [2] };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue([1, 3, 4]);
@@ -258,7 +258,7 @@ describe('AuthGuard', () => {
     });
 
     it('should answer level restriction with 403, not 401', async () => {
-      const payload = { sub: 1, email: 'user@test.com', id_level: 2 };
+      const payload = { sub: 1, email: 'user@test.com', roles: [2] };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue([1]);
@@ -279,13 +279,13 @@ describe('AuthGuard', () => {
     });
 
     it('should allow access when the user level is in the allowed list', async () => {
-      const payload = { sub: 1, email: 'user@test.com', id_level: 3 };
+      const payload = { sub: 1, email: 'user@test.com', roles: [3] };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue(payload);
       jest.spyOn(reflector, 'get').mockReturnValue([1, 3]);
       jest
         .spyOn(sessionsService, 'findActive')
-        .mockResolvedValue({ ...sessaoAtiva, user: { id_level: 3 } } as never);
+        .mockResolvedValue({ ...sessaoAtiva, user: { roles: [3] } } as never);
 
       const mockRequest: any = {
         headers: { authorization: 'Bearer valid.token' },
@@ -306,7 +306,7 @@ describe('AuthGuard', () => {
       const payload = {
         sub: 1,
         email: 'user@test.com',
-        id_level: 2,
+        roles: [2],
         must_change_password: true,
       };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
@@ -333,7 +333,7 @@ describe('AuthGuard', () => {
       const payload = {
         sub: 1,
         email: 'user@test.com',
-        id_level: 2,
+        roles: [2],
         must_change_password: true,
       };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
@@ -364,7 +364,7 @@ describe('AuthGuard', () => {
       const payload = {
         sub: 1,
         email: 'user@test.com',
-        id_level: 2,
+        roles: [2],
         must_change_password: false,
       };
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
@@ -391,7 +391,7 @@ describe('AuthGuard', () => {
       const payload = {
         sub: 1,
         email: 'aluno@discente.ifpe.edu.br',
-        id_level: 2,
+        roles: [2],
         must_change_password: false,
         must_complete_registration: true,
       };
@@ -469,7 +469,7 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockResolvedValue({ sub: 1, id_level: 1, jti: 'sessao-valida' });
+        .mockResolvedValue({ sub: 1, roles: [1], jti: 'sessao-valida' });
     });
 
     afterEach(() => {
@@ -547,8 +547,8 @@ describe('AuthGuard', () => {
     });
   });
 
-  // A autorização usa o nível gravado no banco, e não o claim do token: com o
-  // SECRET_KEY conhecido, um token reassinado com outro id_level e o jti de
+  // A autorização usa os papéis gravados no banco, e não o claim do token: com o
+  // SECRET_KEY conhecido, um token reassinado com papéis inventados e o jti de
   // uma sessão válida passaria como administrador.
   describe('identidade da sessão', () => {
     const request: Record<string, unknown> = {
@@ -569,12 +569,12 @@ describe('AuthGuard', () => {
         sub: 1,
         jti: 'sessao-valida',
         email: 'estudante@test.com',
-        id_level: 1,
+        roles: [1],
       });
 
       await expect(guard.canActivate(context)).resolves.toBe(true);
       expect(request.user).toEqual(
-        expect.objectContaining({ sub: 1, id_level: 2 }),
+        expect.objectContaining({ sub: 1, roles: [2] }),
       );
     });
 
@@ -582,7 +582,7 @@ describe('AuthGuard', () => {
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
         sub: 1,
         jti: 'sessao-valida',
-        id_level: 1,
+        roles: [1],
       });
       jest
         .spyOn(reflector, 'get')
@@ -595,11 +595,67 @@ describe('AuthGuard', () => {
       );
     });
 
+    describe('papéis combinados', () => {
+      const allow = (levels: number[]) =>
+        jest
+          .spyOn(reflector, 'get')
+          .mockImplementation((key: unknown) =>
+            key === ALLOW_LEVELS_KEY ? levels : undefined,
+          );
+
+      beforeEach(() => {
+        jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+          sub: 1,
+          jti: 'sessao-valida',
+          roles: [1],
+        });
+        jest.spyOn(sessionsService, 'findActive').mockResolvedValue({
+          ...sessaoAtiva,
+          user: { roles: [3, 6] },
+        } as never);
+      });
+
+      it.each([[[6]], [[3]], [[1, 5, 6]]])(
+        'should allow an account with roles 3 and 6 on a route that lists %j, by the intersection',
+        async (levels) => {
+          allow(levels);
+
+          await expect(guard.canActivate(context)).resolves.toBe(true);
+          expect(request.user).toEqual(
+            expect.objectContaining({ roles: [3, 6] }),
+          );
+        },
+      );
+
+      it.each([[[1]], [[4, 5]], [[2]]])(
+        'should deny an account with roles 3 and 6 on a route that lists %j, with no intersection',
+        async (levels) => {
+          allow(levels);
+
+          await expect(guard.canActivate(context)).rejects.toThrow(
+            ForbiddenException,
+          );
+        },
+      );
+
+      it('should deny an account whose stored roles are empty', async () => {
+        jest.spyOn(sessionsService, 'findActive').mockResolvedValue({
+          ...sessaoAtiva,
+          user: { roles: [] },
+        } as never);
+        allow([1, 2, 3, 4, 5, 6]);
+
+        await expect(guard.canActivate(context)).rejects.toThrow(
+          ForbiddenException,
+        );
+      });
+    });
+
     it('should refuse a token whose sub is not the owner of the session', async () => {
       jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
         sub: 99,
         jti: 'sessao-valida',
-        id_level: 1,
+        roles: [1],
       });
 
       await expect(guard.canActivate(context)).rejects.toThrow(

@@ -1,4 +1,5 @@
 import { PROFISSIONAL_EDUCACAO } from '@/consts';
+import { temPapel, type Papeis, type UsuarioLogado } from './papeis';
 import type {
   NewPeiEntryPayload,
   PeiEntry,
@@ -393,15 +394,15 @@ export function agruparPorSemestre(registros: readonly PeiEntry[]): GrupoDeSemes
 // A regra definitiva é do back (POST, PATCH e DELETE só do nível Profissional
 // da Educação; PATCH só do autor; DELETE do autor ou de qualquer um desse nível
 // quando o autor foi excluído). Aqui só decide se os botões de escrita aparecem.
-type SessaoDoPei = { sub: number; id_level: number } | null | undefined;
+type SessaoDoPei = UsuarioLogado | null | undefined;
 
-export function podeCriarPei(idLevel?: number): boolean {
-  return idLevel === PROFISSIONAL_EDUCACAO;
+export function podeCriarPei(roles?: Papeis): boolean {
+  return temPapel(roles, PROFISSIONAL_EDUCACAO);
 }
 
 export function podeAlterarPei(sessao: SessaoDoPei, registro: Pick<PeiEntry, 'id_author'>): boolean {
   return (
-    podeCriarPei(sessao?.id_level) && registro.id_author !== null && sessao?.sub === registro.id_author
+    podeCriarPei(sessao?.roles) && registro.id_author !== null && sessao?.sub === registro.id_author
   );
 }
 
@@ -409,6 +410,6 @@ export function podeAlterarPei(sessao: SessaoDoPei, registro: Pick<PeiEntry, 'id
 // tem quem o edite, mas qualquer professor pode excluí-lo para criar o seu.
 export function podeExcluirPei(sessao: SessaoDoPei, registro: Pick<PeiEntry, 'id_author'>): boolean {
   return (
-    podeCriarPei(sessao?.id_level) && (registro.id_author === null || sessao?.sub === registro.id_author)
+    podeCriarPei(sessao?.roles) && (registro.id_author === null || sessao?.sub === registro.id_author)
   );
 }

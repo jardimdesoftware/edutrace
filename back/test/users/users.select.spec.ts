@@ -116,7 +116,7 @@ describe('userSelectFor', () => {
     ['Administrador', LEVELS.ADMIN],
     ['Profissional NAPNE', LEVELS.PROFISSIONAL_NAPNE],
   ])('should give the %s the select with the contact', (_, level) => {
-    expect(userSelectFor(level)).toBe(USER_WITH_MANAGER_CONTACT_SELECT);
+    expect(userSelectFor([level])).toBe(USER_WITH_MANAGER_CONTACT_SELECT);
   });
 
   it.each([
@@ -126,10 +126,26 @@ describe('userSelectFor', () => {
     ['um nível desconhecido', 99],
     ['um nível ausente', undefined as unknown as number],
   ])('should give %s the public select, without the contact', (_, level) => {
-    const select = userSelectFor(level);
+    const select = userSelectFor([level]);
 
     expect(select).toBe(PUBLIC_USER_SELECT);
     expect(select).not.toHaveProperty('external_manager_phone');
     expect(select).not.toHaveProperty('external_manager_cpf');
+  });
+
+  it.each([
+    ['Educação + NAPNE', [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFISSIONAL_NAPNE]],
+    ['NAPNE + Professor do AEE', [LEVELS.PROFISSIONAL_NAPNE, LEVELS.PROFESSOR_AEE]],
+  ])('should give the combined %s the select with the contact, since one role reads it', (_, roles) => {
+    expect(userSelectFor(roles)).toBe(USER_WITH_MANAGER_CONTACT_SELECT);
+  });
+
+  it.each([
+    ['Educação + Professor do AEE', [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]],
+    ['Saúde + Educação', [LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_EDUCACAO]],
+    ['uma lista vazia', []],
+    ['nenhuma lista', undefined as unknown as number[]],
+  ])('should give %s the public select, without the contact', (_, roles) => {
+    expect(userSelectFor(roles)).toBe(PUBLIC_USER_SELECT);
   });
 });

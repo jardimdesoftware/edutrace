@@ -31,10 +31,11 @@ export class StudentsController {
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @Get()
   async findAll(@Req() req: AuthenticatedRequest) {
-    return maskUsersCpf(await this.studentsService.findAll(req.user.id_level));
+    return maskUsersCpf(await this.studentsService.findAll(req.user.roles));
   }
 
   // Declarada antes de GET :email: o parâmetro casa com qualquer texto, e a
@@ -57,16 +58,14 @@ export class StudentsController {
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @Get(':email')
   async findOne(
     @Param('email') email: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    const student = await this.studentsService.findOne(
-      email,
-      req.user.id_level,
-    );
+    const student = await this.studentsService.findOne(email, req.user.roles);
     return student ? maskUserCpf(student) : student;
   }
 
@@ -84,7 +83,7 @@ export class StudentsController {
       await this.studentsService.setPedagogicalManager(
         email,
         dto,
-        req.user.id_level,
+        req.user.roles,
       ),
     );
   }
@@ -118,7 +117,7 @@ export class StudentsController {
     @Req() req: AuthenticatedRequest,
   ) {
     return maskUserCpf(
-      await this.serviceQueueService.reopen(email, req.user.id_level),
+      await this.serviceQueueService.reopen(email, req.user.roles),
     );
   }
 }

@@ -36,7 +36,7 @@ afterEach(() => {
 
 describe('getAllStudents', () => {
   it('lists the students from /students, and not every user from /users', async () => {
-    const students = [{ id: 3, email: 'estudante@edutrace.com', id_level: 2 }];
+    const students = [{ id: 3, email: 'estudante@edutrace.com', roles: [2] }];
     respondWith(200, students);
 
     const result = await getAllStudents();
@@ -50,7 +50,7 @@ describe('getAllStudents', () => {
 
 describe('getStudentByEmail', () => {
   it('looks up the email among the students with a GET to /students/:email', async () => {
-    const student = { id: 3, email: 'estudante@edutrace.com', id_level: 2 };
+    const student = { id: 3, email: 'estudante@edutrace.com', roles: [2] };
     respondWith(200, student);
 
     const result = await getStudentByEmail('estudante@edutrace.com');

@@ -32,8 +32,8 @@ afterEach(() => {
 describe('getPedagogicalManagerOptions', () => {
   it('lists the servers from /students/pedagogical-manager-options with a GET', async () => {
     const opcoes = [
-      { id: 4, full_name: 'Ana Educação', id_level: 3 },
-      { id: 9, full_name: 'Bia NAPNE', id_level: 5 },
+      { id: 4, full_name: 'Ana Educação', roles: [3] },
+      { id: 9, full_name: 'Bia NAPNE', roles: [5, 6] },
     ];
     respondWith(200, opcoes);
 

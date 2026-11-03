@@ -1,7 +1,7 @@
 export interface PedagogicalManagerOption {
   id: number;
   full_name: string;
-  id_level: number;
+  roles: number[];
 }
 
 export type PedagogicalManagerPayload =

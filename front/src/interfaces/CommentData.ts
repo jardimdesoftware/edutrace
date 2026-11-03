@@ -13,7 +13,7 @@ export interface CommentData {
     id_user: number;
     id_author: number;
     author_name: string;
-    author_level?: number | null;
+    author_roles?: number[] | null;
     created_at: Date;
     updated_at?: Date | null;
     edits?: CommentEditData[];

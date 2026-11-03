@@ -71,7 +71,7 @@ describe('UsersService', () => {
     service_closed_at: null,
     service_capacity: null,
     napne_responsible_id: null,
-    id_level: LEVELS.ALUNO_ESTUDANTE,
+    roles: [LEVELS.ALUNO_ESTUDANTE],
     id_current_phase: PHASES.TRIAGEM,
     created_at: new Date(),
     updated_at: new Date(),
@@ -96,7 +96,7 @@ describe('UsersService', () => {
       $queryRaw: jest
         .fn()
         .mockResolvedValue([
-          { id: mockUser.id, id_level: LEVELS.ALUNO_ESTUDANTE },
+          { id: mockUser.id, roles: [LEVELS.ALUNO_ESTUDANTE] },
         ]),
       user: {
         update: jest.fn().mockResolvedValue(mockUser),
@@ -203,7 +203,7 @@ describe('UsersService', () => {
           select: USER_WITH_MANAGER_CONTACT_SELECT,
           data: expect.objectContaining({
             password: 'hashedPassword',
-            id_level: LEVELS.ALUNO_ESTUDANTE,
+            roles: [LEVELS.ALUNO_ESTUDANTE],
             id_current_phase: PHASES.TRIAGEM,
             must_change_password: false,
           }),
@@ -281,12 +281,24 @@ describe('UsersService', () => {
       error.mockRestore();
     });
 
-    it('should use provided id_level when given', async () => {
-      await service.create({ ...createDto, id_level: LEVELS.ADMIN } as any);
+    it('should store the roles in ascending order for a combined account', async () => {
+      await service.create({
+        ...createDto,
+        roles: [LEVELS.PROFESSOR_AEE, LEVELS.PROFISSIONAL_EDUCACAO],
+      } as any);
+
+      expect(createdData().roles).toEqual([
+        LEVELS.PROFISSIONAL_EDUCACAO,
+        LEVELS.PROFESSOR_AEE,
+      ]);
+    });
+
+    it('should store the roles when given', async () => {
+      await service.create({ ...createDto, roles: [LEVELS.ADMIN] } as any);
 
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ id_level: LEVELS.ADMIN }),
+          data: expect.objectContaining({ roles: [LEVELS.ADMIN] }),
         }),
       );
     });
@@ -313,7 +325,7 @@ describe('UsersService', () => {
           await expect(
             service.create({
               ...createDto,
-              id_level: LEVELS.PROFISSIONAL_SAUDE,
+              roles: [LEVELS.PROFISSIONAL_SAUDE],
               ...fields,
             } as any),
           ).rejects.toBeInstanceOf(BadRequestException);
@@ -323,11 +335,21 @@ describe('UsersService', () => {
         },
       );
 
+      it('should answer 400 for professional roles that combine too', async () => {
+        await expect(
+          service.create({
+            ...createDto,
+            roles: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+            ...studentFields,
+          } as any),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
       it('should answer 400 for the administrator level too', async () => {
         await expect(
           service.create({
             ...createDto,
-            id_level: LEVELS.ADMIN,
+            roles: [LEVELS.ADMIN],
             ...studentFields,
           } as any),
         ).rejects.toBeInstanceOf(BadRequestException);
@@ -433,7 +455,7 @@ describe('UsersService', () => {
           email: googleData.email,
           password: googleData.passwordHash,
           google_sub: googleData.googleSubject,
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
           id_current_phase: PHASES.TRIAGEM,
           must_change_password: false,
           service_status: ServiceStatus.WAITING,
@@ -641,11 +663,11 @@ describe('UsersService', () => {
       course: 'Análise e Desenvolvimento de Sistemas',
     };
 
-    // O nível atual da conta vem da leitura que trava a linha dentro da
+    // Os papéis atuais da conta vêm da leitura que trava a linha dentro da
     // transação; conta inexistente devolve nenhuma linha.
-    function currentLevel(id_level: number | null) {
+    function currentLevel(roles: number | number[] | null) {
       tx.$queryRaw.mockResolvedValue(
-        id_level === null ? [] : [{ id: mockUser.id, id_level }],
+        roles === null ? [] : [{ id: mockUser.id, roles: [roles].flat() }],
       );
     }
 
@@ -659,6 +681,14 @@ describe('UsersService', () => {
         where: { email: 'test@test.com' },
         data: expect.objectContaining(fields),
       });
+    });
+
+    it('should answer 400 for an account that combines professional roles', async () => {
+      currentLevel([LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE]);
+
+      await expect(
+        service.update('test@test.com', fields),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should accept one of the fields alone', async () => {
@@ -692,7 +722,7 @@ describe('UsersService', () => {
       await expect(
         service.update('test@test.com', {
           ...fields,
-          id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+          roles: [LEVELS.PROFISSIONAL_EDUCACAO],
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
 
@@ -704,14 +734,14 @@ describe('UsersService', () => {
 
       await service.update('test@test.com', {
         ...fields,
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: [LEVELS.ALUNO_ESTUDANTE],
       });
 
       expect(tx.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             ...fields,
-            id_level: LEVELS.ALUNO_ESTUDANTE,
+            roles: [LEVELS.ALUNO_ESTUDANTE],
           }),
         }),
       );
@@ -748,10 +778,10 @@ describe('UsersService', () => {
   });
 
   describe('update', () => {
-    it('should update user full_name and id_level', async () => {
+    it('should update user full_name and roles', async () => {
       const updateDto = {
         full_name: 'Updated Name',
-        id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO],
       };
       const updatedUser = { ...mockUser, ...updateDto };
       tx.user.update.mockResolvedValue(updatedUser);
@@ -763,7 +793,7 @@ describe('UsersService', () => {
         where: { email: 'test@test.com' },
         data: expect.objectContaining({
           full_name: updateDto.full_name,
-          id_level: updateDto.id_level,
+          roles: updateDto.roles,
         }),
       });
       expect(result).toEqual(updatedUser);
@@ -857,7 +887,7 @@ describe('UsersService', () => {
     it('should revoke the sessions of the account when the level changes', async () => {
       await service.update('test@test.com', {
         full_name: 'Nome',
-        id_level: 3,
+        roles: [3],
       });
 
       expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(
@@ -867,7 +897,7 @@ describe('UsersService', () => {
 
     it('should keep the sessions when the level is not part of the change', async () => {
       // O DTO declara os campos como obrigatórios no tipo, mas ambos são
-      // @IsOptional, então o corpo pode chegar sem id_level.
+      // @IsOptional, então o corpo pode chegar sem roles.
       await service.update('test@test.com', {
         full_name: 'Novo Nome',
       } as UpdateUserDto);

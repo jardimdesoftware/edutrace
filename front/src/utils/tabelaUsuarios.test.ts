@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe('listarUsuariosDaTabela', () => {
   it('lists every user for the administrator', async () => {
-    await listarUsuariosDaTabela(ADMIN);
+    await listarUsuariosDaTabela([ADMIN]);
 
     assert.deepEqual(urls, [`${API_URL}/users`]);
   });
@@ -52,7 +52,7 @@ describe('listarUsuariosDaTabela', () => {
     ['student', ESTUDANTE],
   ] as const) {
     it(`lists only the students for the ${nome}`, async () => {
-      await listarUsuariosDaTabela(nivel);
+      await listarUsuariosDaTabela([nivel]);
 
       assert.deepEqual(urls, [`${API_URL}/students`]);
     });
@@ -67,7 +67,7 @@ describe('listarUsuariosDaTabela', () => {
 
 describe('podeExportarRelatorio', () => {
   it('allows the report only for a student', () => {
-    assert.equal(podeExportarRelatorio({ id_level: ESTUDANTE }), true);
+    assert.equal(podeExportarRelatorio({ roles: [ESTUDANTE] }), true);
   });
 
   for (const [nome, nivel] of [
@@ -77,7 +77,7 @@ describe('podeExportarRelatorio', () => {
     ['NAPNE professional', PROFISSIONAL_NAPNE],
   ] as const) {
     it(`denies the report for the ${nome}, who has no report`, () => {
-      assert.equal(podeExportarRelatorio({ id_level: nivel }), false);
+      assert.equal(podeExportarRelatorio({ roles: [nivel] }), false);
     });
   }
 });
@@ -85,15 +85,15 @@ describe('podeExportarRelatorio', () => {
 describe('responsavelDaLinha', () => {
   it('shows the server, the external person or the placeholder for a student', () => {
     const servidor = {
-      id_level: ESTUDANTE,
+      roles: [ESTUDANTE],
       pedagogical_manager: { id: 4, full_name: 'Ana Souza' },
     };
     const externo = {
-      id_level: ESTUDANTE,
+      roles: [ESTUDANTE],
       pedagogical_manager: null,
       external_manager_name: 'Maria da Silva',
     };
-    const nenhum = { id_level: ESTUDANTE, pedagogical_manager: null };
+    const nenhum = { roles: [ESTUDANTE], pedagogical_manager: null };
 
     assert.equal(responsavelDaLinha(servidor), 'Ana Souza');
     assert.equal(responsavelDaLinha(externo), 'Maria da Silva');
@@ -109,7 +109,7 @@ describe('responsavelDaLinha', () => {
     ];
 
     for (const nivel of outrosNiveis) {
-      const linha = { id_level: nivel, pedagogical_manager: null };
+      const linha = { roles: [nivel], pedagogical_manager: null };
 
       assert.equal(responsavelDaLinha(linha), '', `nível ${nivel}`);
     }
@@ -127,7 +127,7 @@ function usuario(id: number, extra: Partial<StudentData> = {}): StudentData {
     created_at: '2026-10-01T12:00:00.000Z',
     updated_at: '2026-10-01T12:00:00.000Z',
     deleted_at: null,
-    id_level: ESTUDANTE,
+    roles: [ESTUDANTE],
     id_current_phase: 1,
     ...extra,
   };
@@ -136,11 +136,11 @@ function usuario(id: number, extra: Partial<StudentData> = {}): StudentData {
 describe('substituirUsuario', () => {
   it('replaces the row with the response of the update, not only the changed field', () => {
     const napne = usuario(2, {
-      id_level: PROFISSIONAL_NAPNE,
+      roles: [PROFISSIONAL_NAPNE],
       service_capacity: 5,
     });
     const atualizado = usuario(2, {
-      id_level: PROFISSIONAL_SAUDE,
+      roles: [PROFISSIONAL_SAUDE],
       service_capacity: null,
       updated_at: '2026-10-16T12:00:00.000Z',
     });
@@ -153,9 +153,9 @@ describe('substituirUsuario', () => {
   });
 
   it('shows the queue fields the back set when the level changed', () => {
-    const profissional = usuario(2, { id_level: PROFISSIONAL_EDUCACAO });
+    const profissional = usuario(2, { roles: [PROFISSIONAL_EDUCACAO] });
     const atualizado = usuario(2, {
-      id_level: ESTUDANTE,
+      roles: [ESTUDANTE],
       service_status: 'WAITING',
       queued_at: '2026-10-16T12:00:00.000Z',
       napne_responsible: null,
@@ -171,7 +171,7 @@ describe('substituirUsuario', () => {
     const [primeiro, , terceiro] = [usuario(1), usuario(2), usuario(3)];
     const resultado = substituirUsuario(
       [primeiro, usuario(2), terceiro],
-      usuario(2, { id_level: ADMIN }),
+      usuario(2, { roles: [ADMIN] }),
     );
 
     assert.deepEqual(
@@ -186,11 +186,11 @@ describe('substituirUsuario', () => {
     const original = [usuario(1), usuario(2)];
     const copia = [...original];
 
-    const resultado = substituirUsuario(original, usuario(2, { id_level: ADMIN }));
+    const resultado = substituirUsuario(original, usuario(2, { roles: [ADMIN] }));
 
     assert.notEqual(resultado, original);
     assert.deepEqual(original, copia);
-    assert.equal(original[1].id_level, ESTUDANTE);
+    assert.deepEqual(original[1].roles, [ESTUDANTE]);
   });
 
   it('does not add a user that is not in the list', () => {
@@ -199,5 +199,13 @@ describe('substituirUsuario', () => {
     const resultado = substituirUsuario(original, usuario(9));
 
     assert.deepEqual(resultado, original);
+  });
+});
+
+describe('listarUsuariosDaTabela with several roles', () => {
+  it('lists only the students for professional combinations, never every user', async () => {
+    await listarUsuariosDaTabela([PROFISSIONAL_NAPNE, 6]);
+
+    assert.deepEqual(urls, [`${API_URL}/students`]);
   });
 });

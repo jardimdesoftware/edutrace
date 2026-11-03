@@ -15,6 +15,7 @@ import {
   MANAGER_CONTACT_READERS,
   PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT,
   PEI_ENTRY_READERS,
+  PROFESSIONAL_ROLES,
   STUDENT_RECORD_READERS,
 } from 'src/constants';
 
@@ -26,6 +27,7 @@ describe('LEVELS', () => {
       PROFISSIONAL_EDUCACAO: 3,
       PROFISSIONAL_SAUDE: 4,
       PROFISSIONAL_NAPNE: 5,
+      PROFESSOR_AEE: 6,
     });
   });
 });
@@ -37,6 +39,7 @@ describe('STUDENT_RECORD_READERS', () => {
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
     ]);
   });
 
@@ -59,12 +62,13 @@ describe('ANAMNESIS_READERS', () => {
 });
 
 describe('CASE_STUDY_READERS', () => {
-  it('should list the Administrator, Education, Health and NAPNE levels as readers of the case study of any student', () => {
+  it('should list the Administrator, Education, Health, NAPNE and Professor do AEE levels as readers of the case study of any student', () => {
     expect(CASE_STUDY_READERS).toEqual([
       LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
     ]);
   });
 
@@ -74,12 +78,13 @@ describe('CASE_STUDY_READERS', () => {
 });
 
 describe('AEE_PLAN_READERS', () => {
-  it('should list the Administrator, Education, Health and NAPNE levels as readers of the PAEE of any student', () => {
+  it('should list the Administrator, Education, Health, NAPNE and Professor do AEE levels as readers of the PAEE of any student', () => {
     expect(AEE_PLAN_READERS).toEqual([
       LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
     ]);
   });
 
@@ -89,12 +94,13 @@ describe('AEE_PLAN_READERS', () => {
 });
 
 describe('PEI_ENTRY_READERS', () => {
-  it('should list the Administrator, Education, Health and NAPNE levels as readers of the PEI of any student', () => {
+  it('should list the Administrator, Education, Health, NAPNE and Professor do AEE levels as readers of the PEI of any student', () => {
     expect(PEI_ENTRY_READERS).toEqual([
       LEVELS.ADMIN,
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
     ]);
   });
 
@@ -172,7 +178,24 @@ describe('limites da lista de anotações', () => {
       LEVELS.PROFISSIONAL_EDUCACAO,
       LEVELS.PROFISSIONAL_SAUDE,
       LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
     ]);
     expect(COMMENT_AUTHOR_AREAS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+  });
+});
+
+describe('PROFESSIONAL_ROLES', () => {
+  it('should list the four professional roles, which combine freely', () => {
+    expect(PROFESSIONAL_ROLES).toEqual([
+      LEVELS.PROFISSIONAL_EDUCACAO,
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
+    ]);
+  });
+
+  it('should not include the Administrator nor the student, who stay alone', () => {
+    expect(PROFESSIONAL_ROLES).not.toContain(LEVELS.ADMIN);
+    expect(PROFESSIONAL_ROLES).not.toContain(LEVELS.ALUNO_ESTUDANTE);
   });
 });

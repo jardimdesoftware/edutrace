@@ -1,9 +1,8 @@
 import { PROFISSIONAL_NAPNE } from '@/consts';
+import { temPapel, type UsuarioLogado } from '@/utils/papeis';
 import type { ServiceStatus, StudentData } from '@/interfaces/StudentData';
 
 export type FiltroStatus = ServiceStatus | 'TODOS';
-
-export type UsuarioLogado = { sub: number; id_level: number };
 
 export const STATUS_ATENDIMENTO: readonly ServiceStatus[] = [
   'WAITING',
@@ -85,7 +84,7 @@ export function podeAssumirAtendimento(
   usuario?: UsuarioLogado | null,
 ): boolean {
   return (
-    usuario?.id_level === PROFISSIONAL_NAPNE && estudante.service_status === 'WAITING'
+    temPapel(usuario?.roles, PROFISSIONAL_NAPNE) && estudante.service_status === 'WAITING'
   );
 }
 
@@ -94,9 +93,9 @@ export function podeEncerrarAtendimento(
   usuario?: UsuarioLogado | null,
 ): boolean {
   return (
-    usuario?.id_level === PROFISSIONAL_NAPNE &&
+    temPapel(usuario?.roles, PROFISSIONAL_NAPNE) &&
     estudante.service_status === 'IN_SERVICE' &&
     estudante.napne_responsible != null &&
-    estudante.napne_responsible.id === usuario.sub
+    estudante.napne_responsible.id === usuario?.sub
   );
 }

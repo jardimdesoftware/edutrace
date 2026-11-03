@@ -27,6 +27,7 @@ export class CommentsController {
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @ApiBody({
     type: CreateCommentDto,
@@ -39,13 +40,13 @@ export class CommentsController {
   ) {
     const idUser = request.user.sub;
     const userName = request.user.name;
-    const idLevel = request.user.id_level;
+    const roles = request.user.roles;
 
     return this.commentsService.create(
       createCommentDto,
       idUser,
       userName,
-      idLevel,
+      roles,
     );
   }
 
@@ -54,6 +55,7 @@ export class CommentsController {
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @ApiBody({
     type: UpdateCommentDto,
@@ -74,6 +76,7 @@ export class CommentsController {
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,
     LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
   )
   @Get(':id_user')
   findAllByIdUser(

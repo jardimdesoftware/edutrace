@@ -29,7 +29,7 @@ export class ServiceStatsService {
     const [byStatus, napnes, oldest] = await Promise.all([
       this.prisma.user.groupBy({
         by: ['service_status'],
-        where: { id_level: LEVELS.ALUNO_ESTUDANTE },
+        where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
         _count: { _all: true },
       }),
       // Seleção explícita: devolver o User inteiro levaria o hash da senha.
@@ -37,7 +37,7 @@ export class ServiceStatsService {
       // (responsável e IN_SERVICE), para o painel e a recusa do "assumir"
       // concordarem sobre quem está no limite.
       this.prisma.user.findMany({
-        where: { id_level: LEVELS.PROFISSIONAL_NAPNE },
+        where: { roles: { has: LEVELS.PROFISSIONAL_NAPNE } },
         orderBy: [{ full_name: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
@@ -55,7 +55,7 @@ export class ServiceStatsService {
       this.prisma.user.aggregate({
         _min: { queued_at: true },
         where: {
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: { has: LEVELS.ALUNO_ESTUDANTE },
           service_status: ServiceStatus.WAITING,
         },
       }),

@@ -621,7 +621,7 @@ describe('AnamnesisService', () => {
     it('should return the student own anamnesis', async () => {
       const email = 'test@example.com';
       const request = {
-        user: { email, id_level: LEVELS.ALUNO_ESTUDANTE },
+        user: { email, roles: [LEVELS.ALUNO_ESTUDANTE] },
       } as any;
       const anamnesis = {
         id: 1,
@@ -810,7 +810,7 @@ describe('AnamnesisService', () => {
       const request = {
         user: {
           email: 'student@example.com',
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: [LEVELS.ALUNO_ESTUDANTE],
         },
       } as any;
 
@@ -827,7 +827,7 @@ describe('AnamnesisService', () => {
 
     it("should throw ForbiddenException if a level outside the readers views another student's anamnesis", async () => {
       const request = {
-        user: { email: 'nivel7@example.com', id_level: 7 },
+        user: { email: 'nivel7@example.com', roles: [7] },
       } as any;
 
       await expect(
@@ -845,7 +845,7 @@ describe('AnamnesisService', () => {
       const request = {
         user: {
           email: 'napne@example.com',
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
         },
       } as any;
       const anamnesis = { id: 1, email } as any;
@@ -868,7 +868,7 @@ describe('AnamnesisService', () => {
       "should throw ForbiddenException if level %s views another student's anamnesis",
       async (id_level) => {
         const request = {
-          user: { email: 'professional@example.com', id_level },
+          user: { email: 'professional@example.com', roles: [id_level] },
         } as any;
 
         await expect(
@@ -991,7 +991,7 @@ describe('AnamnesisService', () => {
       const request = {
         user: {
           sub: 3,
-          id_level: LEVELS.PROFISSIONAL_NAPNE,
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
           email: 'napne@example.com',
           name: 'NAPNE',
         },

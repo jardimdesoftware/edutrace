@@ -65,9 +65,8 @@ describe('StudentsService', () => {
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
-          id_level: 2,
+          roles: [2],
           id_current_phase: 1,
-          level: { id: 2, name: 'Aluno/Estudante' },
           current_phase: { id: 1, name: 'Triagem' },
         },
         {
@@ -80,9 +79,8 @@ describe('StudentsService', () => {
           created_at: new Date(),
           updated_at: new Date(),
           deleted_at: null,
-          id_level: 2,
+          roles: [2],
           id_current_phase: 1,
-          level: { id: 2, name: 'Aluno/Estudante' },
           current_phase: { id: 1, name: 'Triagem' },
         },
       ];
@@ -90,11 +88,11 @@ describe('StudentsService', () => {
         .spyOn(prisma.user, 'findMany')
         .mockResolvedValue(studentsList as never);
 
-      const result = await service.findAll(LEVELS.PROFISSIONAL_SAUDE);
+      const result = await service.findAll([LEVELS.PROFISSIONAL_SAUDE]);
 
       expect(prisma.user.findMany).toHaveBeenCalledWith({
         where: {
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: { has: LEVELS.ALUNO_ESTUDANTE },
         },
         select: PUBLIC_USER_SELECT,
       });
@@ -106,10 +104,10 @@ describe('StudentsService', () => {
       async (level) => {
         jest.spyOn(prisma.user, 'findMany').mockResolvedValue([] as never);
 
-        await service.findAll(level);
+        await service.findAll([level]);
 
         expect(prisma.user.findMany).toHaveBeenCalledWith({
-          where: { id_level: LEVELS.ALUNO_ESTUDANTE },
+          where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
           select: USER_WITH_MANAGER_CONTACT_SELECT,
         });
       },
@@ -125,10 +123,10 @@ describe('StudentsService', () => {
       async (level) => {
         jest.spyOn(prisma.user, 'findMany').mockResolvedValue([] as never);
 
-        await service.findAll(level);
+        await service.findAll([level]);
 
         expect(prisma.user.findMany).toHaveBeenCalledWith({
-          where: { id_level: LEVELS.ALUNO_ESTUDANTE },
+          where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
           select: PUBLIC_USER_SELECT,
         });
       },
@@ -142,19 +140,19 @@ describe('StudentsService', () => {
         full_name: 'Luizin',
         cpf: '12345678910',
         email: 'luizin@hotmail.com',
-        id_level: LEVELS.ALUNO_ESTUDANTE,
+        roles: [LEVELS.ALUNO_ESTUDANTE],
       };
       jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(student as never);
 
       const result = await service.findOne(
         'luizin@hotmail.com',
-        LEVELS.PROFISSIONAL_SAUDE,
+        [LEVELS.PROFISSIONAL_SAUDE],
       );
 
       expect(prisma.user.findFirst).toHaveBeenCalledWith({
         where: {
           email: 'luizin@hotmail.com',
-          id_level: LEVELS.ALUNO_ESTUDANTE,
+          roles: { has: LEVELS.ALUNO_ESTUDANTE },
         },
         select: PUBLIC_USER_SELECT,
       });
@@ -172,7 +170,7 @@ describe('StudentsService', () => {
       async (level, select) => {
         jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
 
-        await service.findOne('luizin@hotmail.com', level);
+        await service.findOne('luizin@hotmail.com', [level]);
 
         expect(prisma.user.findFirst).toHaveBeenCalledWith(
           expect.objectContaining({ select }),
@@ -184,7 +182,7 @@ describe('StudentsService', () => {
       jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
 
       await expect(
-        service.findOne('admin@edutrace.com', LEVELS.ADMIN),
+        service.findOne('admin@edutrace.com', [LEVELS.ADMIN]),
       ).resolves.toBeNull();
     });
   });
@@ -203,7 +201,7 @@ describe('StudentsService', () => {
           email: 'estudante@example.com',
         });
         expect(prisma.user.findFirst).toHaveBeenCalledWith({
-          where: { ...where, id_level: LEVELS.ALUNO_ESTUDANTE },
+          where: { ...where, roles: { has: LEVELS.ALUNO_ESTUDANTE } },
           select: { id: true, email: true },
         });
       },
@@ -234,7 +232,7 @@ describe('StudentsService', () => {
         'b@example.com',
       ]);
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { id_level: LEVELS.ALUNO_ESTUDANTE },
+        where: { roles: { has: LEVELS.ALUNO_ESTUDANTE } },
         select: { email: true },
       });
     });

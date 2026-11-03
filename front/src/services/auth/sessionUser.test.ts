@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe('fetchSessionUser', () => {
   it('asks the back who the session user is, sending the session cookie', async () => {
-    const profile = { sub: 7, email: 'prof@edutrace.com', name: 'Prof', id_level: 4 };
+    const profile = { sub: 7, email: 'prof@edutrace.com', name: 'Prof', roles: [4] };
     respondWith(200, profile);
 
     const user = await fetchSessionUser();

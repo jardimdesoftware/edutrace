@@ -12,21 +12,27 @@ const payload = {
   sub: 1,
   email: 'user@test.com',
   name: 'Usuário',
-  id_level: 2,
+  roles: [2],
   jti: 'sessao-1',
 };
 
 describe('Session cookie over HTTP', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   let app: INestApplication;
-  let authService: { signIn: jest.Mock; logout: jest.Mock; updateProfile: jest.Mock };
+  let authService: {
+    signIn: jest.Mock;
+    logout: jest.Mock;
+    updateProfile: jest.Mock;
+  };
   let jwtService: { verifyAsync: jest.Mock };
 
   beforeEach(async () => {
     authService = {
       signIn: jest.fn().mockResolvedValue({ access_token: 'token.emitido' }),
       logout: jest.fn().mockResolvedValue({ message: 'Sessão encerrada.' }),
-      updateProfile: jest.fn().mockResolvedValue({ access_token: 'token.novo' }),
+      updateProfile: jest
+        .fn()
+        .mockResolvedValue({ access_token: 'token.novo' }),
     };
     jwtService = { verifyAsync: jest.fn().mockResolvedValue(payload) };
 
@@ -41,7 +47,7 @@ describe('Session cookie over HTTP', () => {
             findActive: jest.fn().mockResolvedValue({
               jti: 'sessao-1',
               id_user: 1,
-              user: { id_level: 2 },
+              user: { roles: [2] },
             }),
             registerUse: jest.fn(),
           },
@@ -98,8 +104,16 @@ describe('Session cookie over HTTP', () => {
       .set('Cookie', 'edutrace_session=token.emitido');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual(payload);
-    expect(jwtService.verifyAsync).toHaveBeenCalledWith('token.emitido', expect.any(Object));
+    expect(response.body).toEqual({
+      sub: 1,
+      email: 'user@test.com',
+      name: 'Usuário',
+      roles: [2],
+    });
+    expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+      'token.emitido',
+      expect.any(Object),
+    );
   });
 
   it('should refuse a state-changing request that carries the cookie without the custom header', async () => {

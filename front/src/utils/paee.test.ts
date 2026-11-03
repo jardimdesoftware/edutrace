@@ -462,9 +462,9 @@ describe('validarPlanoNovo', () => {
 
 describe('podeEditarPaee', () => {
   it('lets only the NAPNE professional write, as POST, PATCH and DELETE in the API', () => {
-    assert.equal(podeEditarPaee(PROFISSIONAL_NAPNE), true);
+    assert.equal(podeEditarPaee([PROFISSIONAL_NAPNE]), true);
     for (const nivel of [ADMIN, ESTUDANTE, PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE]) {
-      assert.equal(podeEditarPaee(nivel), false, String(nivel));
+      assert.equal(podeEditarPaee([nivel]), false, String(nivel));
     }
   });
 
@@ -589,5 +589,15 @@ describe('secoesDoPlanoParaLeitura', () => {
       valorDe('Embasamento para o atendimento do AEE', 'Embasamento para o atendimento do AEE', plano),
       'Não informado',
     );
+  });
+});
+
+describe('podeEditarPaee with several roles', () => {
+  it('keeps the write with the NAPNE role, alone or together with the AEE role', () => {
+    assert.equal(podeEditarPaee([PROFISSIONAL_NAPNE, 6]), true);
+  });
+
+  it('gives the AEE teacher alone only the read', () => {
+    assert.equal(podeEditarPaee([6]), false);
   });
 });

@@ -95,16 +95,6 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
     // INSERT ... ON CONFLICT DO NOTHING, que não falha para quem perde.
     beforeEach(async () => {
       await deleteFixtures();
-      await prisma.level.createMany({
-        data: [
-          { id: LEVELS.ALUNO_ESTUDANTE, name: 'Estudante/Família' },
-          {
-            id: LEVELS.PROFISSIONAL_EDUCACAO,
-            name: 'Profissional da Educação',
-          },
-        ],
-        skipDuplicates: true,
-      });
       await prisma.currentPhases.createMany({
         data: [{ id: PHASES.TRIAGEM, name: 'Triagem' }],
         skipDuplicates: true,
@@ -183,7 +173,7 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
         full_name: 'Professor de Teste',
         cpf: '11144477735',
         email: 'professor@edutrace.test',
-        id_level: LEVELS.PROFISSIONAL_EDUCACAO,
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO],
       };
 
       await service.create(professional);

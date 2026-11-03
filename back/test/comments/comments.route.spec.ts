@@ -118,7 +118,7 @@ describe('anotações, rotas de /comments', () => {
         findMany: jest
           .fn()
           .mockResolvedValue([
-            { id: SUB, id_level: LEVELS.PROFISSIONAL_SAUDE },
+            { id: SUB, roles: [LEVELS.PROFISSIONAL_SAUDE] },
           ]),
       },
       $queryRaw: jest.fn().mockImplementation((sql: { text: string }) => {
@@ -176,7 +176,7 @@ describe('anotações, rotas de /comments', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: sessionSub,
-                user: { id_level: sessionLevel },
+                user: { roles: [sessionLevel] },
               }),
             ),
             registerUse: jest.fn(),
@@ -602,8 +602,8 @@ describe('anotações, rotas de /comments', () => {
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
           items: [
-            { ...NOTE, author_level: LEVELS.PROFISSIONAL_SAUDE },
-            { ...REPORT, author_level: LEVELS.PROFISSIONAL_SAUDE },
+            { ...NOTE, author_roles: [LEVELS.PROFISSIONAL_SAUDE] },
+            { ...REPORT, author_roles: [LEVELS.PROFISSIONAL_SAUDE] },
           ],
           next_cursor: null,
           total: 2,
@@ -652,7 +652,7 @@ describe('anotações, rotas de /comments', () => {
       ['cursor=0x10', 'cursor deve ser um número inteiro positivo.'],
       ['cursor=0', 'cursor deve ser um número inteiro positivo.'],
       ['edited=yes', 'edited deve ser true ou false.'],
-      ['area=2', 'area deve ser 1, 3, 4 ou 5.'],
+      ['area=2', 'area deve ser 1, 3, 4, 5 ou 6.'],
       ['type=OTHER', 'type deve ser NOTE ou CLASS_COUNCIL_REPORT.'],
       [
         'from=2026-10-17',

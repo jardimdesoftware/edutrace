@@ -1,5 +1,6 @@
 import type { RegisterData } from "../interfaces/RegisterData";
 import { ESTUDANTE } from "../consts";
+import { erroDosPapeis, temPapel } from "./papeis";
 
 // Mesmos limites do CreateUserDto do back (student-fields.ts).
 export const MATRICULA_MAX_LENGTH = 30;
@@ -20,7 +21,7 @@ export type RegisterFormData = {
   nome: string;
   email: string;
   cpf: string;
-  id_level: string;
+  roles: number[];
   matricula: string;
   curso: string;
 };
@@ -29,9 +30,9 @@ export type RegisterFormResult =
   | { ok: true; data: RegisterData }
   | { ok: false; error: string };
 
-// Matrícula e curso só existem para o nível Estudante/Família.
-export function cadastraEstudante(idLevel: string): boolean {
-  return idLevel === String(ESTUDANTE);
+// Matrícula e curso só existem para o papel Estudante/Família.
+export function cadastraEstudante(roles: readonly number[]): boolean {
+  return temPapel(roles, ESTUDANTE);
 }
 
 function erroDaMatricula(matricula: string): string | null {
@@ -58,6 +59,12 @@ export function buildRegisterData(
     return { ok: false, error: "É necessário aceitar o Termo de Consentimento." };
   }
 
+  const erroPapeis = erroDosPapeis(form.roles);
+
+  if (erroPapeis) {
+    return { ok: false, error: erroPapeis };
+  }
+
   const cpf = form.cpf.replace(/\D/g, "");
 
   if (cpf.length !== 11) {
@@ -66,7 +73,7 @@ export function buildRegisterData(
 
   const matricula = form.matricula.trim();
   const curso = form.curso.trim();
-  const estudante = cadastraEstudante(form.id_level);
+  const estudante = cadastraEstudante(form.roles);
 
   const erroMatricula = estudante ? erroDaMatricula(matricula) : null;
 
@@ -84,7 +91,7 @@ export function buildRegisterData(
       full_name: form.nome.trim(),
       email: form.email.trim().toLowerCase(),
       cpf,
-      id_level: Number(form.id_level),
+      roles: [...form.roles].sort((a, b) => a - b),
       ...(estudante ? { enrollment_number: matricula, course: curso } : {}),
     },
   };

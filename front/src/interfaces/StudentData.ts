@@ -15,7 +15,7 @@ export interface StudentData {
   created_at: string; 
   updated_at: string; 
   deleted_at: string | null;
-  id_level: number;
+  roles: number[];
   id_current_phase: number;
   service_status?: ServiceStatus | null;
   queued_at?: string | null;

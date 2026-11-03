@@ -61,7 +61,7 @@ describe('GET /students/service-stats', () => {
             findActive: jest.fn().mockImplementation(() =>
               Promise.resolve({
                 id_user: SUB,
-                user: { id_level: sessionLevel },
+                user: { roles: [sessionLevel] },
               }),
             ),
             registerUse: jest.fn(),
@@ -129,7 +129,7 @@ describe('GET /students/service-stats', () => {
     expect(response.status).toBe(200);
     expect(studentsService.findOne).toHaveBeenCalledWith(
       'estudante@example.com',
-      LEVELS.ADMIN,
+      [LEVELS.ADMIN],
     );
     expect(statsService.getStats).not.toHaveBeenCalled();
   });

@@ -29,7 +29,7 @@ describe('podeVerEstatisticas', () => {
     [PROFISSIONAL_NAPNE, 'Profissional NAPNE'],
   ] as const) {
     it(`allows ${nome}`, () => {
-      assert.equal(podeVerEstatisticas(nivel), true);
+      assert.equal(podeVerEstatisticas([nivel]), true);
     });
   }
 
@@ -39,12 +39,12 @@ describe('podeVerEstatisticas', () => {
     [ESTUDANTE, 'Estudante'],
   ] as const) {
     it(`denies ${nome}`, () => {
-      assert.equal(podeVerEstatisticas(nivel), false);
+      assert.equal(podeVerEstatisticas([nivel]), false);
     });
   }
 
   it('denies a level that does not exist', () => {
-    assert.equal(podeVerEstatisticas(99), false);
+    assert.equal(podeVerEstatisticas([99]), false);
   });
 });
 

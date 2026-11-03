@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { login, loginWithGoogle } from './login';
+import { createUserByAdmin, login, loginWithGoogle } from './login';
+import { buildRegisterData } from '@/utils/registerForm';
 
 const API_URL = 'http://api.test';
 
@@ -50,5 +51,29 @@ describe('loginWithGoogle', () => {
     assert.equal(calls[0].url, `${API_URL}/auth/google`);
     assert.equal(calls[0].init.body, JSON.stringify({ credential: 'credencial-google' }));
     assert.deepEqual(storageWrites, []);
+  });
+});
+
+describe('createUserByAdmin', () => {
+  it('posts the roles as a list of numbers built by the form and never an id_level', async () => {
+    const form = {
+      nome: 'Maria Souza',
+      email: 'maria@escola.br',
+      cpf: '111.444.777-35',
+      roles: [6, 5],
+      matricula: '',
+      curso: '',
+    };
+    const resultado = buildRegisterData(form, true);
+    assert.ok(resultado.ok);
+
+    await createUserByAdmin(resultado.data);
+
+    const body = JSON.parse(String(calls[0].init.body));
+    assert.equal(calls[0].url, `${API_URL}/users`);
+    assert.equal(calls[0].init.method, 'POST');
+    assert.deepEqual(body.roles, [5, 6]);
+    assert.ok(body.roles.every((papel: unknown) => typeof papel === 'number'));
+    assert.equal('id_level' in body, false);
   });
 });

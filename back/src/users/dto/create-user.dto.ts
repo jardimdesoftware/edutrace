@@ -2,10 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
-  IsIn,
-  IsInt,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   Matches,
@@ -14,6 +11,8 @@ import {
 } from 'class-validator';
 import { IsCpf, onlyDigits } from 'src/common/validators/is-cpf.validator';
 import { LEVELS } from 'src/constants';
+import { sortRoles } from '../roles';
+import { IsRoles } from './is-roles.validator';
 import {
   COURSE_MAX_LENGTH,
   COURSE_PATTERN,
@@ -23,11 +22,12 @@ import {
   trimText,
 } from './student-fields';
 
-// Sem id_level o cadastro cria estudante (UsersController.create). Matrícula e
+// Sem roles o cadastro cria estudante (UsersController.create). Matrícula e
 // curso só são cobrados nesse caso; a recusa de quem não é estudante e envia os
 // campos fica no UsersService.
 function isStudent(dto: CreateUserDto): boolean {
-  return (dto.id_level ?? LEVELS.ALUNO_ESTUDANTE) === LEVELS.ALUNO_ESTUDANTE;
+  const roles = dto.roles ?? [LEVELS.ALUNO_ESTUDANTE];
+  return roles.length === 1 && roles[0] === LEVELS.ALUNO_ESTUDANTE;
 }
 
 export class CreateUserDto {
@@ -69,17 +69,21 @@ export class CreateUserDto {
   affliation?: string;
 
   @ApiProperty({
-    description: 'Nível de acesso do usuário criado pelo administrador.',
-    default: 2,
+    description:
+      'Papéis de acesso do usuário criado, em lista. Administrador (1) e Estudante/Família (2) ficam sozinhos; os profissionais (3, 4, 5 e 6) combinam entre si. Sem o campo, a conta é de estudante.',
+    example: [3, 6],
+    default: [2],
     required: false,
+    type: [Number],
   })
-  @IsOptional({ message: 'O campo id_level é opcional.' })
-  @IsNumber({}, { message: 'O campo id_level deve ser um número.' })
-  @IsInt({ message: 'O campo id_level deve ser um inteiro.' })
-  @IsIn(Object.values(LEVELS), {
-    message: 'O campo id_level deve ser um nível de acesso existente.',
-  })
-  id_level?: number;
+  @IsOptional({ message: 'O campo roles é opcional.' })
+  @IsRoles()
+  @Transform(({ value }: { value: unknown }) =>
+    Array.isArray(value) && value.every((role) => Number.isInteger(role))
+      ? sortRoles(value as number[])
+      : value,
+  )
+  roles?: number[];
 
   @ApiProperty({
     description:

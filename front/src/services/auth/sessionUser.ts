@@ -4,7 +4,7 @@ export type SessionUser = {
   sub: number;
   email: string;
   name: string;
-  id_level: number;
+  roles: number[];
   must_change_password?: boolean;
   must_complete_registration?: boolean;
 };
