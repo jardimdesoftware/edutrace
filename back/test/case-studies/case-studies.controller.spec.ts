@@ -124,12 +124,11 @@ describe('CaseStudiesController', () => {
       });
     });
 
-    it('should open GET /case-studies/:email to every level, the service restricts the student to his own', () => {
+    it('should open GET /case-studies/:email to every level except the Administrator, the service restricts the student to his own', () => {
       expect(route(controller.findOne)).toEqual({
         method: RequestMethod.GET,
         path: ':email',
         levels: [
-          LEVELS.ADMIN,
           LEVELS.ALUNO_ESTUDANTE,
           LEVELS.PROFISSIONAL_EDUCACAO,
           LEVELS.PROFISSIONAL_SAUDE,
