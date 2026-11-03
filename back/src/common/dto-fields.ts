@@ -81,14 +81,17 @@ export function MaxUtf16Length(maxLength: number) {
 // seguidas levava mais de um segundo para normalizar, e dez deles faziam cada
 // busca levar uns 12 s. A mensagem vem do chamador, porque cada campo se nomeia.
 export function MaxCombiningMarkRun(maxRun: number, message: string) {
-  const tooLongRun = new RegExp(`\\p{M}{${maxRun + 1},}`, 'u');
+  const markRuns = /\p{M}+/gu;
 
   return ValidateBy({
     name: 'maxCombiningMarkRun',
     constraints: [maxRun],
     validator: {
       validate: (value: unknown) =>
-        typeof value === 'string' && !tooLongRun.test(value),
+        typeof value === 'string' &&
+        [...value.matchAll(markRuns)].every(
+          ([run]) => [...run].length <= maxRun,
+        ),
       defaultMessage: () => message,
     },
   });
