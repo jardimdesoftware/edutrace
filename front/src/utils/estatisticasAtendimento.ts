@@ -1,0 +1,108 @@
+import { ADMIN, PROFISSIONAL_NAPNE } from '@/consts';
+import type { ProfessionalLoad, ServiceQueue, ServiceStats } from '@/interfaces/ServiceStats';
+import type { ServiceStatus } from '@/interfaces/StudentData';
+import { rotuloDoStatus, STATUS_ATENDIMENTO } from './atendimento';
+
+const MS_POR_DIA = 24 * 60 * 60 * 1000;
+
+// A data de entrada na fila vem em UTC. O sistema atende o Brasil, que desde
+// 2019 não tem horário de verão, então o fuso fixo mostra o mesmo dia em
+// qualquer máquina.
+const FUSO_DO_SISTEMA = 'America/Sao_Paulo';
+
+export type SituacaoDoProfissional = 'COM_VAGAS' | 'NO_LIMITE' | 'SEM_LIMITE';
+
+const ROTULOS_DA_SITUACAO: Record<SituacaoDoProfissional, string> = {
+  COM_VAGAS: 'Com vagas',
+  NO_LIMITE: 'No limite',
+  SEM_LIMITE: 'Aguardando limite',
+};
+
+export interface TotalDoPainel {
+  status: ServiceStatus;
+  rotulo: string;
+  valor: number;
+  detalhe: string | null;
+}
+
+export interface OcupacaoDoProfissional {
+  id: number;
+  nome: string;
+  ocupacao: string;
+  vagas: string;
+  situacao: SituacaoDoProfissional;
+  rotuloSituacao: string;
+  percentual: number | null;
+}
+
+export interface PainelDeAtendimento {
+  totais: TotalDoPainel[];
+  profissionais: OcupacaoDoProfissional[];
+}
+
+// Mesmo critério da rota GET /students/service-stats no back
+// (@AllowLevels do Administrador e do Profissional NAPNE). Quem protege o dado
+// é o back; aqui só decide se o painel aparece.
+export function podeVerEstatisticas(idLevel: number): boolean {
+  return idLevel === ADMIN || idLevel === PROFISSIONAL_NAPNE;
+}
+
+function esperaEmDias(dias: number): string {
+  if (dias === 0) return 'há menos de 1 dia';
+  return dias === 1 ? 'há 1 dia' : `há ${dias} dias`;
+}
+
+// Os dias contam períodos completos de 24 horas desde a entrada. Uma data de
+// entrada à frente do relógio (diferença de relógio entre servidor e navegador)
+// vale como menos de 1 dia, nunca como espera negativa.
+export function textoDaEsperaMaisAntiga(fila: ServiceQueue, agora: Date): string {
+  if (fila.size === 0) return 'Ninguém aguardando';
+
+  const entrada = fila.oldest_queued_at ? new Date(fila.oldest_queued_at) : null;
+  if (!entrada || Number.isNaN(entrada.getTime())) return 'Data de entrada não registrada';
+
+  const dias = Math.max(0, Math.floor((agora.getTime() - entrada.getTime()) / MS_POR_DIA));
+  const desde = entrada.toLocaleDateString('pt-BR', { timeZone: FUSO_DO_SISTEMA });
+  return `Espera mais antiga: ${esperaEmDias(dias)} (desde ${desde})`;
+}
+
+export function ocupacaoDoProfissional(profissional: ProfessionalLoad): OcupacaoDoProfissional {
+  const { id, full_name: nome, in_service: emAtendimento, capacity, free } = profissional;
+
+  if (capacity === null || free === null) {
+    return {
+      id,
+      nome,
+      ocupacao: 'Limite não definido',
+      vagas: 'Não definidas',
+      situacao: 'SEM_LIMITE',
+      rotuloSituacao: ROTULOS_DA_SITUACAO.SEM_LIMITE,
+      percentual: null,
+    };
+  }
+
+  const situacao = free === 0 ? 'NO_LIMITE' : 'COM_VAGAS';
+  return {
+    id,
+    nome,
+    ocupacao: `${emAtendimento} de ${capacity}`,
+    vagas: String(free),
+    situacao,
+    rotuloSituacao: ROTULOS_DA_SITUACAO[situacao],
+    percentual: capacity === 0 ? 100 : Math.min(100, Math.round((emAtendimento / capacity) * 100)),
+  };
+}
+
+// Tudo que a tela mostra, já em texto. "agora" entra por parâmetro para a
+// espera da fila não depender do relógio da máquina que roda o teste.
+export function montarPainel(estatisticas: ServiceStats, agora: Date): PainelDeAtendimento {
+  return {
+    totais: STATUS_ATENDIMENTO.map((status) => ({
+      status,
+      rotulo: rotuloDoStatus(status),
+      valor: estatisticas.totals[status],
+      detalhe: status === 'WAITING' ? textoDaEsperaMaisAntiga(estatisticas.queue, agora) : null,
+    })),
+    profissionais: estatisticas.professionals.map(ocupacaoDoProfissional),
+  };
+}

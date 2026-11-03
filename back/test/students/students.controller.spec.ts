@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { ServiceQueueService } from 'src/students/service-queue.service';
+import { ServiceStatsService } from 'src/students/service-stats.service';
 import { StudentsController } from 'src/students/students.controller';
 import { StudentsService } from 'src/students/students.service';
 import { LEVELS } from 'src/constants';
@@ -16,9 +17,11 @@ describe('PlansEducationController', () => {
   let controller: StudentsController;
   let service: StudentsService;
   let serviceQueue: { assume: jest.Mock; close: jest.Mock; reopen: jest.Mock };
+  let serviceStats: { getStats: jest.Mock };
 
   beforeEach(async () => {
     serviceQueue = { assume: jest.fn(), close: jest.fn(), reopen: jest.fn() };
+    serviceStats = { getStats: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [StudentsController],
@@ -32,6 +35,7 @@ describe('PlansEducationController', () => {
           },
         },
         { provide: ServiceQueueService, useValue: serviceQueue },
+        { provide: ServiceStatsService, useValue: serviceStats },
       ],
     }).compile();
 
@@ -128,6 +132,41 @@ describe('PlansEducationController', () => {
         ]);
       },
     );
+  });
+
+  describe('serviceStats', () => {
+    const stats = {
+      totals: { WAITING: 2, IN_SERVICE: 1, CLOSED: 0 },
+      professionals: [
+        { id: 10, full_name: 'Ana', in_service: 1, capacity: 3, free: 2 },
+      ],
+      queue: {
+        size: 2,
+        oldest_queued_at: new Date('2026-10-01T09:30:00.000Z'),
+      },
+    };
+
+    it('should return the statistics of the service as they come from the service', async () => {
+      serviceStats.getStats.mockResolvedValue(stats);
+
+      expect(await controller.serviceStats()).toBe(stats);
+      expect(serviceStats.getStats).toHaveBeenCalledTimes(1);
+    });
+
+    it('should open only to the Administrator and the NAPNE, which leaves the Education, Health and student levels with 403', () => {
+      expect(
+        Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.serviceStats),
+      ).toEqual([LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE]);
+    });
+
+    it('should expose GET service-stats', () => {
+      expect(
+        Reflect.getMetadata(METHOD_METADATA, controller.serviceStats),
+      ).toBe(RequestMethod.GET);
+      expect(Reflect.getMetadata(PATH_METADATA, controller.serviceStats)).toBe(
+        'service-stats',
+      );
+    });
   });
 
   describe('transições do atendimento', () => {
