@@ -24,4 +24,8 @@ describe('PUBLIC_USER_SELECT', () => {
   it('should not select the Google account identifier', () => {
     expect(PUBLIC_USER_SELECT).not.toHaveProperty('google_sub');
   });
+
+  it.each(['enrollment_number', 'course'])('should select %s', (field) => {
+    expect(PUBLIC_USER_SELECT).toHaveProperty(field, true);
+  });
 });

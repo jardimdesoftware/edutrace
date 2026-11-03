@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/database/prisma.service';
@@ -19,6 +24,12 @@ import {
 import { Prisma } from '@prisma/client';
 import { PUBLIC_USER_SELECT } from './users.select';
 
+const UNIQUE_FIELD_MESSAGES = [
+  { field: 'cpf', message: 'Este CPF já está cadastrado.' },
+  { field: 'email', message: 'Este e-mail já está cadastrado.' },
+  { field: 'enrollment_number', message: 'Esta matrícula já está cadastrada.' },
+] as const;
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -35,6 +46,8 @@ export class UsersService {
   // primeiro acesso não precisa de troca obrigatória.
   async create(createUserDto: CreateUserDto) {
     const { id_level, ...userData } = createUserDto;
+    const level = id_level ?? LEVELS.ALUNO_ESTUDANTE;
+    this.assertStudentOnlyFields(level, createUserDto);
     const activation = generateActivationToken();
     const activationExpires = new Date(Date.now() + ACTIVATION_TOKEN_TTL_MS);
 
@@ -46,7 +59,7 @@ export class UsersService {
         data: {
           ...userData,
           password: await hash(randomUUID(), 10),
-          id_level: id_level ?? LEVELS.ALUNO_ESTUDANTE,
+          id_level: level,
           id_current_phase: PHASES.TRIAGEM,
           must_change_password: false,
           activation_token: activation.hash,
@@ -54,8 +67,9 @@ export class UsersService {
         },
       });
     } catch (error) {
-      // cpf e email são únicos no schema. Sem este tratamento a violação da
-      // constraint sobe como 500 e quem cadastra não sabe o que aconteceu.
+      // cpf, email e matrícula são únicos no schema. Sem este tratamento a
+      // violação da constraint sobe como 500 e quem cadastra não sabe o que
+      // aconteceu.
       throw this.duplicateFieldError(error) ?? error;
     }
 
@@ -101,23 +115,59 @@ export class UsersService {
     );
   }
 
+  // Com o @prisma/adapter-pg (Prisma 7) o P2002 não traz meta.target: a
+  // constraint violada vem pelo nome do índice (User_cpf_key) em
+  // meta.driverAdapterError.cause.constraint.index, ou pelas colunas em
+  // constraint.fields quando o driver não informa o índice. O meta.target do
+  // Prisma sem adapter continua sendo lido. Sem esta leitura, CPF e e-mail
+  // repetidos caíam na mensagem genérica.
+  private violatedConstraints(
+    error: Prisma.PrismaClientKnownRequestError,
+  ): unknown[] {
+    const meta = error.meta as
+      | {
+          target?: unknown;
+          driverAdapterError?: {
+            cause?: { constraint?: { index?: unknown; fields?: unknown } };
+          };
+        }
+      | undefined;
+    const constraint = meta?.driverAdapterError?.cause?.constraint;
+
+    return [meta?.target, constraint?.fields, constraint?.index].flat();
+  }
+
   private duplicateFieldError(error: unknown): ConflictException | null {
     if (!this.isUniqueViolation(error)) {
       return null;
     }
 
-    const target = error.meta?.target;
-    const fields = Array.isArray(target) ? target : [target];
+    const violated = this.violatedConstraints(error);
+    const duplicate = UNIQUE_FIELD_MESSAGES.find(
+      ({ field }) =>
+        violated.includes(field) || violated.includes(`User_${field}_key`),
+    );
 
-    if (fields.includes('cpf')) {
-      return new ConflictException('Este CPF já está cadastrado.');
+    return new ConflictException(
+      duplicate?.message ?? 'Registro já cadastrado.',
+    );
+  }
+
+  // Matrícula e curso só existem para o estudante. O nível é o final da
+  // requisição: o informado ou, na atualização sem troca de nível, o da conta.
+  // Nível desconhecido (conta inexistente) fica para o update, que já falha.
+  private assertStudentOnlyFields(
+    level: number | undefined,
+    fields: { enrollment_number?: string; course?: string },
+  ) {
+    const sent =
+      fields.enrollment_number !== undefined || fields.course !== undefined;
+
+    if (sent && level !== undefined && level !== LEVELS.ALUNO_ESTUDANTE) {
+      throw new BadRequestException(
+        'Matrícula e curso só podem ser informados para o nível Estudante/Família.',
+      );
     }
-
-    if (fields.includes('email')) {
-      return new ConflictException('Este e-mail já está cadastrado.');
-    }
-
-    return new ConflictException('Registro já cadastrado.');
   }
 
   async findAll() {
@@ -205,14 +255,24 @@ export class UsersService {
   }
 
   async update(email: string, updateUserDto: UpdateUserDto) {
-    const updated = await this.prisma.user.update({
-      select: PUBLIC_USER_SELECT,
-      where: { email: email },
-      data: {
-        full_name: updateUserDto.full_name,
-        id_level: updateUserDto.id_level,
-      },
-    });
+    const { full_name, id_level, enrollment_number, course } = updateUserDto;
+
+    if (enrollment_number !== undefined || course !== undefined) {
+      const level = id_level ?? (await this.findLevelId(email));
+      this.assertStudentOnlyFields(level, updateUserDto);
+    }
+
+    let updated: Prisma.UserGetPayload<{ select: typeof PUBLIC_USER_SELECT }>;
+
+    try {
+      updated = await this.prisma.user.update({
+        select: PUBLIC_USER_SELECT,
+        where: { email: email },
+        data: { full_name, id_level, enrollment_number, course },
+      });
+    } catch (error) {
+      throw this.duplicateFieldError(error) ?? error;
+    }
 
     // O nível de acesso viaja dentro do token. Sem encerrar as sessões, quem foi
     // rebaixado continua com o nível antigo até o token vencer.
@@ -221,6 +281,15 @@ export class UsersService {
     }
 
     return updated;
+  }
+
+  private async findLevelId(email: string): Promise<number | undefined> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email },
+      select: { id_level: true },
+    });
+
+    return user?.id_level;
   }
 
   // Atualização self-service dos próprios dados (e-mail e/ou senha).
