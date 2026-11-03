@@ -49,7 +49,6 @@ export class PeiEntriesController {
       'Do semestre mais recente para o mais antigo e, no mesmo semestre, pela disciplina. Só os registros não excluídos; a lista é vazia quando o estudante não tem registro.',
   })
   @AllowLevels(
-    LEVELS.ADMIN,
     LEVELS.ALUNO_ESTUDANTE,
     LEVELS.PROFISSIONAL_EDUCACAO,
     LEVELS.PROFISSIONAL_SAUDE,

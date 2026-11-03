@@ -517,7 +517,7 @@ describe('PeiEntriesService', () => {
       prisma.peiEntry.findMany.mockResolvedValue([]);
 
       await expect(
-        service.findByStudent(STUDENT_EMAIL, requestOf(LEVELS.ADMIN)),
+        service.findByStudent(STUDENT_EMAIL, requestOf(LEVELS.PROFISSIONAL_NAPNE)),
       ).resolves.toEqual([]);
     });
 
