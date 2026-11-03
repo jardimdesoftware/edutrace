@@ -96,7 +96,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
         if (ativo) setDocumento(encontrado);
       } catch (error) {
         // O estudante sem o documento recebe 404: é a tela de criação.
-        console.error(`${titulo} não encontrada, iniciando a criação.`, error);
+        console.error('%s não encontrada, iniciando a criação.', titulo, error);
         if (ativo) setDocumento(null);
       } finally {
         if (ativo) setCarregandoDocumento(false);
@@ -125,7 +125,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
       else await criar(alvo, nome, corpo);
       setDocumento(await carregar(alvo));
     } catch (error) {
-      console.error(`Erro ao salvar a ${minusculo}:`, error);
+      console.error('Erro ao salvar a %s:', minusculo, error);
       await avisarFalha(`Falha ao salvar a ${minusculo}`, error, `Não foi possível salvar a ${minusculo}.`);
       setSalvando(false);
       return;
@@ -159,7 +159,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
     try {
       await excluir(alvo);
     } catch (error) {
-      console.error(`Erro ao excluir a ${minusculo}:`, error);
+      console.error('Erro ao excluir a %s:', minusculo, error);
       await avisarFalha(`Falha ao excluir a ${minusculo}`, error, `Não foi possível excluir a ${minusculo}.`);
       return;
     }

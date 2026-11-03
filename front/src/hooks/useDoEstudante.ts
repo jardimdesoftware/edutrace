@@ -12,7 +12,7 @@ async function buscar<T>(
   try {
     return { email, dados: await carregar(email), erro: null };
   } catch (erro) {
-    console.error(`Erro ao buscar ${descricao}:`, erro);
+    console.error('Erro ao buscar %s:', descricao, erro);
     return {
       email,
       dados: null,
