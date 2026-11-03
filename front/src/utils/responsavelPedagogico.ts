@@ -1,5 +1,4 @@
 import {
-  ADMIN,
   ESTUDANTE,
   PROFISSIONAL_NAPNE,
 } from '@/consts';
@@ -49,15 +48,14 @@ export function nomeDoResponsavel(
   );
 }
 
-// A regra definitiva é do back (Administrador e NAPNE). Aqui só decide se a
-// seção aparece; o responsável é de estudante, e a lista do administrador
-// também traz os outros níveis.
+// A regra definitiva é do back (só o NAPNE). Aqui só decide se a seção
+// aparece; o responsável é de estudante.
 export function podeDefinirResponsavel(
   usuario?: { roles: Papeis } | null,
   estudante?: Pick<StudentData, 'roles'> | null,
 ): boolean {
   return (
-    temPapel(usuario?.roles, ADMIN, PROFISSIONAL_NAPNE) &&
+    temPapel(usuario?.roles, PROFISSIONAL_NAPNE) &&
     temPapel(estudante?.roles, ESTUDANTE)
   );
 }

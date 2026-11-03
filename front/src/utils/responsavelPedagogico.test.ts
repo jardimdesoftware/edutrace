@@ -62,7 +62,7 @@ describe('nomeDoResponsavel', () => {
 
 describe('podeDefinirResponsavel', () => {
   for (const [nome, nivel, esperado] of [
-    ['administrator', ADMIN, true],
+    ['administrator', ADMIN, false],
     ['NAPNE professional', PROFISSIONAL_NAPNE, true],
     ['education professional', PROFISSIONAL_EDUCACAO, false],
     ['health professional', PROFISSIONAL_SAUDE, false],
@@ -89,10 +89,10 @@ describe('podeDefinirResponsavel', () => {
 
   it('denies when the record is not a student, which the administrator list also has', () => {
     assert.equal(
-      podeDefinirResponsavel({ roles: [ADMIN] }, { roles: [PROFISSIONAL_NAPNE] }),
+      podeDefinirResponsavel({ roles: [PROFISSIONAL_NAPNE] }, { roles: [PROFISSIONAL_NAPNE] }),
       false,
     );
-    assert.equal(podeDefinirResponsavel({ roles: [ADMIN] }, null), false);
+    assert.equal(podeDefinirResponsavel({ roles: [PROFISSIONAL_NAPNE] }, null), false);
   });
 });
 
