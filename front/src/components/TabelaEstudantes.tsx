@@ -17,7 +17,7 @@ import {
   contarPorStatus,
   FiltroStatus,
   filtrarPorStatus,
-  OPCOES_FILTRO_STATUS,
+  opcoesDoFiltroStatus,
   podeAssumirAtendimento,
   podeEncerrarAtendimento,
   textoDaContagem,
@@ -115,7 +115,7 @@ export default function TabelaEstudantes() {
   const filtrados = buscados && (
     isAdmin
       ? filtrarPorPapel(buscados, filtroPapel)
-      : filtrarPorStatus(buscados, filtroStatus)
+      : filtrarPorStatus(buscados, filtroStatus, user)
   );
   const paginado = filtrados && paginar(filtrados, pagina);
 
@@ -398,7 +398,7 @@ export default function TabelaEstudantes() {
                 }}
                 className="h-11 min-w-48 rounded-xl border border-[#a9c5e8] bg-white px-3 outline-none transition focus:border-[#006ee8] focus:ring-4 focus:ring-[#dcecff]"
               >
-                {OPCOES_FILTRO_STATUS.map((opcao) => (
+                {opcoesDoFiltroStatus(user).map((opcao) => (
                   <option key={opcao.value} value={opcao.value}>
                     {opcao.label}
                   </option>
