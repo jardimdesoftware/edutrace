@@ -223,6 +223,7 @@ function AdminUserCreatePage() {
                     <SeletorDePapeis
                       className="sm:col-span-2"
                       legenda="Papéis"
+                      retratil
                       opcoes={papeis}
                       valor={formData.roles}
                       onChange={(roles) => setFormData((atual) => ({ ...atual, roles }))}
@@ -290,12 +291,6 @@ function AdminUserCreatePage() {
           </section>
         </div>
 
-        <p className="pointer-events-none hidden self-end pr-2 text-right text-[15px] font-medium leading-6 text-[#5571a6] lg:block">
-          Juntos por uma
-          <br />
-          educação sem barreiras.
-          <span className="mt-3 ml-auto block h-1 w-16 rounded-full bg-[#7edbd0]" />
-        </p>
       </div>
 
       {mostrarTermos && (
