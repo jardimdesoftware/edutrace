@@ -18,6 +18,7 @@ on:
           - all
           - backend
           - frontend
+          - nginx
 
 concurrency:
   group: edutrace-oci-production
@@ -57,6 +58,52 @@ jobs:
           printf '%s\n' "${OCI_SSH_PRIVATE_KEY}" > "${RUNNER_TEMP}/ssh/oci_key"
           printf '%s\n' "${OCI_SSH_KNOWN_HOSTS}" > "${RUNNER_TEMP}/ssh/known_hosts"
           chmod 600 "${RUNNER_TEMP}/ssh/oci_key" "${RUNNER_TEMP}/ssh/known_hosts"
+
+      - name: Hide host nginx version
+        if: >-
+          github.event_name == 'workflow_run' ||
+          inputs.component == 'nginx' ||
+          inputs.component == 'all'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "${RUNNER_TEMP}/ssh/oci_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="${RUNNER_TEMP}/ssh/known_hosts" \
+            "${OCI_USER}@${OCI_HOST}" \
+            'flock -w 120 /tmp/edutrace-nginx.lock sudo -n bash -se' <<'REMOTE'
+          set -euo pipefail
+
+          config=/etc/nginx/nginx.conf
+          backup="${config}.before-server-tokens-$(date +%Y%m%d%H%M%S)"
+          cp -a "$config" "$backup"
+
+          if grep -Eq '^[[:space:]]*server_tokens[[:space:]]+[^;]+;' "$config"; then
+            sed -Ei 's/^[[:space:]]*server_tokens[[:space:]]+[^;]+;/    server_tokens off;/' "$config"
+          else
+            sed -Ei '/^[[:space:]]*http[[:space:]]*\{/a\    server_tokens off;' "$config"
+          fi
+
+          if ! nginx -t; then
+            cp -a "$backup" "$config"
+            nginx -t
+            exit 1
+          fi
+
+          systemctl reload nginx
+          REMOTE
+
+          server_header="$(curl --silent --show-error --head --max-time 15 \
+            https://edutrace.ruancarvalho.me/ \
+            | awk 'BEGIN { IGNORECASE=1 } /^server:/ { sub(/\r$/, ""); sub(/^[^:]+:[[:space:]]*/, ""); print; exit }')"
+          test "$server_header" = nginx || {
+            echo "Unexpected Server header: ${server_header:-missing}" >&2
+            exit 1
+          }
 
       - name: Deploy backend image
         if: >-
