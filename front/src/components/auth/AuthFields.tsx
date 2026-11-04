@@ -65,6 +65,45 @@ export function TextField({
   );
 }
 
+export type SelectFieldProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  placeholder: string;
+  required?: boolean;
+};
+
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  required,
+}: SelectFieldProps) {
+  return (
+    <label className="block">
+      <span className={fieldLabelClass}>{label}</span>
+      <span className={fieldBoxClass}>
+        <select
+          required={required}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={fieldInputClass}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((opcao) => (
+            <option key={opcao} value={opcao}>
+              {opcao}
+            </option>
+          ))}
+        </select>
+      </span>
+    </label>
+  );
+}
+
 export function PasswordField({
   label,
   value,
