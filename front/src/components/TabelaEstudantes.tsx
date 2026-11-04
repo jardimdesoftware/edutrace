@@ -91,11 +91,7 @@ const ENCERRAR: AcaoAtendimento = {
 
 const NENHUM_ESTUDANTE = "Nenhum estudante encontrado.";
 
-interface TabelaEstudantesProps {
-  onAlteracao?: () => void;
-}
-
-export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps) {
+export default function TabelaEstudantes() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
   const [filtroPapel, setFiltroPapel] = useState<FiltroPapel>("TODOS");
@@ -154,10 +150,9 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
     podeDefinirResponsavel(user, estudante) ? (
       <ResponsavelPedagogico
         estudante={estudante}
-        onAtualizado={(atualizado) => {
-          setStudents((prev) => prev && substituirUsuario(prev, atualizado));
-          onAlteracao?.();
-        }}
+        onAtualizado={(atualizado) =>
+          setStudents((prev) => prev && substituirUsuario(prev, atualizado))
+        }
       />
     ) : (
       responsavelDaLinha(estudante)
@@ -180,7 +175,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
     try {
       const atualizado = await updateUser(estudante.email, novosPapeis);
       setStudents((prev) => prev && substituirUsuario(prev, atualizado));
-      onAlteracao?.();
       Swal.fire({
         icon: "success",
         title: "Papéis atualizados com sucesso!",
@@ -301,7 +295,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
     try {
       const atualizado = await acao.chamar(estudante.email);
       setStudents((prev) => prev && substituirUsuario(prev, atualizado));
-      onAlteracao?.();
       Swal.fire({
         icon: "success",
         title: acao.sucesso,
@@ -316,7 +309,6 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
         confirmButtonText: "Entendi",
       });
       await recarregarLinha(estudante.email);
-      onAlteracao?.();
     } finally {
       setAcaoEmAndamento(false);
     }
