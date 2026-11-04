@@ -79,6 +79,13 @@ sudo apt-get update && sudo apt-get install k6
    TEST_STUDENT_EMAIL=estudante-existente@email.com
    ```
 
+   O administrador só acessa as rotas de usuário. Triagem, relatório, estudantes
+   e PEI respondem 403 a ele, então os scripts dessas rotas entram com a conta de
+   Profissional NAPNE. Para criá-la num banco de teste, exporte `NAPNE_EMAIL`,
+   `NAPNE_CPF` e `NAPNE_PASSWORD` antes de rodar `npm run seed` em `back/`: o seed
+   só cria a conta quando `NAPNE_PASSWORD` existe, sem troca obrigatória de senha.
+   Não defina essas variáveis em produção.
+
 3. As rotas públicas de `/auth` têm limite de requisições por IP, com teto padrão
    de 8 por minuto, e as demais rotas têm limite por usuário, com teto padrão de
    300 por minuto em cada rota. O `POST /users` tem limite próprio por usuário,
@@ -138,13 +145,13 @@ k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=..
 k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... k6/tests/endpoints/users.test.js
 
 # Screenings
-k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... k6/tests/endpoints/screenings.test.js
+k6 run -e BASE_URL=http://localhost:3000 -e NAPNE_EMAIL=... -e NAPNE_PASSWORD=... k6/tests/endpoints/screenings.test.js
 
 # Anamnesis (o cadastro do estudante usa o admin; as rotas de anamnese usam o Profissional NAPNE)
 k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... -e NAPNE_EMAIL=... -e NAPNE_PASSWORD=... k6/tests/endpoints/anamnesis.test.js
 
 # Reports (requer estudante existente no banco)
-k6 run -e BASE_URL=http://localhost:3000 -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... -e TEST_STUDENT_EMAIL=... k6/tests/endpoints/reports.test.js
+k6 run -e BASE_URL=http://localhost:3000 -e NAPNE_EMAIL=... -e NAPNE_PASSWORD=... -e TEST_STUDENT_EMAIL=... k6/tests/endpoints/reports.test.js
 ```
 
 ### Exportar resultados para JSON
@@ -185,6 +192,6 @@ k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 
 2. **Users - Criação**: Apenas admins (papel 1) podem criar usuários. O teste `users.test.js` usa as credenciais de admin.
 
-3. **Reports e PEI**: O endpoint `GET /reports/:email` busca dados existentes. O relatório traz a triagem e os registros do PEI do estudante (a anamnese não entra). Configure `TEST_STUDENT_EMAIL` com um email que já possui triagem ou registros do PEI no banco. Os testes de fumaça, carga e estresse também leem `GET /pei-entries/:email` desse estudante com a conta de administrador, e a API responde 404 se o e-mail não for de um estudante cadastrado. Nenhum teste k6 cria registros do PEI: o `POST /pei-entries` é só do Profissional da Educação.
+3. **Reports e PEI**: O endpoint `GET /reports/:email` busca dados existentes. O relatório traz a triagem e os registros do PEI do estudante (a anamnese não entra). Configure `TEST_STUDENT_EMAIL` com um email que já possui triagem ou registros do PEI no banco. Os testes de fumaça, carga e estresse também leem `GET /pei-entries/:email` desse estudante com a conta de Profissional NAPNE, e a API responde 404 se o e-mail não for de um estudante cadastrado. Nenhum teste k6 cria registros do PEI: o `POST /pei-entries` é só do Profissional da Educação.
 
 4. **Dados de teste**: Os testes de CRUD criam e deletam dados em cada iteração (ciclo de vida completo). Certifique-se de rodar apenas contra um ambiente de desenvolvimento/staging.
