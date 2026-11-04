@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assumirAtendimento,
+  atualizarCursoDoEstudante,
   encerrarAtendimento,
   getAllStudents,
   getStudentByEmail,
@@ -69,6 +70,53 @@ describe('getStudentByEmail', () => {
     assert.equal(
       calls[0].url,
       `${API_URL}/students/nome%2Fsobrenome%3Fx%40edutrace.com`,
+    );
+  });
+});
+
+describe('atualizarCursoDoEstudante', () => {
+  it('sends a PATCH with the course to /students/:email/course and returns the updated student', async () => {
+    const atualizado = {
+      id: 3,
+      email: 'estudante@edutrace.com',
+      course: 'Subsequente: Enfermagem',
+    };
+    respondWith(200, atualizado);
+
+    const result = await atualizarCursoDoEstudante(
+      'estudante@edutrace.com',
+      'Subsequente: Enfermagem',
+    );
+
+    assert.deepEqual(result, atualizado);
+    assert.equal(
+      calls[0].url,
+      `${API_URL}/students/estudante%40edutrace.com/course`,
+    );
+    assert.equal(calls[0].init.method, 'PATCH');
+    assert.equal(
+      calls[0].init.body,
+      JSON.stringify({ course: 'Subsequente: Enfermagem' }),
+    );
+  });
+
+  it('encodes characters of the email that would change the path', async () => {
+    respondWith(200, {});
+
+    await atualizarCursoDoEstudante('nome/sobrenome?x@edutrace.com', 'Integrado: Informática');
+
+    assert.equal(
+      calls[0].url,
+      `${API_URL}/students/nome%2Fsobrenome%3Fx%40edutrace.com/course`,
+    );
+  });
+
+  it('rejects with the API message when the back refuses the course', async () => {
+    respondWith(400, { message: 'O campo course deve ser um dos cursos da lista.' });
+
+    await assert.rejects(
+      atualizarCursoDoEstudante('estudante@edutrace.com', 'Curso inventado'),
+      { message: 'O campo course deve ser um dos cursos da lista.' },
     );
   });
 });

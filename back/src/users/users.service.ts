@@ -566,11 +566,15 @@ export class UsersService {
   // Conclui o cadastro da conta criada pelo login com Google: o CPF real
   // substitui o provisório e a senha passa a existir. O CPF é único; um CPF que
   // já pertence a outra conta nunca vincula as duas, porque bastaria saber o CPF
-  // de alguém para assumir a conta dele.
+  // de alguém para assumir a conta dele. Matrícula e curso entram junto: sem
+  // eles o cadastro não conclui. A matrícula também é única, e a que já pertence
+  // a outra conta devolve 409 pelo mesmo caminho do CPF.
   async completeGoogleRegistration(
     email: string,
     cpf: string,
     hashedPassword: string,
+    enrollmentNumber: string,
+    course: string,
   ) {
     try {
       return await this.prisma.user.update({
@@ -578,6 +582,8 @@ export class UsersService {
         data: {
           cpf: cpf,
           password: hashedPassword,
+          enrollment_number: enrollmentNumber,
+          course: course,
           password_reset_token: null,
           password_reset_expires: null,
           password_reset_attempts: 0,
@@ -585,9 +591,10 @@ export class UsersService {
         },
       });
     } catch (error) {
-      if (this.duplicateFieldError(error)) {
+      const duplicate = this.duplicateFieldError(error);
+      if (duplicate) {
         throw new ConflictException(
-          'Este CPF já está cadastrado. Procure o administrador.',
+          `${duplicate.message} Procure o administrador.`,
         );
       }
       throw error;

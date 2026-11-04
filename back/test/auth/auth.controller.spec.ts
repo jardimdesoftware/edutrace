@@ -385,7 +385,12 @@ describe('AuthController', () => {
   });
 
   describe('completeRegistration', () => {
-    const dto = { cpf: '01234567890', password: 'senhaNovaSegura1' };
+    const dto = {
+      cpf: '01234567890',
+      password: 'senhaNovaSegura1',
+      enrollment_number: '20261TADS0012',
+      course: 'Integrado: Informática' as const,
+    };
 
     it('should replace the session cookie with the token issued after the registration', async () => {
       const resposta = criarRespostaFalsa();

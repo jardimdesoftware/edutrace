@@ -1,7 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { IsCpf, onlyDigits } from 'src/common/validators/is-cpf.validator';
+import { COURSE_NOT_IN_LIST_MESSAGE, COURSES } from 'src/users/courses';
+import {
+  ENROLLMENT_NUMBER_MAX_LENGTH,
+  ENROLLMENT_NUMBER_PATTERN,
+  normalizeEnrollmentNumber,
+} from 'src/users/dto/student-fields';
 
 export class CompleteRegistrationDto {
   @ApiProperty({
@@ -25,4 +38,29 @@ export class CompleteRegistrationDto {
   @IsString({ message: 'O campo password deve ser uma string' })
   @MinLength(8, { message: 'A senha deve ter no mínimo 8 caracteres' })
   password: string;
+
+  @ApiProperty({
+    description:
+      'Matrícula do estudante, gravada sem espaços nas pontas e em caixa alta.',
+    example: '20261TADS0012',
+    maxLength: ENROLLMENT_NUMBER_MAX_LENGTH,
+  })
+  @IsNotEmpty({ message: 'O campo enrollment_number não deve estar vazio.' })
+  @IsString({ message: 'O campo enrollment_number deve ser uma string.' })
+  @Transform(normalizeEnrollmentNumber)
+  @MaxLength(ENROLLMENT_NUMBER_MAX_LENGTH, {
+    message: `O campo enrollment_number deve ter no máximo ${ENROLLMENT_NUMBER_MAX_LENGTH} caracteres.`,
+  })
+  @Matches(ENROLLMENT_NUMBER_PATTERN, {
+    message:
+      'O campo enrollment_number deve ter apenas letras, números, ponto, hífen e barra.',
+  })
+  enrollment_number: string;
+
+  @ApiProperty({
+    description: 'Curso do estudante, um dos cursos da lista.',
+    enum: COURSES,
+  })
+  @IsIn(COURSES, { message: COURSE_NOT_IN_LIST_MESSAGE })
+  course: (typeof COURSES)[number];
 }

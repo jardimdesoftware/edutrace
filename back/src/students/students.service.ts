@@ -127,6 +127,24 @@ export class StudentsService {
     });
   }
 
+  // Mesma trava de setPedagogicalManager: o nível do estudante é conferido sob
+  // o FOR UPDATE e a gravação é pelo id da linha travada.
+  async setCourse(
+    email: string,
+    course: string,
+    requesterRoles: readonly number[],
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const student = await this.lockStudent(tx, email);
+
+      return tx.user.update({
+        where: { id: student.id },
+        data: { course },
+        select: userSelectFor(requesterRoles),
+      });
+    });
+  }
+
   // Trava a linha do estudante (FOR UPDATE) e confere o nível sob a trava. Quem
   // grava um registro que depende do estudante dentro da mesma transação (o teto
   // de registros do PEI) se enfileira nela, e a troca de nível do administrador,

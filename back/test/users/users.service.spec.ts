@@ -1096,6 +1096,8 @@ describe('UsersService', () => {
         'aluno@discente.ifpe.edu.br',
         '01234567890',
         'senhaHash',
+        '20261TADS0012',
+        'Integrado: Informática',
       );
 
       expect(prisma.user.update).toHaveBeenCalledWith({
@@ -1103,6 +1105,8 @@ describe('UsersService', () => {
         data: {
           cpf: '01234567890',
           password: 'senhaHash',
+          enrollment_number: '20261TADS0012',
+          course: 'Integrado: Informática',
           password_reset_token: null,
           password_reset_expires: null,
           password_reset_attempts: 0,
@@ -1121,10 +1125,32 @@ describe('UsersService', () => {
           'aluno@discente.ifpe.edu.br',
           '01234567890',
           'senhaHash',
+          '20261TADS0012',
+          'Integrado: Informática',
         ),
       ).rejects.toThrow(
         new ConflictException(
           'Este CPF já está cadastrado. Procure o administrador.',
+        ),
+      );
+    });
+
+    it('should answer 409 and point to the administrator when the enrollment number belongs to another account', async () => {
+      jest
+        .spyOn(prisma.user, 'update')
+        .mockRejectedValue(uniqueViolation('User_enrollment_number_key'));
+
+      await expect(
+        service.completeGoogleRegistration(
+          'aluno@discente.ifpe.edu.br',
+          '01234567890',
+          'senhaHash',
+          '20261TADS0012',
+          'Integrado: Informática',
+        ),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Esta matrícula já está cadastrada. Procure o administrador.',
         ),
       );
     });
@@ -1138,6 +1164,8 @@ describe('UsersService', () => {
           'aluno@discente.ifpe.edu.br',
           '01234567890',
           'senhaHash',
+          '20261TADS0012',
+          'Integrado: Informática',
         ),
       ).rejects.toThrow(erroQualquer);
     });

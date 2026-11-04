@@ -4,13 +4,15 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
-import { PasswordField, TextField } from "@/components/auth/AuthFields";
+import { PasswordField, SelectField, TextField } from "@/components/auth/AuthFields";
 import { useAuth } from "@/contexts/AuthContext";
 import { completeRegistration } from "@/services/auth/completeRegistration";
 import { fetchSessionUser } from "@/services/auth/sessionUser";
 import { logout } from "@/services/auth/login";
 import { endSession } from "@/services/auth/session";
 import { buildCompleteRegistration } from "@/utils/completeRegistrationForm";
+import { CURSOS } from "@/utils/cursos";
+import { MATRICULA_MAX_LENGTH, MATRICULA_PATTERN } from "@/utils/registerForm";
 import AppLayout from "@/components/AppLayout";
 
 export default function CompletarCadastroPage() {
@@ -18,6 +20,8 @@ export default function CompletarCadastroPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     cpf: "",
+    matricula: "",
+    curso: "",
     senha: "",
     confirmarSenha: "",
   });
@@ -51,7 +55,7 @@ export default function CompletarCadastroPage() {
     setLoading(true);
 
     try {
-      await completeRegistration(resultado.data.cpf, resultado.data.password);
+      await completeRegistration(resultado.data);
       setUser(await fetchSessionUser());
 
       await Swal.fire({
@@ -119,7 +123,8 @@ export default function CompletarCadastroPage() {
                   Complete seu cadastro
                 </h1>
                 <p className="mt-3 text-[13px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
-                  Para usar o EduTrace, informe seu CPF e defina uma senha
+                  Para usar o EduTrace, informe seu CPF, sua matrícula e seu curso, e
+                  defina uma senha
                   {user?.email ? ` para ${user.email}` : ""}. A senha precisa ter no
                   mínimo 8 caracteres.
                 </p>
@@ -134,6 +139,24 @@ export default function CompletarCadastroPage() {
                     maxLength={11}
                     value={formData.cpf}
                     onChange={setCampo("cpf")}
+                  />
+                  <TextField
+                    label="Matrícula"
+                    icon="/file.svg"
+                    required
+                    pattern={MATRICULA_PATTERN}
+                    maxLength={MATRICULA_MAX_LENGTH}
+                    autoComplete="off"
+                    value={formData.matricula}
+                    onChange={setCampo("matricula")}
+                  />
+                  <SelectField
+                    label="Curso"
+                    required
+                    placeholder="Selecione o seu curso"
+                    options={CURSOS}
+                    value={formData.curso}
+                    onChange={setCampo("curso")}
                   />
                   <PasswordField
                     label="Senha"

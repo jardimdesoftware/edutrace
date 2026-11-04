@@ -17,6 +17,7 @@ import { LEVELS } from 'src/constants';
 import { maskUserCpf, maskUsersCpf } from 'src/common/mask-cpf';
 import { AuthenticatedRequest } from 'src/comments/types/express';
 import { SetPedagogicalManagerDto } from './dto/set-pedagogical-manager.dto';
+import { SetCourseDto } from './dto/set-course.dto';
 
 @Controller('students')
 export class StudentsController {
@@ -83,6 +84,19 @@ export class StudentsController {
         dto,
         req.user.roles,
       ),
+    );
+  }
+
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @HttpCode(HttpStatus.OK)
+  @Patch(':email/course')
+  async setCourse(
+    @Param('email') email: string,
+    @Body() dto: SetCourseDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return maskUserCpf(
+      await this.studentsService.setCourse(email, dto.course, req.user.roles),
     );
   }
 

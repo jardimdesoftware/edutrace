@@ -616,6 +616,8 @@ export class AuthService {
       user.email,
       dto.cpf,
       hashedPassword,
+      dto.enrollment_number,
+      dto.course,
     );
 
     return this.issueSessionToken(updated, context);
