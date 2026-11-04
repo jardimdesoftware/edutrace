@@ -2,7 +2,7 @@ import { PROFESSOR_AEE } from '@/consts';
 import { temPapel, type UsuarioLogado } from '@/utils/papeis';
 import type { ServiceStatus, StudentData } from '@/interfaces/StudentData';
 
-export type FiltroStatus = ServiceStatus | 'TODOS';
+export type FiltroStatus = ServiceStatus | 'TODOS' | 'MEUS';
 
 export const STATUS_ATENDIMENTO: readonly ServiceStatus[] = [
   'WAITING',
@@ -16,10 +16,22 @@ const ROTULOS: Record<ServiceStatus, string> = {
   CLOSED: 'Encerrado',
 };
 
-export const OPCOES_FILTRO_STATUS: readonly { value: FiltroStatus; label: string }[] = [
+type OpcaoFiltroStatus = { value: FiltroStatus; label: string };
+
+export const OPCOES_FILTRO_STATUS: readonly OpcaoFiltroStatus[] = [
   { value: 'TODOS', label: 'Todos' },
   ...STATUS_ATENDIMENTO.map((status) => ({ value: status, label: ROTULOS[status] })),
 ];
+
+// "Meus atendimentos" só existe para quem atende: o Professor do AEE.
+export function opcoesDoFiltroStatus(
+  usuario?: UsuarioLogado | null,
+): readonly OpcaoFiltroStatus[] {
+  if (!temPapel(usuario?.roles, PROFESSOR_AEE)) return OPCOES_FILTRO_STATUS;
+
+  const [todos, ...porStatus] = OPCOES_FILTRO_STATUS;
+  return [todos, { value: 'MEUS', label: 'Meus atendimentos' }, ...porStatus];
+}
 
 // Só estudante tem status. Para os outros níveis, que a tabela do administrador
 // também lista, o rótulo é vazio: a coluna fica sem conteúdo na linha.
@@ -44,12 +56,23 @@ function compararEntradaNaFila(a: StudentData, b: StudentData): number {
 }
 
 // Com "TODOS" a lista segue como veio da API. Com um status, ficam só as
-// linhas dele; na fila de espera, os que entraram primeiro vêm primeiro.
+// linhas dele; na fila de espera, os que entraram primeiro vêm primeiro. Com
+// "MEUS", ficam os que o Professor do AEE logado está atendendo agora.
 export function filtrarPorStatus(
   usuarios: readonly StudentData[],
   filtro: FiltroStatus,
+  usuario?: UsuarioLogado | null,
 ): StudentData[] {
   if (filtro === 'TODOS') return [...usuarios];
+  if (filtro === 'MEUS') {
+    if (!temPapel(usuario?.roles, PROFESSOR_AEE)) return [];
+    return usuarios.filter(
+      (linha) =>
+        linha.service_status === 'IN_SERVICE' &&
+        linha.aee_responsible != null &&
+        linha.aee_responsible.id === usuario?.sub,
+    );
+  }
 
   const doStatus = usuarios.filter((usuario) => usuario.service_status === filtro);
   return filtro === 'WAITING' ? doStatus.sort(compararEntradaNaFila) : doStatus;
