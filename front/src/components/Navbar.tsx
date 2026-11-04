@@ -88,9 +88,17 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
           </span>
         </button>
 
-        <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
+        <div className="flex min-w-0 shrink-0 flex-col items-start gap-1.5 md:items-end">
+          {user?.name && (
+            <span
+              className="max-w-[18rem] truncate text-lg font-extrabold leading-tight text-[#0b2455] sm:text-xl"
+              title={user.name}
+            >
+              {user.name}
+            </span>
+          )}
           <span
-            className="inline-flex max-w-full items-center rounded-full bg-[#ddf8ee] px-4 py-1.5 text-sm font-bold text-[#0b2455] shadow-[inset_0_0_0_1px_rgba(42,169,143,0.08)] sm:text-base"
+            className="inline-flex max-w-full items-center rounded-full bg-[#ddf8ee] px-3 py-1 text-xs font-bold text-[#0b2455] shadow-[inset_0_0_0_1px_rgba(42,169,143,0.08)] sm:text-sm"
             aria-label={`Perfil: ${levelLabel}`}
           >
             {levelLabel}
