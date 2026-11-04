@@ -7,7 +7,9 @@ import { rotulosDosPapeis } from "@/utils/papeis";
 import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import ResponsavelPedagogico from "@/components/ResponsavelPedagogico";
-import { Suspense, useState } from "react";
+import CursoDoEstudante from "@/components/CursoDoEstudante";
+import { podeAlterarCurso } from "@/utils/cursos";
+import { Suspense, useState, type ReactNode } from "react";
 import { useEstudanteDaUrl } from "@/hooks/useEstudanteDaUrl";
 import type { StudentData } from "@/interfaces/StudentData";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
@@ -77,7 +79,16 @@ function VisualizarEstudante() {
       nomeDoResponsavel(estudante)
     );
   const matricula = estudante?.enrollment_number || NAO_INFORMADO;
-  const curso = estudante?.course || NAO_INFORMADO;
+  const curso: ReactNode =
+    estudante && podeAlterarCurso(user, estudante) ? (
+      <CursoDoEstudante
+        key={`${estudante.id}-${estudante.course ?? ""}`}
+        estudante={estudante}
+        onAtualizado={setAtualizado}
+      />
+    ) : (
+      estudante?.course || NAO_INFORMADO
+    );
   const papeis = rotulosDosPapeis(estudante?.roles).join(", ") || "Papel desconhecido";
 
   if (carregando) {
@@ -94,14 +105,14 @@ function VisualizarEstudante() {
           </p>
 
           <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-            {[
+            {([
               ["Nome", nome],
               ["CPF", cpf],
               ["E-mail", email],
               ["Matrícula", matricula],
               ["Curso", curso],
               ["Papéis", papeis],
-            ].map(([rotulo, valor]) => (
+            ] satisfies [string, ReactNode][]).map(([rotulo, valor]) => (
               <div key={rotulo} className="min-w-0 border-b border-[#e5edf6] pb-3">
                 <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{rotulo}</dt>
                 <dd className="mt-1 break-words text-sm font-medium text-[#17233f]">{valor || NAO_INFORMADO}</dd>
