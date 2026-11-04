@@ -11,8 +11,8 @@ import { getToken, authHeaders } from '../../helpers/auth.js';
 import { endpointOptions } from '../../config/options.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
-const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
+const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
+const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
 // Email de um estudante que já possui dados completos no banco
 // Configure via variável de ambiente: k6 run -e TEST_STUDENT_EMAIL=...
@@ -21,7 +21,7 @@ const TEST_STUDENT_EMAIL = __ENV.TEST_STUDENT_EMAIL || 'estudante@edutrace.com';
 export const options = endpointOptions;
 
 export function setup() {
-  const token = getToken(BASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+  const token = getToken(BASE_URL, NAPNE_EMAIL, NAPNE_PASSWORD);
   return { token };
 }
 
