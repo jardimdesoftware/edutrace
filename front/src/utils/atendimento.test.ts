@@ -4,6 +4,7 @@ import {
   contarPorStatus,
   filtrarPorStatus,
   OPCOES_FILTRO_STATUS,
+  opcoesDoFiltroStatus,
   podeAssumirAtendimento,
   podeEncerrarAtendimento,
   rotuloDoResponsavel,
@@ -181,6 +182,76 @@ describe('filtrarPorStatus', () => {
     assert.notEqual(todos, fila);
     assert.notEqual(espera, fila);
     assert.deepEqual(fila, copia);
+  });
+});
+
+describe('opcoesDoFiltroStatus', () => {
+  it('adds "Meus atendimentos" after "Todos" for the AEE teacher', () => {
+    assert.deepEqual(opcoesDoFiltroStatus({ sub: 7, roles: [PROFESSOR_AEE] }), [
+      { value: 'TODOS', label: 'Todos' },
+      { value: 'MEUS', label: 'Meus atendimentos' },
+      { value: 'WAITING', label: 'Fila de espera' },
+      { value: 'IN_SERVICE', label: 'Em atendimento' },
+      { value: 'CLOSED', label: 'Encerrado' },
+    ]);
+  });
+
+  it('keeps "Meus atendimentos" for a user that accumulates the AEE role', () => {
+    const opcoes = opcoesDoFiltroStatus({ sub: 7, roles: [PROFISSIONAL_NAPNE, PROFESSOR_AEE] });
+
+    assert.ok(opcoes.some((opcao) => opcao.value === 'MEUS'));
+  });
+
+  for (const [nome, roles] of [
+    ['NAPNE', [PROFISSIONAL_NAPNE]],
+    ['education professional', [PROFISSIONAL_EDUCACAO]],
+    ['health professional', [PROFISSIONAL_SAUDE]],
+  ] as const) {
+    it(`does not offer "Meus atendimentos" to ${nome}`, () => {
+      assert.deepEqual(opcoesDoFiltroStatus({ sub: 7, roles }), OPCOES_FILTRO_STATUS);
+    });
+  }
+
+  it('does not offer "Meus atendimentos" without a session', () => {
+    assert.deepEqual(opcoesDoFiltroStatus(null), OPCOES_FILTRO_STATUS);
+    assert.deepEqual(opcoesDoFiltroStatus(undefined), OPCOES_FILTRO_STATUS);
+  });
+});
+
+describe('filtrarPorStatus com "MEUS"', () => {
+  const aee = { sub: 7, roles: [PROFESSOR_AEE] };
+  const OUTRA_AEE = { id: 8, full_name: 'Joana AEE' };
+  const lista = [
+    estudante(1, 'IN_SERVICE', { aee_responsible: AEE_RESPONSAVEL }),
+    estudante(2, 'IN_SERVICE', { aee_responsible: OUTRA_AEE }),
+    estudante(3, 'CLOSED', { aee_responsible: AEE_RESPONSAVEL }),
+    estudante(4, 'WAITING', { aee_responsible: null }),
+    estudante(5, 'IN_SERVICE', { aee_responsible: AEE_RESPONSAVEL }),
+    usuario(6, { roles: [PROFISSIONAL_SAUDE], service_status: null }),
+  ];
+
+  it('keeps only the students being served by the logged AEE teacher', () => {
+    assert.deepEqual(
+      filtrarPorStatus(lista, 'MEUS', aee).map((u) => u.id),
+      [1, 5],
+    );
+  });
+
+  it('leaves out the ones that teacher already closed', () => {
+    assert.ok(!filtrarPorStatus(lista, 'MEUS', aee).some((u) => u.id === 3));
+  });
+
+  it('returns nothing for a teacher that serves nobody', () => {
+    assert.deepEqual(filtrarPorStatus(lista, 'MEUS', { sub: 99, roles: [PROFESSOR_AEE] }), []);
+  });
+
+  it('returns nothing for a user without the AEE role, even with the same id', () => {
+    assert.deepEqual(filtrarPorStatus(lista, 'MEUS', { sub: 7, roles: [PROFISSIONAL_NAPNE] }), []);
+  });
+
+  it('returns nothing without a session', () => {
+    assert.deepEqual(filtrarPorStatus(lista, 'MEUS'), []);
+    assert.deepEqual(filtrarPorStatus(lista, 'MEUS', null), []);
   });
 });
 
