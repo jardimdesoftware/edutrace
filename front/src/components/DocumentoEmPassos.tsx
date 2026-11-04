@@ -180,10 +180,18 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
   if (!documento && !podeEditar) {
     return (
       <AppLayout>
-        <div className="p-6 text-center">
-          <h2 className="text-xl font-bold text-green-700">
-            O estudante ainda não possui uma {titulo} cadastrada
-          </h2>
+        <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
+          <div className="mx-auto w-full max-w-3xl space-y-6">
+            <header className="space-y-1">
+              <h1 className="text-4xl font-bold">{titulo}</h1>
+              {nome && <p className="text-gray-600">Estudante: {nome}</p>}
+            </header>
+            <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
+              <p className="text-gray-700">
+                {temPapel(user.roles, ESTUDANTE) ? "Você" : nome?.trim() || "o estudante"} ainda não tem {minusculo}.
+              </p>
+            </div>
+          </div>
         </div>
       </AppLayout>
     );
