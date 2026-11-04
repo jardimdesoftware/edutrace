@@ -86,7 +86,7 @@ export default function (data) {
 
   // ─── Students ─────────────────────────────────────────────────────────────
   group('Students', () => {
-    const res = http.get(`${BASE_URL}/students`, { headers });
+    const res = http.get(`${BASE_URL}/students`, { headers: napneHeaders });
     check(res, {
       '[smoke][students] GET /students → 200': (r) => r.status === 200,
     });
@@ -96,7 +96,7 @@ export default function (data) {
 
   // ─── Screenings ───────────────────────────────────────────────────────────
   group('Screenings', () => {
-    const res = http.get(`${BASE_URL}/screenings`, { headers });
+    const res = http.get(`${BASE_URL}/screenings`, { headers: napneHeaders });
     check(res, {
       '[smoke][screenings] GET /screenings → 200': (r) => r.status === 200,
       '[smoke][screenings] resposta é array': (r) => {
@@ -130,7 +130,7 @@ export default function (data) {
 
   // ─── PEI ──────────────────────────────────────────────────────────────────
   group('PEI', () => {
-    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers });
+    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers: napneHeaders });
     check(res, {
       '[smoke][pei-entries] GET /pei-entries/:email → 200': (r) => r.status === 200,
       '[smoke][pei-entries] resposta é array': (r) => {
