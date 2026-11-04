@@ -2,7 +2,12 @@
 
 import { atualizarCursoDoEstudante } from "@/api/students";
 import type { StudentData } from "@/interfaces/StudentData";
-import { CURSOS, ehCurso } from "@/utils/cursos";
+import {
+  CURSOS,
+  cursoPrecisaConfirmar,
+  ehCurso,
+  textoDaConfirmacaoDoCurso,
+} from "@/utils/cursos";
 import { errorAlertOptions } from "@/utils/errorAlert";
 import { useId, useState } from "react";
 import Swal from "sweetalert2";
@@ -23,16 +28,31 @@ export default function CursoDoEstudante({
 }: CursoDoEstudanteProps) {
   const id = useId();
   const atual = estudante.course ?? "";
-  const [escolhido, setEscolhido] = useState(ehCurso(atual) ? atual : "");
   const [salvando, setSalvando] = useState(false);
 
   const foraDaLista = atual !== "" && !ehCurso(atual);
-  const podeSalvar = escolhido !== "" && escolhido !== atual && !salvando;
 
-  const salvar = async () => {
+  const aoEscolher = async (curso: string) => {
+    if (!cursoPrecisaConfirmar(atual, curso)) return;
+
+    const confirmacao = await Swal.fire({
+      icon: "warning",
+      title: "Alterar curso",
+      text: textoDaConfirmacaoDoCurso(estudante.full_name, curso),
+      showCancelButton: true,
+      confirmButtonColor: COR_CONFIRMAR,
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sim, alterar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (confirmacao.isConfirmed) await salvar(curso);
+  };
+
+  const salvar = async (curso: string) => {
     setSalvando(true);
     try {
-      const atualizado = await atualizarCursoDoEstudante(estudante.email, escolhido);
+      const atualizado = await atualizarCursoDoEstudante(estudante.email, curso);
       onAtualizado(atualizado);
       await Swal.fire({
         icon: "success",
@@ -63,8 +83,8 @@ export default function CursoDoEstudante({
       </label>
       <select
         id={id}
-        value={escolhido}
-        onChange={(e) => setEscolhido(e.target.value)}
+        value={ehCurso(atual) ? atual : ""}
+        onChange={(e) => void aoEscolher(e.target.value)}
         disabled={salvando}
         className="min-w-0 max-w-full rounded border border-gray-300 px-2 py-1 text-sm"
       >
@@ -75,14 +95,6 @@ export default function CursoDoEstudante({
           </option>
         ))}
       </select>
-      <button
-        type="button"
-        onClick={salvar}
-        disabled={!podeSalvar}
-        className="rounded-lg bg-[#006ee8] px-3 py-1 text-sm font-semibold text-white transition-colors hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:opacity-60"
-      >
-        {salvando ? "Salvando..." : "Salvar curso"}
-      </button>
       {foraDaLista && (
         <p className="w-full text-xs text-gray-600">
           Valor atual fora da lista: {atual}
