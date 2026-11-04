@@ -3,7 +3,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { rotulosDosPapeis } from "@/utils/papeis";
 import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import ResponsavelPedagogico from "@/components/ResponsavelPedagogico";
@@ -89,7 +88,6 @@ function VisualizarEstudante() {
     ) : (
       estudante?.course || NAO_INFORMADO
     );
-  const papeis = rotulosDosPapeis(estudante?.roles).join(", ") || "Papel desconhecido";
 
   if (carregando) {
     return <Loading />;
@@ -111,17 +109,13 @@ function VisualizarEstudante() {
               ["E-mail", email],
               ["Matrícula", matricula],
               ["Curso", curso],
-              ["Papéis", papeis],
+              ["Responsável pedagógico", responsavel],
             ] satisfies [string, ReactNode][]).map(([rotulo, valor]) => (
               <div key={rotulo} className="min-w-0 border-b border-[#e5edf6] pb-3">
                 <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{rotulo}</dt>
                 <dd className="mt-1 break-words text-sm font-medium text-[#17233f]">{valor || NAO_INFORMADO}</dd>
               </div>
             ))}
-            <div className="min-w-0 border-b border-[#e5edf6] pb-3 sm:col-span-2 lg:col-span-3">
-              <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">Responsável pedagógico</dt>
-              <dd className="mt-1 text-sm font-medium text-[#17233f]">{responsavel}</dd>
-            </div>
           </dl>
         </section>
 
