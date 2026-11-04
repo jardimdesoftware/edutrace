@@ -100,7 +100,7 @@ body {
 }
 
 .edutrace-header-action:hover {
-  background: rgb(223 239 255 / 78%);
+  background: transparent;
   color: var(--edutrace-blue-hover);
   transform: translateY(-1px);
 }
