@@ -14,7 +14,11 @@ export interface ProfessionalLoad {
 export interface ServiceStats {
   totals: Record<ServiceStatus, number>;
   professionals: ProfessionalLoad[];
-  queue: { size: number; oldest_queued_at: Date | null };
+  queue: {
+    size: number;
+    oldest_queued_at: Date | null;
+    oldest_student: { id: number; full_name: string } | null;
+  };
 }
 
 @Injectable()
@@ -51,13 +55,15 @@ export class ServiceStatsService {
           },
         },
       }),
-      this.prisma.user.aggregate({
-        _min: { queued_at: true },
+      this.prisma.user.findFirst({
         where: {
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
           deleted_at: null,
           service_status: ServiceStatus.WAITING,
+          queued_at: { not: null },
         },
+        orderBy: [{ queued_at: 'asc' }, { id: 'asc' }],
+        select: { id: true, full_name: true, queued_at: true },
       }),
     ]);
 
@@ -75,7 +81,13 @@ export class ServiceStatsService {
       professionals: teachers.map((teacher) =>
         this.toProfessionalLoad(teacher),
       ),
-      queue: { size: totals.WAITING, oldest_queued_at: oldest._min.queued_at },
+      queue: {
+        size: totals.WAITING,
+        oldest_queued_at: oldest?.queued_at ?? null,
+        oldest_student: oldest
+          ? { id: oldest.id, full_name: oldest.full_name }
+          : null,
+      },
     };
   }
 
