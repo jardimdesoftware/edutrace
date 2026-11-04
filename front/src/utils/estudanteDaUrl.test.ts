@@ -85,6 +85,7 @@ describe('resolverEstudanteDaUrl', () => {
 
   it('returns the not found alert when no listed user has the id', async () => {
     assert.deepEqual(await resolverEstudanteDaUrl('99', [PROFISSIONAL_SAUDE]), {
+      tipo: 'nao-encontrado',
       alerta: {
         title: 'Estudante não encontrado',
         text: 'O estudante não existe ou você não tem acesso a ele.',
@@ -93,7 +94,7 @@ describe('resolverEstudanteDaUrl', () => {
     });
   });
 
-  it('returns the API error message in the alert when the lookup fails', async () => {
+  it('returns the failure kind, not the not found alert, when the lookup fails', async () => {
     globalThis.fetch = (async () =>
       new Response(JSON.stringify({ message: 'Falha ao listar estudantes' }), {
         status: 500,
@@ -104,8 +105,9 @@ describe('resolverEstudanteDaUrl', () => {
 
     try {
       assert.deepEqual(await resolverEstudanteDaUrl('7', [PROFISSIONAL_SAUDE]), {
+        tipo: 'falha',
         alerta: {
-          title: 'Estudante não encontrado',
+          title: 'Não foi possível carregar o estudante',
           text: 'Falha ao listar estudantes',
           icon: 'error',
         },

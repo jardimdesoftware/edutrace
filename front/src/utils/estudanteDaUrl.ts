@@ -25,14 +25,23 @@ export async function buscarUsuarioPorId(
   return usuarios.find((usuario) => usuario.id === idNumerico) ?? null;
 }
 
-// Sem estudante, a tela não tem o que exibir: o id inválido, inexistente, fora
-// da lista dos papéis da sessão ou a falha da API viram o alerta mostrado antes
-// de voltar para a home. O front não distingue "não existe" de "sem acesso",
-// porque a lista do profissional só traz estudantes.
+type Alerta = ReturnType<typeof errorAlertOptions>;
+
+export type EstudanteDaUrl =
+  | { registro: StudentData }
+  | { tipo: 'nao-encontrado'; alerta: Alerta }
+  | { tipo: 'falha'; alerta: Alerta };
+
+// Sem estudante, a tela não tem o que exibir. O id inválido, inexistente ou
+// fora da lista dos papéis da sessão vira o alerta "não encontrado", mostrado
+// antes de voltar para a home; o front não distingue "não existe" de "sem
+// acesso", porque a lista do profissional só traz estudantes. A falha da API é
+// outro caso: o estudante pode existir, então o alerta oferece nova tentativa
+// em vez de tirar o profissional da tela.
 export async function resolverEstudanteDaUrl(
   id: string | null,
   roles?: Papeis,
-): Promise<{ registro: StudentData } | { alerta: ReturnType<typeof errorAlertOptions> }> {
+): Promise<EstudanteDaUrl> {
   let falha: unknown;
   const registro = await buscarUsuarioPorId(id, roles).catch((erro) => {
     console.error('Erro ao identificar o estudante:', erro);
@@ -42,10 +51,22 @@ export async function resolverEstudanteDaUrl(
 
   if (registro) return { registro };
 
+  if (falha !== undefined) {
+    return {
+      tipo: 'falha',
+      alerta: errorAlertOptions(
+        'Não foi possível carregar o estudante',
+        falha,
+        'Tente novamente em instantes.',
+      ),
+    };
+  }
+
   return {
+    tipo: 'nao-encontrado',
     alerta: errorAlertOptions(
       'Estudante não encontrado',
-      falha,
+      undefined,
       'O estudante não existe ou você não tem acesso a ele.',
     ),
   };
