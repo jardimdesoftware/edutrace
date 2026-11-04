@@ -38,7 +38,11 @@ describe('getServiceStats', () => {
         { id: 7, full_name: 'Ana AEE', in_service: 2, capacity: 15, free: 13 },
         { id: 8, full_name: 'Bia AEE', in_service: 15, capacity: 15, free: 0 },
       ],
-      queue: { size: 3, oldest_queued_at: '2026-10-01T09:30:00.000Z' },
+      queue: {
+        size: 3,
+        oldest_queued_at: '2026-10-01T09:30:00.000Z',
+        oldest_student: { id: 5, full_name: 'Aluno Mais Antigo' },
+      },
     };
     respondWith(200, stats);
 
