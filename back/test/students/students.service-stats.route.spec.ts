@@ -18,7 +18,11 @@ const STATS = {
   professionals: [
     { id: 10, full_name: 'Ana', in_service: 1, capacity: 3, free: 2 },
   ],
-  queue: { size: 2, oldest_queued_at: '2026-10-01T09:30:00.000Z' },
+  queue: {
+    size: 2,
+    oldest_queued_at: '2026-10-01T09:30:00.000Z',
+    oldest_student: { id: 5, full_name: 'Aluno Mais Antigo' },
+  },
 };
 
 // O GET /students/:email atende qualquer e-mail, inclusive "service-stats". Se
