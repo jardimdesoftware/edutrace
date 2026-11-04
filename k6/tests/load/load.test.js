@@ -46,7 +46,7 @@ export default function (data) {
 
   // ─── Fluxo 1: Leitura de dados (mais comum) ───────────────────────────────
   group('Leitura - Screenings', () => {
-    const res = http.get(`${BASE_URL}/screenings`, { headers });
+    const res = http.get(`${BASE_URL}/screenings`, { headers: napneHeaders });
     check(res, {
       '[load][screenings] GET → 200': (r) => r.status === 200,
       '[load][screenings] < 500ms': (r) => r.timings.duration < 500,
@@ -66,7 +66,7 @@ export default function (data) {
   sleep(0.3);
 
   group('Leitura - PEI', () => {
-    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers });
+    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers: napneHeaders });
     check(res, {
       '[load][pei-entries] GET → 200': (r) => r.status === 200,
       '[load][pei-entries] < 500ms': (r) => r.timings.duration < 500,
@@ -86,7 +86,7 @@ export default function (data) {
   sleep(0.3);
 
   group('Leitura - Students', () => {
-    const res = http.get(`${BASE_URL}/students`, { headers });
+    const res = http.get(`${BASE_URL}/students`, { headers: napneHeaders });
     check(res, {
       '[load][students] GET → 200': (r) => r.status === 200,
       '[load][students] < 300ms': (r) => r.timings.duration < 300,
