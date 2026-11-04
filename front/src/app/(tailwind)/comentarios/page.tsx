@@ -389,8 +389,8 @@ function AnotacoesMultiprofissionais() {
           <h1 className="edutrace-page-title">Anotações Multiprofissionais</h1>
 
           {podeAnotar && (
-            <div className="sticky top-0 z-10 bg-white pt-4 pb-4">
-              <div className="border border-gray-200 rounded-2xl shadow-sm p-4">
+            <div className="sticky top-0 z-10 bg-[#f7f9fc] pt-4 pb-4">
+              <div className="border border-gray-200 rounded-2xl shadow-sm p-4 bg-white">
                 <fieldset className="mb-3 min-w-0">
                   <legend className="text-sm font-medium text-gray-800">
                     Tipo de registro
