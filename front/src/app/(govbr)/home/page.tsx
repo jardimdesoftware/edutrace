@@ -33,10 +33,15 @@ function HomePage() {
   }
 
   const conteudo = conteudoDaHome(user.roles);
+  const comTabela = conteudo === "profissional" || conteudo === "administrador";
 
   return (
-    <AppLayout showBack={false}>
-      <main className="mx-auto w-full max-w-[1500px] p-5 sm:p-7 lg:p-10">
+    <AppLayout showBack={false} ocuparTela={comTabela}>
+      <main
+        className={`mx-auto w-full max-w-[1500px] p-5 sm:p-7 lg:p-10 ${
+          comTabela ? "lg:flex! lg:min-h-0 lg:flex-1 lg:flex-col" : ""
+        }`}
+      >
         {conteudo === "estudante" && (
           <>
             <section aria-labelledby="inicio-estudante-titulo">

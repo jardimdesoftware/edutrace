@@ -22,7 +22,7 @@ export default function AppLayout({
       <div className={`relative ${ocuparTela ? 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}`}>
         {showBack && <BackButton />}
 
-        <main className={ocuparTela ? 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}>{children}</main>
+        <main className={ocuparTela ? 'lg:flex! lg:min-h-0 lg:flex-1 lg:flex-col' : ''}>{children}</main>
       </div>
     </div>
   );
