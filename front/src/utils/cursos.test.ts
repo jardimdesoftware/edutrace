@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CURSOS, ehCurso, podeAlterarCurso } from "./cursos";
+import {
+  CURSOS,
+  cursoPrecisaConfirmar,
+  ehCurso,
+  podeAlterarCurso,
+  textoDaConfirmacaoDoCurso,
+} from "./cursos";
 
 describe("CURSOS", () => {
   it("lists the ten courses of the institution, without repetition", () => {
@@ -22,6 +28,29 @@ describe("ehCurso", () => {
     assert.equal(ehCurso(""), false);
     assert.equal(ehCurso(null), false);
     assert.equal(ehCurso(undefined), false);
+  });
+});
+
+describe("cursoPrecisaConfirmar", () => {
+  it("asks for confirmation when another course of the list is chosen", () => {
+    assert.equal(cursoPrecisaConfirmar("Integrado: Informática", "Licenciatura: Música"), true);
+    assert.equal(cursoPrecisaConfirmar("", "Licenciatura: Música"), true);
+    assert.equal(cursoPrecisaConfirmar("Curso antigo em texto livre", "Licenciatura: Música"), true);
+  });
+
+  it("does not ask when the course is the current one or nothing is chosen", () => {
+    assert.equal(cursoPrecisaConfirmar("Licenciatura: Música", "Licenciatura: Música"), false);
+    assert.equal(cursoPrecisaConfirmar("Licenciatura: Música", ""), false);
+    assert.equal(cursoPrecisaConfirmar("", ""), false);
+  });
+});
+
+describe("textoDaConfirmacaoDoCurso", () => {
+  it("names the student and the new course", () => {
+    assert.equal(
+      textoDaConfirmacaoDoCurso("Ana Souza", "Licenciatura: Música"),
+      'Deseja alterar o curso do estudante "Ana Souza" para "Licenciatura: Música"?',
+    );
   });
 });
 
