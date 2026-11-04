@@ -2,9 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   ExecutionContext,
   ForbiddenException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ALLOW_PASSWORD_CHANGE_KEY } from 'src/auth/decorators/allow-password-change.decorator';
@@ -246,7 +247,7 @@ describe('AuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       jest
         .spyOn(jwtService, 'verifyAsync')
-        .mockRejectedValue(new Error('invalid token'));
+        .mockRejectedValue(new JsonWebTokenError('invalid token'));
 
       const context = createMockExecutionContext({
         authorization: 'Bearer invalid.token',
@@ -254,6 +255,39 @@ describe('AuthGuard', () => {
 
       await expect(guard.canActivate(context)).rejects.toThrow(
         new UnauthorizedException('Token expirado'),
+      );
+    });
+
+    it('should throw UnauthorizedException when the token is expired', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockRejectedValue(new TokenExpiredError('jwt expired', new Date()));
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer expirado',
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new UnauthorizedException('Token expirado'),
+      );
+    });
+
+    it('should answer 503, not 401, when the session lookup fails in the database', async () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      jest
+        .spyOn(jwtService, 'verifyAsync')
+        .mockResolvedValue({ sub: 1, roles: [1], jti: 'sessao-valida' });
+      jest
+        .spyOn(sessionsService, 'findActive')
+        .mockRejectedValue(new Error('connection refused'));
+
+      const context = createMockExecutionContext({
+        authorization: 'Bearer token-valido',
+      });
+
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
       );
     });
 
