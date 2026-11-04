@@ -1,6 +1,23 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { EMAIL_PATTERN } from "./emailPattern";
+import { EMAIL_PATTERN, removerEspacos } from "./emailPattern";
+
+describe("removerEspacos", () => {
+  it("removes spaces typed or pasted anywhere in the value", () => {
+    assert.equal(removerEspacos(" maria @escola.br "), "maria@escola.br");
+    assert.equal(removerEspacos("ma ria.souza@es cola.br"), "maria.souza@escola.br");
+  });
+
+  it("removes tabs, line breaks and non-breaking spaces too", () => {
+    assert.equal(removerEspacos("maria\t@escola.br\n"), "maria@escola.br");
+    assert.equal(removerEspacos("maria @escola.br"), "maria@escola.br");
+  });
+
+  it("leaves a value without spaces untouched", () => {
+    assert.equal(removerEspacos("maria.souza@escola.br"), "maria.souza@escola.br");
+    assert.equal(removerEspacos(""), "");
+  });
+});
 
 // Mesma compilação que o navegador aplica ao atributo pattern.
 function compileAsBrowser(pattern: string) {
