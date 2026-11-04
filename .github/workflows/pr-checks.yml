@@ -45,7 +45,7 @@ jobs:
               - 'docker-compose-proxmox.yml'
               - '.env.development.example'
               - '.env.production.example'
-              - 'front/src/middleware.ts'
+              - 'front/src/proxy.ts'
               - '.github/workflows/pr-checks.yml'
             ci_config:
               - '.github/workflows/**'
@@ -1278,8 +1278,8 @@ jobs:
             esac
           done
 
-          if ! grep -q 'process.env.INTERNAL_API_URL' front/src/middleware.ts; then
-            echo "❌ front/src/middleware.ts não lê INTERNAL_API_URL."
+          if ! grep -q 'process.env.INTERNAL_API_URL' front/src/proxy.ts; then
+            echo "❌ front/src/proxy.ts não lê INTERNAL_API_URL."
             status=1
           fi
 
