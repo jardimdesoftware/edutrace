@@ -2,7 +2,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { LEVELS } from '../src/constants';
-import { readInitialAdmin } from '../src/users/initial-admin';
+import { readInitialAdmin, readSeedNapne } from '../src/users/initial-admin';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -75,6 +75,35 @@ async function main() {
           roles: [adminLevel.id],
           id_current_phase: triagePhase.id,
           must_change_password: true,
+        },
+      });
+    }
+  }
+
+  // Conta de Profissional NAPNE para os testes de carga do k6, criada só
+  // quando NAPNE_PASSWORD existe e quando o e-mail ainda não está em uso. Sem
+  // troca obrigatória de senha, porque o script não a faria. Produção não
+  // define essas variáveis.
+  if (process.env.NAPNE_PASSWORD) {
+    const napne = readSeedNapne(process.env);
+    const exists = await prisma.user.count({
+      where: { OR: [{ email: napne.email }, { cpf: napne.cpf }] },
+    });
+
+    if (exists === 0) {
+      const triagePhase = await prisma.currentPhases.findUniqueOrThrow({
+        where: { name: 'Triagem' },
+      });
+
+      await prisma.user.create({
+        data: {
+          full_name: 'Profissional NAPNE de Teste',
+          cpf: napne.cpf,
+          email: napne.email,
+          password: await hash(napne.password, 10),
+          roles: [LEVELS.PROFISSIONAL_NAPNE],
+          id_current_phase: triagePhase.id,
+          must_change_password: false,
         },
       });
     }

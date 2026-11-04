@@ -15,27 +15,44 @@ export type InitialAdmin = { email: string; cpf: string; password: string };
 export function readInitialAdmin(
   env: Record<string, string | undefined>,
 ): InitialAdmin {
-  const email = env.ADMIN_EMAIL?.trim() ?? '';
-  const cpf = env.ADMIN_CPF ?? '';
-  const password = env.ADMIN_PASSWORD ?? '';
+  return readSeedAccount(env, 'ADMIN', 'Administrador inicial');
+}
+
+// Conta de Profissional NAPNE que o seed cria só quando NAPNE_PASSWORD existe,
+// para os testes de carga do k6, que precisam de uma conta com acesso às rotas
+// clínicas. Mesmas regras de e-mail, CPF e senha do administrador.
+export function readSeedNapne(
+  env: Record<string, string | undefined>,
+): InitialAdmin {
+  return readSeedAccount(env, 'NAPNE', 'Profissional NAPNE de teste');
+}
+
+function readSeedAccount(
+  env: Record<string, string | undefined>,
+  prefix: string,
+  label: string,
+): InitialAdmin {
+  const email = env[`${prefix}_EMAIL`]?.trim() ?? '';
+  const cpf = env[`${prefix}_CPF`] ?? '';
+  const password = env[`${prefix}_PASSWORD`] ?? '';
   const errors: string[] = [];
 
   if (!isEmail(email)) {
-    errors.push('ADMIN_EMAIL ausente ou fora do formato de e-mail');
+    errors.push(`${prefix}_EMAIL ausente ou fora do formato de e-mail`);
   }
   if (!isValidCpf(cpf)) {
-    errors.push('ADMIN_CPF ausente ou inválido');
+    errors.push(`${prefix}_CPF ausente ou inválido`);
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     errors.push(
-      `ADMIN_PASSWORD com menos de ${MIN_PASSWORD_LENGTH} caracteres`,
+      `${prefix}_PASSWORD com menos de ${MIN_PASSWORD_LENGTH} caracteres`,
     );
   } else if (isCommonPassword(password)) {
-    errors.push('ADMIN_PASSWORD está na lista de senhas comuns');
+    errors.push(`${prefix}_PASSWORD está na lista de senhas comuns`);
   }
 
   if (errors.length > 0) {
-    throw new Error(`Administrador inicial não criado: ${errors.join('; ')}.`);
+    throw new Error(`${label} não criado: ${errors.join('; ')}.`);
   }
 
   return { email, cpf: onlyDigits(cpf), password };

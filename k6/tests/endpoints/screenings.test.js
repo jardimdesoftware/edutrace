@@ -17,13 +17,13 @@ import { randomCpf } from '../../helpers/cpf.js';
 import { randomEnrollmentNumber } from '../../helpers/enrollment.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
-const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@edutrace.com';
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'senhaSegura123';
+const NAPNE_EMAIL = __ENV.NAPNE_EMAIL || 'napne@edutrace.com';
+const NAPNE_PASSWORD = __ENV.NAPNE_PASSWORD || 'senhaSegura123';
 
 export const options = endpointOptions;
 
 export function setup() {
-  const token = getToken(BASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+  const token = getToken(BASE_URL, NAPNE_EMAIL, NAPNE_PASSWORD);
   return { token };
 }
 

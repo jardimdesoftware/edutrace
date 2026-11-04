@@ -51,7 +51,7 @@ export default function (data) {
 
   // ─── Endpoints de leitura (maior impacto sob stress) ──────────────────────
   group('Stress - Screenings List', () => {
-    const res = http.get(`${BASE_URL}/screenings`, { headers });
+    const res = http.get(`${BASE_URL}/screenings`, { headers: napneHeaders });
     check(res, {
       '[stress][screenings] status 200': (r) => r.status === 200,
       '[stress][screenings] < 1000ms': (r) => r.timings.duration < 1000,
@@ -71,7 +71,7 @@ export default function (data) {
   sleep(0.2);
 
   group('Stress - PEI List', () => {
-    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers });
+    const res = http.get(`${BASE_URL}/pei-entries/${TEST_STUDENT_EMAIL}`, { headers: napneHeaders });
     check(res, {
       '[stress][pei-entries] status 200': (r) => r.status === 200,
       '[stress][pei-entries] < 1000ms': (r) => r.timings.duration < 1000,
