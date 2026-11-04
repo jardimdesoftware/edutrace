@@ -2,9 +2,8 @@ import type { RegisterData } from "../interfaces/RegisterData";
 import { ESTUDANTE } from "../consts";
 import { erroDosPapeis, temPapel } from "./papeis";
 
-// Mesmos limites do CreateUserDto do back (student-fields.ts).
+// Mesmo limite do CreateUserDto do back (student-fields.ts).
 export const MATRICULA_MAX_LENGTH = 30;
-export const CURSO_MAX_LENGTH = 150;
 
 // Valor do atributo pattern do campo de matrícula, aplicado ao texto digitado:
 // aceita minúsculas e espaços nas pontas, que o envio apara e passa para caixa
