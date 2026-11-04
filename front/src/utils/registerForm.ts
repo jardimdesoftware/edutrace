@@ -35,7 +35,7 @@ export function cadastraEstudante(roles: readonly number[]): boolean {
   return temPapel(roles, ESTUDANTE);
 }
 
-function erroDaMatricula(matricula: string): string | null {
+export function erroDaMatricula(matricula: string): string | null {
   if (!matricula) {
     return "Informe a matrícula do estudante.";
   }
