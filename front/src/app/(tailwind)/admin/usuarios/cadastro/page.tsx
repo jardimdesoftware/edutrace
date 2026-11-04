@@ -221,7 +221,6 @@ function AdminUserCreatePage() {
                     </div>
                   ) : (
                     <SeletorDePapeis
-                      className="sm:col-span-2"
                       legenda="Papéis"
                       retratil
                       opcoes={papeis}
