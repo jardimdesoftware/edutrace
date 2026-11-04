@@ -137,7 +137,7 @@ export function GoogleAccountLink() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-1/2 rounded bg-emerald-700 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-1/2 rounded-lg bg-[#006ee8] px-4 py-2 font-semibold text-white transition-colors hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {enviando ? "Vinculando..." : "Vincular"}
             </button>

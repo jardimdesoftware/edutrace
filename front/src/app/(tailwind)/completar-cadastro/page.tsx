@@ -11,6 +11,7 @@ import { fetchSessionUser } from "@/services/auth/sessionUser";
 import { logout } from "@/services/auth/login";
 import { endSession } from "@/services/auth/session";
 import { buildCompleteRegistration } from "@/utils/completeRegistrationForm";
+import AppLayout from "@/components/AppLayout";
 
 export default function CompletarCadastroPage() {
   const { user, setUser } = useAuth();
@@ -80,10 +81,11 @@ export default function CompletarCadastroPage() {
   };
 
   return (
-    <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542] lg:overflow-hidden">
+    <AppLayout showBack={false}>
+    <div className="relative min-h-[70vh] overflow-y-auto bg-sky-50 text-[#061542]">
       <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[70vh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
         <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(460px,1fr)_430px] xl:gap-24">
           <section className="hidden items-center justify-center pb-8 lg:flex">
             <Image
@@ -113,7 +115,7 @@ export default function CompletarCadastroPage() {
                 onSubmit={handleSubmit}
                 className="flex w-full flex-col px-4 pb-4 pt-4 sm:px-9 sm:pb-8 sm:pt-9"
               >
-                <h1 className="text-[25px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
+                <h1 className="edutrace-page-title">
                   Complete seu cadastro
                 </h1>
                 <p className="mt-3 text-[13px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
@@ -183,6 +185,7 @@ export default function CompletarCadastroPage() {
           <span className="mt-3 ml-auto block h-1 w-16 rounded-full bg-[#7edbd0]" />
         </p>
       </div>
-    </main>
+    </div>
+    </AppLayout>
   );
 }

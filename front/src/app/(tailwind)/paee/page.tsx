@@ -162,7 +162,7 @@ function PaeePage() {
         ) : (
         <div className="mx-auto w-full max-w-3xl space-y-6">
           <header className="space-y-1">
-            <h1 className="text-4xl font-bold">PAEE</h1>
+            <h1 className="edutrace-page-title">PAEE</h1>
             <p className="text-gray-600">Plano de Atendimento Educacional Especializado</p>
             {nome && <p className="text-gray-600">Estudante: {nome}</p>}
           </header>

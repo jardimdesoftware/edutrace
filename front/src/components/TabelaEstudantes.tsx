@@ -50,7 +50,7 @@ import {
   responsavelDaLinha,
   substituirUsuario,
 } from "@/utils/tabelaUsuarios";
-import { ChevronLeft, ChevronRight, Eye, FileDown, Trash2, Undo2, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, FileDown, Search, Trash2, Undo2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
@@ -348,22 +348,34 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
 
   if (loading) return <Loading fullScreen={false} />;
 
+  const totaisDoAtendimento = students ? contarPorStatus(students) : null;
+
   return (
-    <div className="bg-white rounded shadow-md">
-      <div className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {podeCadastrar && (
-          <button
-            type="button"
-            onClick={() => router.push("/admin/usuarios/cadastro")}
-            className="inline-flex items-center justify-center gap-2 rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
-          >
-            <UserPlus className="w-4 h-4" />
-            Cadastrar novas pessoas
-          </button>
+    <div className="overflow-hidden rounded-2xl border border-[#dce8f4] bg-white/95 shadow-[0_14px_40px_rgba(28,67,112,0.08)]">
+      <div className="p-4 sm:p-5">
+        <h1 className="edutrace-page-title">
+          {isAdmin ? "Gestão de pessoas" : "Estudantes"}
+        </h1>
+        {!isAdmin && (
+          <p className="mt-1.5 text-sm leading-5 text-slate-600">
+            Consulte os estudantes e acompanhe a situação de cada atendimento.
+          </p>
         )}
-        <div className="flex flex-col gap-3 sm:ml-auto sm:flex-row sm:items-center">
+
+        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {podeCadastrar && (
+            <button
+              type="button"
+              onClick={() => router.push("/admin/usuarios/cadastro")}
+              className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-lg bg-[#006ee8] px-4 text-sm font-bold text-white shadow-[0_6px_14px_rgba(0,110,232,0.20)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
+            >
+              <UserPlus className="h-5 w-5" aria-hidden="true" />
+              Cadastrar novas pessoas
+            </button>
+          )}
+          <div className="flex flex-col gap-3 lg:ml-auto sm:flex-row sm:items-center">
           {isAdmin ? (
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#0b2455]">
               <span className="font-semibold">Papel:</span>
               <select
                 value={filtroPapel}
@@ -371,7 +383,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                   setFiltroPapel(lerFiltroPapel(e.target.value));
                   setPagina(1);
                 }}
-                className="border rounded px-2 py-2"
+                className="h-11 min-w-48 rounded-xl border border-[#a9c5e8] bg-white px-3 outline-none transition focus:border-[#006ee8] focus:ring-4 focus:ring-[#dcecff]"
               >
                 {OPCOES_FILTRO_PAPEL.map((opcao) => (
                   <option key={opcao.value} value={opcao.value}>
@@ -381,7 +393,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               </select>
             </label>
           ) : (
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#0b2455]">
               <span className="font-semibold">Atendimento:</span>
               <select
                 value={filtroStatus}
@@ -389,7 +401,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
                   setFiltroStatus(e.target.value as FiltroStatus);
                   setPagina(1);
                 }}
-                className="border rounded px-2 py-2"
+                className="h-11 min-w-48 rounded-xl border border-[#a9c5e8] bg-white px-3 outline-none transition focus:border-[#006ee8] focus:ring-4 focus:ring-[#dcecff]"
               >
                 {OPCOES_FILTRO_STATUS.map((opcao) => (
                   <option key={opcao.value} value={opcao.value}>
@@ -399,23 +411,36 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               </select>
             </label>
           )}
-          <input
-            type="text"
-            placeholder="Por quem você busca?"
-            value={busca}
-            onChange={(e) => {
-              setBusca(e.target.value);
-              setPagina(1);
-            }}
-            className="w-full sm:w-80 border rounded px-3 py-2"
-          />
+            <label className="flex h-11 w-full items-center gap-3 rounded-lg border border-[#a9c5e8] bg-white px-3 transition focus-within:border-[#006ee8] focus-within:ring-4 focus-within:ring-[#dcecff] sm:w-72">
+              <Search className="h-5 w-5 shrink-0 text-[#315a91]" aria-hidden="true" />
+              <span className="sr-only">Buscar pessoa por nome, CPF ou e-mail</span>
+              <input
+                type="search"
+                placeholder="Por quem você busca?"
+                value={busca}
+                onChange={(e) => {
+                  setBusca(e.target.value);
+                  setPagina(1);
+                }}
+                className="min-w-0 flex-1 bg-transparent text-[#17233f] outline-none placeholder:text-slate-400"
+              />
+            </label>
+          </div>
         </div>
       </div>
 
-      {students && !isAdmin && (
-        <p role="status" className="px-4 pb-3 text-sm text-gray-700">
-          {textoDaContagem(contarPorStatus(students))}
-        </p>
+      {totaisDoAtendimento && !isAdmin && (
+        <dl role="status" aria-label={textoDaContagem(totaisDoAtendimento)} className="flex flex-wrap gap-2 border-t border-[#e5edf6] bg-[#f8fbff] px-4 py-3 sm:px-5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-900">
+            <dt>Fila de espera</dt><dd className="font-bold">{totaisDoAtendimento.WAITING}</dd>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-900">
+            <dt>Em atendimento</dt><dd className="font-bold">{totaisDoAtendimento.IN_SERVICE}</dd>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700">
+            <dt>Encerrados</dt><dd className="font-bold">{totaisDoAtendimento.CLOSED}</dd>
+          </div>
+        </dl>
       )}
 
       <div className="md:hidden px-4 pb-4 space-y-3">
@@ -501,9 +526,9 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
         )}
       </div>
 
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden overflow-x-auto border-t border-[#dce8f4] md:block">
         <table className="min-w-full table-auto text-sm text-left">
-          <thead className="bg-gray-100 text-gray-700">
+          <thead className="bg-[#eef4fa] text-[#0b2455]">
             <tr>
               <th className="p-3 font-bold! text-gray-900!">Nome</th>
               <th className="p-3 font-bold! text-gray-900!">CPF</th>
@@ -516,7 +541,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
           </thead>
           <tbody>
             {paginado?.itens.map((estudante) => (
-              <tr key={estudante.id} className="border-b hover:bg-gray-50">
+              <tr key={estudante.id} className="border-b border-[#e4edf6] transition hover:bg-[#f7faff]">
                 <td className="p-3">
                   {estudante.full_name}
                   {estudante.deleted_at && (
@@ -602,7 +627,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
       </div>
 
       {paginado && (
-        <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-[#dce8f4] px-5 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-7">
           <p role="status">
             {textoDoIntervalo(
               paginado,
@@ -616,7 +641,7 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               <select
                 value={paginado.pagina}
                 onChange={(e) => setPagina(Number(e.target.value))}
-                className="border rounded px-2 py-1"
+                className="rounded-lg border border-[#a9c5e8] bg-white px-2 py-1 outline-none focus:border-[#006ee8] focus:ring-2 focus:ring-[#dcecff]"
               >
                 {Array.from({ length: paginado.totalDePaginas }, (_, indice) => indice + 1).map((numero) => (
                   <option key={numero} value={numero}>

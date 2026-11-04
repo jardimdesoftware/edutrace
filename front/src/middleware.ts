@@ -106,7 +106,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPage =
     isLoginPage ||
     pathname === '/forgot-password' ||
-    pathname === '/definir-senha'
+    pathname === '/definir-senha' ||
+    (process.env.NODE_ENV === 'development' && pathname === '/visual-preview')
   const changePasswordPage = '/alterar-dados'
 
   if (!sessionCookie) {

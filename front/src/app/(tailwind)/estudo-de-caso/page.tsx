@@ -145,7 +145,7 @@ function EstudoDeCasoPage() {
 
   const cabecalho = (
     <header className="space-y-1">
-      <h1 className="text-4xl font-bold">Estudo de Caso</h1>
+      <h1 className="edutrace-page-title">Estudo de Caso</h1>
       {nome && <p className="text-gray-600">Estudante: {nome}</p>}
     </header>
   );

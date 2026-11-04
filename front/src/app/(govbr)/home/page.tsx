@@ -40,18 +40,23 @@ function HomePage() {
 
   return (
     <AppLayout showBack={false}>
-      <main className="p-6">
+      <main className="mx-auto w-full max-w-[1500px] p-5 sm:p-7 lg:p-10">
         {conteudo === "estudante" && (
           <>
-            <h1 className="text-3xl font-light mb-6">Página inicial</h1>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <HomeCard label="Triagem" icon={ClipboardPlus} href="/triagem" />
-              <HomeCard label="Anamnese" icon={Stethoscope} href="/anamnese" />
-              <HomeCard label="Estudo de Caso" icon={FileUser} href="/estudo-de-caso" />
-              <HomeCard label="PAEE" icon={ClipboardList} href="/paee" />
-              <HomeCard label="Anotações Multiprofissionais" icon={MessagesSquare} href="/comentarios" />
-              <HomeCard label="PEI" icon={BookOpenCheck} href="/pei" />
-            </div>
+            <section aria-labelledby="inicio-estudante-titulo">
+              <h1 id="inicio-estudante-titulo" className="edutrace-page-title">Página inicial</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                Consulte seus registros e acompanhe as informações do atendimento educacional.
+              </p>
+            </section>
+            <nav aria-label="Registros do estudante" className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <HomeCard label="Triagem" description="Consulte as informações iniciais do atendimento." icon={ClipboardPlus} href="/triagem" />
+              <HomeCard label="Anamnese" description="Acesse o histórico e as informações de contexto." icon={Stethoscope} href="/anamnese" />
+              <HomeCard label="Estudo de Caso" description="Acompanhe a análise educacional integrada." icon={FileUser} href="/estudo-de-caso" />
+              <HomeCard label="PAEE" description="Consulte o plano de atendimento educacional especializado." icon={ClipboardList} href="/paee" />
+              <HomeCard label="Anotações Multiprofissionais" description="Veja os registros realizados pela equipe de atendimento." icon={MessagesSquare} href="/comentarios" />
+              <HomeCard label="PEI" description="Acompanhe o Plano Educacional Individualizado." icon={BookOpenCheck} href="/pei" />
+            </nav>
           </>
         )}
         {conteudo === "profissional" && (
@@ -65,8 +70,8 @@ function HomePage() {
         {conteudo === "administrador" && <TabelaEstudantes />}
         {conteudo === "sem-perfil" && (
           <>
-            <h1 className="text-3xl font-light mb-6">Página inicial</h1>
-            <p>Seu perfil de acesso ainda não tem telas disponíveis. Procure a administração do sistema.</p>
+            <h1 className="edutrace-page-title">Página inicial</h1>
+            <p className="mt-2 text-slate-600">Seu perfil de acesso ainda não tem telas disponíveis. Procure a administração do sistema.</p>
           </>
         )}
       </main>

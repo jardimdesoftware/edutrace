@@ -130,7 +130,7 @@ export default function EditorDePapeis({
             type="button"
             disabled={!podeSalvar || salvando}
             onClick={salvar}
-            className="rounded bg-emerald-700 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-[#006ee8] px-3 py-1 text-sm font-semibold text-white hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Salvar papéis
           </button>

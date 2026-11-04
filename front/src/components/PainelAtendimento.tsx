@@ -48,9 +48,9 @@ const ESTILO_DA_SITUACAO: Record<
 
 function Totais({ totais }: { totais: TotalDoPainel[] }) {
   return (
-    <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {totais.map(({ status, rotulo, valor, detalhe }) => (
-        <div key={status} className="rounded-lg border border-gray-200 p-4">
+        <div key={status} className="rounded-xl border border-[#dce8f4] bg-[#f9fbfe] p-4">
           <dt className="flex items-center gap-2 text-sm text-gray-700">
             <span
               aria-hidden="true"
@@ -58,7 +58,7 @@ function Totais({ totais }: { totais: TotalDoPainel[] }) {
             />
             {rotulo}
           </dt>
-          <dd className="mt-1 text-3xl font-semibold text-gray-900">{valor}</dd>
+          <dd className="mt-1 text-2xl font-bold text-[#0b2455]">{valor}</dd>
           {detalhe && <dd className="mt-1 text-xs text-gray-700">{detalhe}</dd>}
         </div>
       ))}
@@ -71,10 +71,10 @@ function LinhaDoProfissional({ profissional }: { profissional: OcupacaoDoProfiss
 
   return (
     <tr className={`border-b ${estilo.linha}`}>
-      <td>
+      <td className="px-4 py-3">
         <span className="font-medium text-gray-900">{profissional.nome}</span>
       </td>
-      <td>
+      <td className="px-4 py-3">
         <span className="text-gray-900">{profissional.ocupacao}</span>
         <div
           aria-hidden="true"
@@ -86,10 +86,10 @@ function LinhaDoProfissional({ profissional }: { profissional: OcupacaoDoProfiss
           />
         </div>
       </td>
-      <td>
+      <td className="px-4 py-3">
         <span className="text-gray-900">{profissional.vagas}</span>
       </td>
-      <td>
+      <td className="px-4 py-3">
         <span
           className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium ${estilo.selo}`}
         >
@@ -109,17 +109,17 @@ function Profissionais({ profissionais }: { profissionais: OcupacaoDoProfissiona
   }
 
   return (
-    <div className="mt-6 overflow-x-auto">
+    <div className="mt-5 overflow-x-auto rounded-xl border border-[#dce8f4]">
       <table className="min-w-full table-auto text-sm text-left">
-        <caption className="mb-2 text-left text-base font-semibold text-gray-900">
+        <caption className="p-4 text-left text-base font-bold text-[#0b2455]">
           Professores do AEE
         </caption>
-        <thead className="bg-gray-100 text-gray-700">
+        <thead className="bg-[#eef4fa] text-[#0b2455]">
           <tr>
-            <th scope="col">Professor(a)</th>
-            <th scope="col">Ocupação</th>
-            <th scope="col">Vagas livres</th>
-            <th scope="col">Situação</th>
+            <th scope="col" className="px-4 py-3 text-left">Professor(a)</th>
+            <th scope="col" className="px-4 py-3 text-left">Ocupação</th>
+            <th scope="col" className="px-4 py-3 text-left">Vagas livres</th>
+            <th scope="col" className="px-4 py-3 text-left">Situação</th>
           </tr>
         </thead>
         <tbody>
@@ -163,11 +163,14 @@ export default function PainelAtendimento({ versao }: PainelAtendimentoProps) {
   return (
     <section
       aria-labelledby="painel-atendimento-titulo"
-      className="mb-6 rounded bg-white p-4 shadow-md"
+      className="mb-6 rounded-2xl border border-[#dce8f4] bg-white/95 p-5 shadow-[0_14px_40px_rgba(28,67,112,0.08)]"
     >
-      <h2 id="painel-atendimento-titulo" className="mb-4 text-xl font-semibold text-gray-900">
+      <h2 id="painel-atendimento-titulo" className="edutrace-page-title">
         Estatísticas de atendimento
       </h2>
+      <p className="mb-4 mt-1.5 text-sm leading-5 text-slate-600">
+        Visão geral da fila e da disponibilidade dos professores do AEE.
+      </p>
       {estado.tipo === "carregando" && (
         <Loading fullScreen={false} label="Carregando estatísticas..." />
       )}

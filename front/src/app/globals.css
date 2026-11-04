@@ -1,15 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f9fc;
+  --foreground: #17233f;
+  --edutrace-navy: #0b2455;
+  --edutrace-blue: #006ee8;
+  --edutrace-blue-hover: #005fc9;
+  --edutrace-sky: #edf6ff;
+  --edutrace-mint: #ddf8ee;
+  --edutrace-border: #c8dcf2;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -22,5 +28,139 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+.edutrace-app-shell {
+  background:
+    radial-gradient(circle at 86% 12%, rgb(218 236 255 / 45%) 0, transparent 28rem),
+    linear-gradient(180deg, #f7faff 0%, #f6f8fb 32%, #f8fafc 100%);
+}
+
+.edutrace-app-header {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: hidden;
+  border-bottom: 1px solid var(--edutrace-border);
+  background:
+    linear-gradient(105deg, rgb(244 255 251 / 96%) 0%, rgb(249 252 255 / 98%) 40%, rgb(239 247 255 / 98%) 100%);
+  color: var(--edutrace-navy);
+  box-shadow: 0 10px 30px rgb(27 68 114 / 7%);
+}
+
+.edutrace-app-header::after {
+  position: absolute;
+  right: 18%;
+  bottom: -8.5rem;
+  width: 35rem;
+  height: 13rem;
+  border-radius: 50%;
+  background: rgb(198 226 251 / 28%);
+  content: "";
+  pointer-events: none;
+}
+
+.edutrace-app-header__shape {
+  position: absolute;
+  z-index: -1;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.edutrace-app-header__shape--left {
+  top: -8rem;
+  left: -5rem;
+  width: 27rem;
+  height: 17rem;
+  transform: rotate(24deg);
+  background: linear-gradient(120deg, rgb(191 247 223 / 40%), rgb(226 249 241 / 8%));
+}
+
+.edutrace-app-header__shape--right {
+  top: -10rem;
+  right: -4rem;
+  width: 34rem;
+  height: 22rem;
+  transform: rotate(-18deg);
+  background: linear-gradient(145deg, rgb(191 222 250 / 45%), rgb(229 242 255 / 6%));
+}
+
+.edutrace-header-action {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.925rem;
+  font-weight: 700;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.edutrace-header-action:hover {
+  background: rgb(223 239 255 / 78%);
+  color: var(--edutrace-blue-hover);
+  transform: translateY(-1px);
+}
+
+.edutrace-header-action:focus-visible {
+  outline: 3px solid #8cc7ff;
+  outline-offset: 2px;
+}
+
+.edutrace-app-shell main h1,
+.edutrace-app-shell main h2,
+.edutrace-app-shell main h3 {
+  color: var(--edutrace-navy);
+  letter-spacing: -0.02em;
+}
+
+.edutrace-app-shell main h1 {
+  font-size: clamp(1.35rem, 1.8vw, 1.6rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.edutrace-app-shell main h2 {
+  font-size: clamp(1.15rem, 1.5vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.edutrace-app-shell main h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Título principal compartilhado: mantém a mesma hierarquia mesmo nas telas
+   que carregam o CSS externo do GOV.BR. */
+.edutrace-page-title {
+  margin: 0 !important;
+  color: var(--edutrace-navy) !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.02em !important;
+}
+
+@media (max-width: 639px) {
+  .edutrace-app-header::after {
+    right: -10rem;
+    bottom: -9rem;
+  }
+
+  .edutrace-header-action {
+    padding-inline: 0.6rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edutrace-header-action,
+  .edutrace-app-header button {
+    transition: none;
+  }
 }
