@@ -23,6 +23,16 @@ export function ehCurso(valor: string | null | undefined): valor is Curso {
   return CURSOS.some((curso) => curso === valor);
 }
 
+// Escolher um curso da lista diferente do atual pede confirmação; a opção vazia
+// ("Selecione o curso") e o curso já gravado não mudam nada.
+export function cursoPrecisaConfirmar(atual: string, selecionado: string): boolean {
+  return selecionado !== "" && selecionado !== atual;
+}
+
+export function textoDaConfirmacaoDoCurso(nomeDoEstudante: string, curso: string): string {
+  return `Deseja alterar o curso do estudante "${nomeDoEstudante}" para "${curso}"?`;
+}
+
 // A regra definitiva é do back (só o NAPNE). Aqui só decide se o seletor
 // aparece; o curso é de estudante.
 export function podeAlterarCurso(
