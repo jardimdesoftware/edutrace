@@ -93,20 +93,22 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
         </button>
 
         <div className="flex min-w-0 shrink-0 flex-col items-start gap-1.5 md:items-end">
-          {user?.name && (
+          <div className="flex min-w-0 max-w-full items-center gap-3">
+            {user?.name && (
+              <span
+                className="min-w-0 max-w-[18rem] truncate text-lg font-extrabold leading-tight text-[#0b2455] sm:text-xl"
+                title={user.name}
+              >
+                {user.name}
+              </span>
+            )}
             <span
-              className="max-w-[18rem] truncate text-lg font-extrabold leading-tight text-[#0b2455] sm:text-xl"
-              title={user.name}
+              className="inline-flex shrink-0 items-center rounded-full bg-[#ddf8ee] px-3 py-1 text-xs font-bold text-[#0b2455] shadow-[inset_0_0_0_1px_rgba(42,169,143,0.08)] sm:text-sm"
+              aria-label={`Perfil: ${levelLabel}`}
             >
-              {user.name}
+              {levelLabel}
             </span>
-          )}
-          <span
-            className="inline-flex max-w-full items-center rounded-full bg-[#ddf8ee] px-3 py-1 text-xs font-bold text-[#0b2455] shadow-[inset_0_0_0_1px_rgba(42,169,143,0.08)] sm:text-sm"
-            aria-label={`Perfil: ${levelLabel}`}
-          >
-            {levelLabel}
-          </span>
+          </div>
 
           <nav aria-label="Ações da conta" className="flex items-center text-[#0b2455]">
             <button
