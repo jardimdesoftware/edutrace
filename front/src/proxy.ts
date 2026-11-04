@@ -96,7 +96,7 @@ function renderPage(request: NextRequest) {
   return response
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const sessionCookie = findSessionCookie(
     (name) => request.cookies.get(name)?.value,
   )
