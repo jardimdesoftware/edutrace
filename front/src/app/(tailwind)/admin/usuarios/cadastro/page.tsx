@@ -162,7 +162,7 @@ function AdminUserCreatePage() {
                 </div>
 
                 <h1 className="edutrace-page-title">
-                  Cadastrar pessoas
+                  {papeis.length > 1 ? "Cadastrar pessoas" : "Cadastrar novos estudantes"}
                 </h1>
                 <p className="mt-2.5 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
                   {papeis.length > 1
