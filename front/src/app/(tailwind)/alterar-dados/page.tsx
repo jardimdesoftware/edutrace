@@ -8,6 +8,7 @@ import { fetchSessionUser } from "@/services/auth/sessionUser";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import { errorAlertOptions } from "@/utils/errorAlert";
 
 export default function AlterarDadosPage() {
   const { user, setUser } = useAuth();
@@ -87,8 +88,7 @@ export default function AlterarDadosPage() {
       await Swal.fire("Dados atualizados!", "Suas informações foram alteradas com sucesso.", "success");
       router.push("/home");
     } catch (error) {
-      const mensagem = error instanceof Error ? error.message : "Erro ao atualizar os dados.";
-      Swal.fire("Não foi possível salvar", mensagem, "error");
+      Swal.fire(errorAlertOptions("Não foi possível salvar", error, "Erro ao atualizar os dados."));
     } finally {
       setSalvando(false);
     }
