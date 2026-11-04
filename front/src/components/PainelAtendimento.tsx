@@ -132,11 +132,7 @@ function Profissionais({ profissionais }: { profissionais: OcupacaoDoProfissiona
   );
 }
 
-interface PainelAtendimentoProps {
-  versao: number;
-}
-
-export default function PainelAtendimento({ versao }: PainelAtendimentoProps) {
+export default function PainelAtendimento() {
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
 
   useEffect(() => {
@@ -158,13 +154,10 @@ export default function PainelAtendimento({ versao }: PainelAtendimentoProps) {
     return () => {
       ativo = false;
     };
-  }, [versao]);
+  }, []);
 
   return (
-    <section
-      aria-labelledby="painel-atendimento-titulo"
-      className="mb-6 rounded-2xl border border-[#dce8f4] bg-white/95 p-5 shadow-[0_14px_40px_rgba(28,67,112,0.08)]"
-    >
+    <section aria-labelledby="painel-atendimento-titulo">
       <h2 id="painel-atendimento-titulo" className="edutrace-page-title">
         Estatísticas de atendimento
       </h2>

@@ -11,13 +11,11 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import HomeCard from "@/components/HomeCard";
-import PainelAtendimento from "@/components/PainelAtendimento";
 import TabelaEstudantes from "@/components/TabelaEstudantes";
 import Loading from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
-import { podeVerEstatisticas } from "@/utils/estatisticasAtendimento";
 import { conteudoDaHome } from "@/utils/pageAccess";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 
 export default function HomePageWrapper() {
   return (
@@ -29,14 +27,12 @@ export default function HomePageWrapper() {
 
 function HomePage() {
   const { user, loading } = useAuth();
-  const [versao, setVersao] = useState(0);
 
   if (loading || !user) {
     return <Loading />;
   }
 
   const conteudo = conteudoDaHome(user.roles);
-  const comPainel = podeVerEstatisticas(user.roles);
 
   return (
     <AppLayout showBack={false}>
@@ -61,10 +57,7 @@ function HomePage() {
         )}
         {conteudo === "profissional" && (
           <>
-            {comPainel && <PainelAtendimento versao={versao} />}
-            <TabelaEstudantes
-              onAlteracao={comPainel ? () => setVersao((v) => v + 1) : undefined}
-            />
+            <TabelaEstudantes />
           </>
         )}
         {conteudo === "administrador" && <TabelaEstudantes />}
