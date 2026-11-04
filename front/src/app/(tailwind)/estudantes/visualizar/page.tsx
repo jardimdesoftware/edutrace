@@ -3,7 +3,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { rotulosDosPapeis } from "@/utils/papeis";
 import AppLayout from "@/components/AppLayout";
 import Loading from "@/components/Loading";
 import ResponsavelPedagogico from "@/components/ResponsavelPedagogico";
@@ -38,7 +37,7 @@ function Card({ label, url }: { label: string, url: string }) {
   return (
     <button
       type="button"
-      className="group flex min-h-40 flex-col rounded-2xl border border-[#dce8f4] bg-white p-5 text-left shadow-[0_8px_24px_rgba(28,67,112,0.07)] transition hover:-translate-y-0.5 hover:border-[#9cc8f5] hover:shadow-[0_14px_30px_rgba(28,67,112,0.12)] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
+      className="group flex min-h-32 flex-col rounded-2xl border border-[#dce8f4] bg-white p-5 text-left shadow-[0_8px_24px_rgba(28,67,112,0.07)] transition hover:-translate-y-0.5 hover:border-[#9cc8f5] hover:shadow-[0_14px_30px_rgba(28,67,112,0.12)] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
       onClick={() => router.push(url)}
     >
       <span className="font-bold text-[#0b2455]">{label}</span>
@@ -89,7 +88,6 @@ function VisualizarEstudante() {
     ) : (
       estudante?.course || NAO_INFORMADO
     );
-  const papeis = rotulosDosPapeis(estudante?.roles).join(", ") || "Papel desconhecido";
 
   if (carregando) {
     return <Loading />;
@@ -111,17 +109,13 @@ function VisualizarEstudante() {
               ["E-mail", email],
               ["Matrícula", matricula],
               ["Curso", curso],
-              ["Papéis", papeis],
+              ["Responsável pedagógico", responsavel],
             ] satisfies [string, ReactNode][]).map(([rotulo, valor]) => (
               <div key={rotulo} className="min-w-0 border-b border-[#e5edf6] pb-3">
                 <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{rotulo}</dt>
-                <dd className="mt-1 break-words text-sm font-medium text-[#17233f]">{valor || NAO_INFORMADO}</dd>
+                <dd className="mt-1 flex min-h-8 items-center break-words text-sm font-medium text-[#17233f]">{valor || NAO_INFORMADO}</dd>
               </div>
             ))}
-            <div className="min-w-0 border-b border-[#e5edf6] pb-3 sm:col-span-2 lg:col-span-3">
-              <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">Responsável pedagógico</dt>
-              <dd className="mt-1 text-sm font-medium text-[#17233f]">{responsavel}</dd>
-            </div>
           </dl>
         </section>
 
