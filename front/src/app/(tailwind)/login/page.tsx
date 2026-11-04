@@ -9,7 +9,7 @@ import { fetchSessionUser } from "@/services/auth/sessionUser";
 import Swal from "sweetalert2";
 import Loading from "@/components/Loading";
 import { GoogleLoginButton } from "@/components/GoogleLoginButton";
-import { EMAIL_PATTERN } from "@/utils/emailPattern";
+import { EMAIL_PATTERN, removerEspacos } from "@/utils/emailPattern";
 import { describeAppVersion } from "@/utils/appVersion";
 
 const APP_VERSION = describeAppVersion(process.env.NEXT_PUBLIC_APP_VERSION);
@@ -130,7 +130,7 @@ function LoginPage() {
                         required
                         pattern={EMAIL_PATTERN}
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => setEmail(removerEspacos(e.target.value))}
                         className="h-full min-w-0 flex-1 bg-transparent text-base text-[#071640] outline-none"
                       />
                     </span>
