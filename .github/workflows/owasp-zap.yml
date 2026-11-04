@@ -33,6 +33,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: ${{ vars.ZAP_TARGET_URL || 'https://edutrace.ruancarvalho.me' }}
           rules_file_name: ".zap/rules.tsv"
+          # Mantem os avisos no relatorio, mas reserva a falha da pipeline
+          # para alertas explicitamente classificados como FAIL nas regras.
+          cmd_options: "-I"
           fail_action: true
           allow_issue_writing: true
           issue_title: "OWASP ZAP Security Scan Report"
