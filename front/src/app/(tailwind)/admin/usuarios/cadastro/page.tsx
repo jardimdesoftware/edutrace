@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -10,13 +9,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import TermoConsentimento from "@/components/TermoConsentimento";
 import Loading from "@/components/Loading";
 import {
+  SelectField,
   TextField,
   fieldBoxClass,
   fieldInputClass,
   fieldLabelClass,
 } from "@/components/auth/AuthFields";
+import { CURSOS } from "@/utils/cursos";
 import {
-  CURSO_MAX_LENGTH,
   MATRICULA_MAX_LENGTH,
   MATRICULA_PATTERN,
   buildRegisterData,
@@ -127,20 +127,12 @@ function AdminUserCreatePage() {
   }
 
   return (
-    <AppLayout showBack={false}>
+    <AppLayout>
     <div className="relative min-h-[70vh] overflow-y-auto bg-sky-50 text-[#061542]">
       <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
       <div className="relative z-10 mx-auto flex min-h-[70vh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
-        <Link
-          href="/home"
-          className="inline-flex w-fit items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-[14px] font-bold text-[#006dff] shadow-[0_6px_16px_rgba(33,91,140,0.12)] transition hover:bg-white"
-        >
-          <span aria-hidden="true">&larr;</span>
-          Home
-        </Link>
-
-        <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(460px,1fr)_430px] xl:gap-24">
+        <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(300px,1fr)_680px] xl:gap-16">
           <section className="hidden items-center justify-center pb-8 lg:flex">
             <Image
               src="/login.svg"
@@ -153,10 +145,10 @@ function AdminUserCreatePage() {
           </section>
 
           <section className="flex min-h-0 items-start justify-center py-1 sm:items-center sm:py-6 lg:justify-end lg:py-0">
-            <div className="w-full max-w-[390px] rounded-[18px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm sm:max-w-[430px] sm:rounded-[20px]">
+            <div className="w-full max-w-[390px] rounded-[18px] border border-[#d8e5f6] bg-white/86 shadow-[0_18px_60px_rgba(33,91,140,0.13)] backdrop-blur-sm sm:max-w-[680px] sm:rounded-[20px]">
               <form
                 onSubmit={handleSubmit}
-                className="flex w-full flex-col px-4 pb-4 pt-4 sm:px-9 sm:pb-8 sm:pt-9"
+                className="flex w-full flex-col px-4 pb-4 pt-4 sm:px-9 sm:pb-7 sm:pt-7"
               >
                 <div className="mb-3 flex justify-center sm:mb-6 lg:hidden">
                   <Image
@@ -178,7 +170,7 @@ function AdminUserCreatePage() {
                     : "Crie a conta do estudante. A pessoa recebe por e-mail um link para definir a própria senha."}
                 </p>
 
-                <div className="mt-4 space-y-2.5 sm:mt-7 sm:space-y-4">
+                <div className="mt-4 grid gap-x-5 gap-y-2.5 sm:mt-5 sm:grid-cols-2 sm:gap-y-4">
                   <TextField
                     label="Nome completo"
                     icon="/user.svg"
@@ -229,6 +221,7 @@ function AdminUserCreatePage() {
                     </div>
                   ) : (
                     <SeletorDePapeis
+                      className="sm:col-span-2"
                       legenda="Papéis"
                       opcoes={papeis}
                       valor={formData.roles}
@@ -249,12 +242,11 @@ function AdminUserCreatePage() {
                         onChange={setCampo("matricula")}
                       />
 
-                      <TextField
+                      <SelectField
                         label="Curso"
-                        icon="/file.svg"
                         required
-                        maxLength={CURSO_MAX_LENGTH}
-                        autoComplete="off"
+                        placeholder="Selecione o curso"
+                        options={CURSOS}
                         value={formData.curso}
                         onChange={setCampo("curso")}
                       />
