@@ -4,8 +4,10 @@ import { Suspense, useState } from "react";
 import Image from "next/image";
 import { forgotPassword, resetPassword, verifyResetCode } from "@/services/auth/passwordReset";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import Swal from "sweetalert2";
 import Loading from "@/components/Loading";
+import { ESTILO_DO_VOLTAR } from "@/components/estiloDoVoltar";
 import { PasswordField, TextField } from "@/components/auth/AuthFields";
 import { EMAIL_PATTERN } from "@/utils/emailPattern";
 
@@ -309,9 +311,10 @@ function ForgotPasswordPage() {
                 </div>
 
                 <a
-                  className="mt-3 text-center text-[15px] font-bold leading-6 text-[#00866b] underline sm:mt-5"
+                  className={`mt-3 self-center sm:mt-5 ${ESTILO_DO_VOLTAR}`}
                   href="/login"
                 >
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                   Voltar para o login
                 </a>
               </form>
