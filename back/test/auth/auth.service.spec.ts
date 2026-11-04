@@ -1927,7 +1927,12 @@ describe('AuthService', () => {
       email: 'aluno@discente.ifpe.edu.br',
       cpf: 'google:1234567890',
     };
-    const dto = { cpf: '01234567890', password: 'senhaNovaSegura1' };
+    const dto = {
+      cpf: '01234567890',
+      password: 'senhaNovaSegura1',
+      enrollment_number: '20261TADS0012',
+      course: 'Integrado: Informática' as const,
+    };
 
     it('should mark the token of an account that still has the Google placeholder', async () => {
       jest.spyOn(usersService, 'findOne').mockResolvedValue(googleUser);
@@ -1971,6 +1976,8 @@ describe('AuthService', () => {
         googleUser.email,
         dto.cpf,
         'senhaHash',
+        dto.enrollment_number,
+        dto.course,
       );
       expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(
         googleUser.id,
