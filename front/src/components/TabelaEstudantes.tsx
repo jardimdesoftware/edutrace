@@ -43,6 +43,7 @@ import {
 } from "@/utils/papeis";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { canAccessPage } from "@/utils/pageAccess";
+import { papeisDoCadastro } from "@/utils/papeisDoCadastro";
 import { podeDefinirResponsavel } from "@/utils/responsavelPedagogico";
 import {
   listarUsuariosDaTabela,
@@ -370,7 +371,9 @@ export default function TabelaEstudantes({ onAlteracao }: TabelaEstudantesProps)
               className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-lg bg-[#006ee8] px-4 text-sm font-bold text-white shadow-[0_6px_14px_rgba(0,110,232,0.20)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
             >
               <UserPlus className="h-5 w-5" aria-hidden="true" />
-              Cadastrar novas pessoas
+              {papeisDoCadastro(user?.roles).length > 1
+                ? "Cadastrar novas pessoas"
+                : "Cadastrar novos estudantes"}
             </button>
           )}
           <div className="flex flex-col gap-3 lg:ml-auto sm:flex-row sm:items-center">
