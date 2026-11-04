@@ -127,11 +127,11 @@ function AdminUserCreatePage() {
   }
 
   return (
-    <AppLayout>
-    <div className="relative min-h-[70vh] overflow-y-auto bg-sky-50 text-[#061542]">
+    <AppLayout ocuparTela>
+    <div className="relative min-h-[70vh] overflow-y-auto bg-sky-50 text-[#061542] lg:min-h-0 lg:flex-1">
       <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
-      <div className="relative z-10 mx-auto flex min-h-[70vh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[70vh] w-full lg:min-h-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
         <div className="grid flex-1 items-center gap-7 lg:grid-cols-[minmax(300px,1fr)_680px] xl:gap-16">
           <section className="hidden items-center justify-center pb-8 lg:flex">
             <Image
