@@ -220,11 +220,8 @@ function AnotacoesMultiprofissionais() {
     <AppLayout
     >
       <div className="p-6 w-full xl:grid xl:grid-cols-[1fr_minmax(0,48rem)_1fr] xl:gap-6">
-        {/* O -mt-[70px] sobe o painel até a altura do botão Voltar do
-            AppLayout: a faixa dele tem 54px com o botão a 8px do topo, e esta
-            página começa 24px (p-6) depois da faixa. */}
         {pagina && pagina.overall > 0 && (
-          <aside className="mb-4 w-full max-w-3xl mx-auto xl:mx-0 xl:mb-0 xl:-mt-[70px] xl:col-start-3 xl:row-start-1 xl:self-start xl:sticky xl:top-4 xl:z-10">
+          <aside className="mb-4 w-full max-w-3xl mx-auto xl:mx-0 xl:mb-0 xl:col-start-3 xl:row-start-1 xl:self-start xl:sticky xl:top-4 xl:z-10">
             <section
               aria-label="Buscar e filtrar anotações"
               className="w-full border border-gray-200 rounded-2xl shadow-sm bg-white p-3 space-y-3 text-xs"

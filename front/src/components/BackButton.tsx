@@ -2,20 +2,19 @@
 
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ESTILO_DO_VOLTAR } from "./estiloDoVoltar";
 
 export default function BackButton() {
   const router = useRouter();
 
   return (
-    <div className="bg-white px-4 py-2">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-2 rounded-lg border border-[#006ee8] bg-white px-4 py-2 text-sm font-semibold text-[#006ee8] shadow-sm transition-colors hover:bg-[#006ee8] hover:text-white focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Voltar
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => router.back()}
+      className={`absolute left-10 top-1.5 z-20 ${ESTILO_DO_VOLTAR}`}
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Voltar
+    </button>
   );
 }

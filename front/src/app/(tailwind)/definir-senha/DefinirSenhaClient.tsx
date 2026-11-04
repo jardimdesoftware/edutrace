@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import Swal from "sweetalert2";
+import { ESTILO_DO_VOLTAR } from "@/components/estiloDoVoltar";
 import { PasswordField } from "@/components/auth/AuthFields";
 import { activateAccount } from "@/services/auth/passwordReset";
 import {
@@ -173,9 +175,10 @@ export default function DefinirSenhaClient() {
                   Esqueci minha senha
                 </a>
                 <a
-                  className="mt-2 text-center text-[15px] font-bold leading-6 text-[#00866b] underline"
+                  className={`mt-3 self-center ${ESTILO_DO_VOLTAR}`}
                   href="/login"
                 >
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                   Voltar para o login
                 </a>
               </form>
