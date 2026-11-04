@@ -3,10 +3,12 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
+import { JsonWebTokenError, JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY, jwtConstants } from './constants/constants';
 import { ALLOW_PASSWORD_CHANGE_KEY } from './decorators/allow-password-change.decorator';
@@ -21,6 +23,8 @@ import { hasAnyRole } from './roles';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuthGuard.name);
+
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
@@ -114,7 +118,20 @@ export class AuthGuard implements CanActivate {
         throw error;
       }
 
-      throw new UnauthorizedException('Token expirado');
+      // Só a verificação do token diz que ele venceu ou é inválido. Falha do
+      // banco ao consultar a sessão não pode virar 401, porque o 401 encerra a
+      // sessão do usuário no front.
+      if (error instanceof JsonWebTokenError) {
+        throw new UnauthorizedException('Token expirado');
+      }
+
+      this.logger.error(
+        'Falha ao validar a sessão',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new ServiceUnavailableException(
+        'Não foi possível validar a sessão. Tente novamente.',
+      );
     }
     return true;
   }
