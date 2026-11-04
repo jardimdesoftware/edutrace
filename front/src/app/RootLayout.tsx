@@ -1,20 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ClientProviders } from "./ClientProviders";
 import { MicrosoftClarity } from "@/components/MicrosoftClarity";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Edutrace",
@@ -29,7 +18,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <Script
           src="/runtime-config.js"
@@ -37,10 +26,7 @@ export default async function RootLayout({
           nonce={nonce}
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        data-clarity-mask="true"
-      >
+      <body className="antialiased" data-clarity-mask="true">
         <ClientProviders>
           {children}
         </ClientProviders>

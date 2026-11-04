@@ -19,7 +19,7 @@ import {
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import Swal from "sweetalert2";
 
-const COR_CONFIRMAR = "#047857";
+const COR_CONFIRMAR = "#006ee8";
 const COR_CANCELAR = "#6b7280";
 const ERRO_LISTA = "Não foi possível carregar a lista de servidores.";
 
@@ -350,7 +350,7 @@ export default function ResponsavelPedagogico({
               <button
                 type="submit"
                 disabled={salvando}
-                className="rounded bg-emerald-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
+                className="rounded-lg bg-[#006ee8] px-3 py-1 text-sm font-semibold text-white transition-colors hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:opacity-60"
               >
                 {rascunho.tipo === "NONE" ? "Remover responsável" : "Salvar responsável"}
               </button>

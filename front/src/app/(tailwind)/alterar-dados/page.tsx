@@ -98,7 +98,7 @@ export default function AlterarDadosPage() {
     <AppLayout>
       <div className="p-6">
         <div className="mx-auto max-w-lg rounded-lg bg-white p-6 shadow-md sm:p-8">
-          <h1 className="mb-1 text-2xl font-light">
+          <h1 className="edutrace-page-title mb-1">
             {trocaObrigatoria ? "Defina sua nova senha" : "Alterar meus dados"}
           </h1>
           {trocaObrigatoria ? (
@@ -194,7 +194,7 @@ export default function AlterarDadosPage() {
             <button
               type="submit"
               disabled={salvando}
-              className="mt-2 w-full rounded bg-emerald-700 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-lg bg-[#006ee8] px-4 py-2 font-semibold text-white shadow-[0_8px_18px_rgba(0,110,232,0.20)] transition-colors hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {salvando ? "Salvando..." : "Salvar alterações"}
             </button>

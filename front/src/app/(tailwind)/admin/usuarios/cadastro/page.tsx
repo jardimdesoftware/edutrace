@@ -28,6 +28,7 @@ import { papeisDoCadastro } from "@/utils/papeisDoCadastro";
 import { ROTULO_DO_PAPEL } from "@/utils/papeis";
 import { canAccessPage } from "@/utils/pageAccess";
 import { ESTUDANTE } from "@/consts";
+import AppLayout from "@/components/AppLayout";
 
 const ROTA_CADASTRO = "/admin/usuarios/cadastro";
 
@@ -126,10 +127,11 @@ function AdminUserCreatePage() {
   }
 
   return (
-    <main className="relative min-h-[100svh] overflow-y-auto bg-sky-50 text-[#061542]">
+    <AppLayout showBack={false}>
+    <div className="relative min-h-[70vh] overflow-y-auto bg-sky-50 text-[#061542]">
       <Image src="/fundo.png" alt="" fill priority sizes="100vw" className="object-cover" />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[70vh] w-full max-w-[1220px] flex-col px-2 py-2 sm:px-8 sm:py-5 lg:px-10">
         <Link
           href="/home"
           className="inline-flex w-fit items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-[14px] font-bold text-[#006dff] shadow-[0_6px_16px_rgba(33,91,140,0.12)] transition hover:bg-white"
@@ -167,7 +169,7 @@ function AdminUserCreatePage() {
                   />
                 </div>
 
-                <h1 className="text-[25px] font-extrabold leading-tight tracking-normal text-[#061542] sm:text-[38px]">
+                <h1 className="edutrace-page-title">
                   Cadastrar pessoas
                 </h1>
                 <p className="mt-2.5 text-[14px] font-medium leading-5 text-[#5872a8] sm:mt-5 sm:text-[16px] sm:leading-6">
@@ -348,6 +350,7 @@ function AdminUserCreatePage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
+    </AppLayout>
   );
 }

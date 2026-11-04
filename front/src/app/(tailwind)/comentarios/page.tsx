@@ -389,7 +389,7 @@ function AnotacoesMultiprofissionais() {
         )}
 
         <div className="w-full max-w-3xl mx-auto xl:col-start-2 xl:row-start-1">
-          <h1 className="text-4xl font-bold">Anotações Multiprofissionais</h1>
+          <h1 className="edutrace-page-title">Anotações Multiprofissionais</h1>
 
           {podeAnotar && (
             <div className="sticky top-0 z-10 bg-white pt-4 pb-4">

@@ -8,10 +8,10 @@ import { useRouter } from 'next/navigation';
 import { clearCookie } from '@/services/auth/tokenCookie';
 import { logout } from '@/services/auth/login';
 
-export default function Navbar() {
+export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: string } = {}) {
   const router = useRouter();
   const { user, setUser } = useAuth();
-  const levelLabel = rotulosDosPapeis(user?.roles).join(", ") || "Não informado";
+  const levelLabel = previewLevelLabel || rotulosDosPapeis(user?.roles).join(", ") || "Não informado";
 
   // Função para limpar todos os cookies acessíveis pelo cliente
   const clearAllCookies = () => {
@@ -56,50 +56,69 @@ export default function Navbar() {
   };
 
   return (
-    <div className="bg-emerald-700 text-white w-full shadow-md p-4">
-      <div className="flex justify-between items-center">
+    <header className="edutrace-app-header">
+      <div className="edutrace-app-header__shape edutrace-app-header__shape--left" aria-hidden="true" />
+      <div className="edutrace-app-header__shape edutrace-app-header__shape--right" aria-hidden="true" />
 
-        <div className="flex flex-col">
-          <button
-            type="button"
-            onClick={() => router.push('/home')}
-            aria-label="Ir para a página inicial"
-            className="w-44 h-16 -ml-2 cursor-pointer"
-          >
-            <Image src="/logo.svg" width="100" height="100" alt="logo" className="w-full h-full object-contain"/>
-          </button>
-          <div className="hidden md:block text-lg font-semibold text-white mt-2">
-            <span>Prontuário Eletrônico para Estudantes com Necessidades Educacionais Específicas</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end text-right">
-          <span className="text-lg font-semibold text-white mt-1">
-            Perfil: {levelLabel}
+      <div className="relative z-10 mx-auto flex w-full max-w-[1920px] flex-col gap-5 px-5 py-5 sm:px-8 md:flex-row md:items-center md:justify-between md:gap-8 lg:px-12 lg:py-5">
+        <button
+          type="button"
+          onClick={() => router.push('/home')}
+          aria-label="Ir para a página inicial"
+          className="group flex min-w-0 items-center gap-3 rounded-2xl text-left outline-none focus-visible:ring-4 focus-visible:ring-[#b8dcff] sm:gap-4"
+        >
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center transition-transform group-hover:scale-[1.03] sm:h-[4.5rem] sm:w-[4.5rem]">
+            <Image
+              src="/edutrace-symbol.png"
+              width={80}
+              height={80}
+              priority
+              alt="Símbolo do Edutrace"
+              className="h-full w-full object-contain drop-shadow-[0_8px_18px_rgba(0,110,232,0.16)]"
+            />
           </span>
 
-          <div className="flex items-center gap-2 mt-2">
+          <span className="min-w-0">
+            <span className="block text-[1.65rem] font-extrabold leading-none tracking-[-0.035em] text-[#0b2455] sm:text-[1.9rem]">
+              Edutrace
+            </span>
+            <span className="mt-1.5 hidden max-w-3xl text-sm font-medium leading-snug text-[#315a91] sm:block lg:text-base">
+              Prontuário Eletrônico para Estudantes com Necessidades Educacionais Específicas
+            </span>
+          </span>
+        </button>
+
+        <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
+          <span
+            className="inline-flex max-w-full items-center rounded-full bg-[#ddf8ee] px-4 py-1.5 text-sm font-bold text-[#0b2455] shadow-[inset_0_0_0_1px_rgba(42,169,143,0.08)] sm:text-base"
+            aria-label={`Perfil: ${levelLabel}`}
+          >
+            {levelLabel}
+          </span>
+
+          <nav aria-label="Ações da conta" className="flex items-center text-[#0b2455]">
             <button
               type="button"
               onClick={() => router.push('/alterar-dados')}
-              className="flex items-center px-4 py-2 rounded-md text-white font-semibold hover:bg-emerald-600 transition-colors"
+              className="edutrace-header-action"
             >
-              <UserCog className="mr-2 h-5 w-5" />
+              <UserCog className="h-5 w-5" aria-hidden="true" />
               Meus dados
             </button>
 
+            <span className="mx-1 h-7 w-px bg-[#bfd3ec] sm:mx-2" aria-hidden="true" />
+
             <button
+              type="button"
               onClick={handleLogout}
-              className="flex items-center px-4 py-2 rounded-md text-white font-semibold hover:bg-emerald-600 transition-colors"
+              className="edutrace-header-action"
             >
-              <LogOut className="mr-2 h-5 w-5" />
+              <LogOut className="h-5 w-5" aria-hidden="true" />
               Sair
             </button>
-          </div>
+          </nav>
         </div>
-
-
       </div>
-    </div>
+    </header>
   );
 }

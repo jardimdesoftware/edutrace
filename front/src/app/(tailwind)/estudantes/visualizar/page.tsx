@@ -17,19 +17,36 @@ import {
   nomeDoResponsavel,
   podeDefinirResponsavel,
 } from "@/utils/responsavelPedagogico";
+import { ArrowRight } from "lucide-react";
 
 const NAO_INFORMADO = "Não informado";
+
+const DESCRICAO_DA_FICHA: Record<string, string> = {
+  Triagem: "Informações iniciais e necessidades identificadas.",
+  Anamnese: "Histórico e contexto do estudante.",
+  "Estudo de Caso": "Análise educacional integrada.",
+  PAEE: "Plano de atendimento educacional especializado.",
+  "Anotações Multiprofissionais": "Registros compartilhados pela equipe.",
+  PEI: "Plano Educacional Individualizado.",
+};
 
 function Card({ label, url }: { label: string, url: string }) {
   const router = useRouter();
 
   return (
-    <div
-      className="relative bg-white rounded-lg shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer transition hover:shadow-lg"
+    <button
+      type="button"
+      className="group flex min-h-40 flex-col rounded-2xl border border-[#dce8f4] bg-white p-5 text-left shadow-[0_8px_24px_rgba(28,67,112,0.07)] transition hover:-translate-y-0.5 hover:border-[#9cc8f5] hover:shadow-[0_14px_30px_rgba(28,67,112,0.12)] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
       onClick={() => router.push(url)}
     >
-      <span className="text-green-900 font-semibold text-lg leading-tight">{label}</span>
-    </div>
+      <span className="font-bold text-[#0b2455]">{label}</span>
+      <span className="mt-2 text-sm leading-5 text-slate-600">
+        {DESCRICAO_DA_FICHA[label] ?? "Consultar informações do estudante."}
+      </span>
+      <span className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-bold text-[#006ee8]">
+        Acessar <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+      </span>
+    </button>
   );
 }
 
@@ -69,51 +86,45 @@ function VisualizarEstudante() {
 
   return (
     <AppLayout>
-      <div className="p-6">
-        <div className="rounded shadow bg-white">
-          <div className="md:hidden p-4 space-y-2 text-sm">
-            <p><span className="font-semibold">Nome:</span> {nome}</p>
-            <p><span className="font-semibold">CPF:</span> {cpf}</p>
-            <p className="break-all"><span className="font-semibold">E-mail:</span> {email}</p>
-            <p><span className="font-semibold">Matrícula:</span> {matricula}</p>
-            <p><span className="font-semibold">Curso:</span> {curso}</p>
-            <p><span className="font-semibold">Responsável Pedagógico:</span> {responsavel}</p>
-            <p><span className="font-semibold">Papéis:</span> {papeis}</p>
-          </div>
+      <div className="mx-auto w-full max-w-[1500px] p-5 sm:p-7 lg:p-10">
+        <section aria-labelledby="dados-estudante-titulo" className="rounded-2xl border border-[#dce8f4] bg-white/95 p-5 shadow-[0_14px_40px_rgba(28,67,112,0.08)] sm:p-6">
+          <h1 id="dados-estudante-titulo" className="edutrace-page-title">Dados do estudante</h1>
+          <p className="mt-1.5 text-sm leading-5 text-slate-600">
+            Informações de identificação e acompanhamento de {nome || "estudante"}.
+          </p>
 
-          <div className="hidden md:block overflow-auto">
-            <table className="min-w-full table-auto text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-3 text-left">Nome</th>
-                  <th className="p-3 text-left">CPF</th>
-                  <th className="p-3 text-left">E-mail</th>
-                  <th className="p-3 text-left">Matrícula</th>
-                  <th className="p-3 text-left">Curso</th>
-                  <th className="p-3 text-left">Responsável Pedagógico</th>
-                  <th className="p-3 text-left">Papéis</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-t">
-                  <td className="p-3">{nome}</td>
-                  <td className="p-3">{cpf}</td>
-                  <td className="p-3">{email}</td>
-                  <td className="p-3">{matricula}</td>
-                  <td className="p-3">{curso}</td>
-                  <td className="p-3">{responsavel}</td>
-                  <td className="p-3">{papeis}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["Nome", nome],
+              ["CPF", cpf],
+              ["E-mail", email],
+              ["Matrícula", matricula],
+              ["Curso", curso],
+              ["Papéis", papeis],
+            ].map(([rotulo, valor]) => (
+              <div key={rotulo} className="min-w-0 border-b border-[#e5edf6] pb-3">
+                <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{rotulo}</dt>
+                <dd className="mt-1 break-words text-sm font-medium text-[#17233f]">{valor || NAO_INFORMADO}</dd>
+              </div>
+            ))}
+            <div className="min-w-0 border-b border-[#e5edf6] pb-3 sm:col-span-2 lg:col-span-3">
+              <dt className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">Responsável pedagógico</dt>
+              <dd className="mt-1 text-sm font-medium text-[#17233f]">{responsavel}</dd>
+            </div>
+          </dl>
+        </section>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 max-w-5xl mx-auto">
+        <section aria-labelledby="registros-estudante-titulo" className="mt-8">
+          <h2 id="registros-estudante-titulo">Registros e planos</h2>
+          <p className="mt-1.5 text-sm leading-5 text-slate-600">
+            Selecione uma área para consultar ou atualizar as informações disponíveis.
+          </p>
+          <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {(user ? fichasDoEstudante(user.roles) : []).map((ficha) => (
             <Card key={ficha.rota} label={ficha.label} url={rotaDoEstudante(ficha.rota, id)} />
           ))}
-        </div>
+          </div>
+        </section>
       </div>
     </AppLayout>
   );

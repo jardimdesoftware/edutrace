@@ -52,7 +52,7 @@ export default function AssistenteDePassos({
       >
         <header className="space-y-3 border-b border-gray-100 px-5 pt-5 pb-3 lg:px-8">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-            <h1 id="assistente-titulo" className="text-2xl font-bold text-emerald-900">
+            <h1 id="assistente-titulo" className="edutrace-page-title">
               {titulo}
             </h1>
             {estudante && <p className="text-sm text-gray-600">Estudante: {estudante}</p>}

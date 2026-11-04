@@ -33,6 +33,7 @@ export const NIVEIS_PROFISSIONAIS: readonly number[] = [
 // negada a qualquer papel. Quem protege os dados é o back; esta lista evita
 // renderizar a tela cujas ações o back recusaria.
 const PAGE_LEVELS: Record<string, readonly number[] | typeof ANY_LEVEL> = {
+  "/visual-preview": ANY_LEVEL,
   "/home": ANY_LEVEL,
   "/alterar-dados": ANY_LEVEL,
   "/completar-cadastro": ANY_LEVEL,
