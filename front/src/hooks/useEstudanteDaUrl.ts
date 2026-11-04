@@ -14,7 +14,9 @@ type Resultado = { id: string | null; registro: StudentData | null };
 // O estudante acessa os próprios dados pela sessão. O profissional recebe o id
 // do estudante na URL e resolve e-mail e nome pela API. Se o id não resolve um
 // usuário da lista da sessão, volta para a home em vez de renderizar a tela sem
-// estudante: o carregando continua verdadeiro até a navegação.
+// estudante: o carregando continua verdadeiro até a navegação. Se a API falha,
+// o estudante pode existir: o alerta oferece nova tentativa e a tela fica onde
+// está.
 export function useEstudanteDaUrl() {
   const id = useSearchParams().get("id");
   const router = useRouter();
@@ -24,6 +26,7 @@ export function useEstudanteDaUrl() {
   const roles = user?.roles;
 
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     if (!precisaBuscar) return;
@@ -33,6 +36,15 @@ export function useEstudanteDaUrl() {
       if (!ativo) return;
       if ("registro" in resolvido) {
         setResultado({ id, registro: resolvido.registro });
+        return;
+      }
+      if (resolvido.tipo === "falha") {
+        void Swal.fire({
+          ...resolvido.alerta,
+          confirmButtonText: "Tentar novamente",
+        }).then(() => {
+          if (ativo) setTentativa((atual) => atual + 1);
+        });
         return;
       }
       // A home fica em outro root layout que parte das telas do estudante, e o
@@ -46,7 +58,7 @@ export function useEstudanteDaUrl() {
     return () => {
       ativo = false;
     };
-  }, [id, roles, precisaBuscar, router]);
+  }, [id, roles, precisaBuscar, router, tentativa]);
 
   if (isStudent && user) {
     return { id, email: user.email, nome: user.name, registro: null, carregando: false };
