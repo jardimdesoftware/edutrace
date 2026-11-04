@@ -23,6 +23,7 @@ export interface TotalDoPainel {
   rotulo: string;
   valor: number;
   detalhe: string | null;
+  alunoMaisAntigo: { id: number; nome: string } | null;
 }
 
 export interface OcupacaoDoProfissional {
@@ -85,12 +86,19 @@ export function ocupacaoDoProfissional(profissional: ProfessionalLoad): Ocupacao
 // Tudo que a tela mostra, já em texto. "agora" entra por parâmetro para a
 // espera da fila não depender do relógio da máquina que roda o teste.
 export function montarPainel(estatisticas: ServiceStats, agora: Date): PainelDeAtendimento {
+  const { queue } = estatisticas;
+  const maisAntigo = queue.oldest_student;
+
   return {
     totais: STATUS_ATENDIMENTO.map((status) => ({
       status,
       rotulo: rotuloDoStatus(status),
       valor: estatisticas.totals[status],
-      detalhe: status === 'WAITING' ? textoDaEsperaMaisAntiga(estatisticas.queue, agora) : null,
+      detalhe: status === 'WAITING' ? textoDaEsperaMaisAntiga(queue, agora) : null,
+      alunoMaisAntigo:
+        status === 'WAITING' && maisAntigo
+          ? { id: maisAntigo.id, nome: maisAntigo.full_name }
+          : null,
     })),
     profissionais: estatisticas.professionals.map(ocupacaoDoProfissional),
   };

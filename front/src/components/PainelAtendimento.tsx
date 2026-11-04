@@ -9,7 +9,9 @@ import {
   type SituacaoDoProfissional,
   type TotalDoPainel,
 } from "@/utils/estatisticasAtendimento";
+import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
 import { TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import Loading from "./Loading";
 
@@ -49,7 +51,7 @@ const ESTILO_DA_SITUACAO: Record<
 function Totais({ totais }: { totais: TotalDoPainel[] }) {
   return (
     <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {totais.map(({ status, rotulo, valor, detalhe }) => (
+      {totais.map(({ status, rotulo, valor, detalhe, alunoMaisAntigo }) => (
         <div key={status} className="rounded-xl border border-[#dce8f4] bg-[#f9fbfe] p-4">
           <dt className="flex items-center gap-2 text-sm text-gray-700">
             <span
@@ -60,6 +62,17 @@ function Totais({ totais }: { totais: TotalDoPainel[] }) {
           </dt>
           <dd className="mt-1 text-2xl font-bold text-[#0b2455]">{valor}</dd>
           {detalhe && <dd className="mt-1 text-xs text-gray-700">{detalhe}</dd>}
+          {alunoMaisAntigo && (
+            <dd className="mt-1 text-xs text-gray-700">
+              Aluno:{" "}
+              <Link
+                href={rotaDoEstudante("/estudantes/visualizar", alunoMaisAntigo.id)}
+                className="font-semibold text-[#006ee8] underline underline-offset-2 hover:text-[#005fc9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006ee8]"
+              >
+                {alunoMaisAntigo.nome}
+              </Link>
+            </dd>
+          )}
         </div>
       ))}
     </dl>

@@ -529,6 +529,10 @@ const LIMIT_MESSAGE = 'Você já atende o limite de 15 estudantes.';
         expect(result.totals.IN_SERVICE).toBeGreaterThanOrEqual(3);
         expect(result.totals.CLOSED).toBeGreaterThanOrEqual(1);
         expect(result.queue.oldest_queued_at).toEqual(OLDEST);
+        expect(result.queue.oldest_student).toEqual({
+          id: waitingOld.id,
+          full_name: waitingOld.full_name,
+        });
 
         const ours = result.professionals.filter(({ id }) =>
           [ana.id, bruno.id, carla.id, napne.id].includes(id),

@@ -158,6 +158,7 @@ describe('PlansEducationController', () => {
       queue: {
         size: 2,
         oldest_queued_at: new Date('2026-10-01T09:30:00.000Z'),
+        oldest_student: { id: 5, full_name: 'Aluno Mais Antigo' },
       },
     };
 

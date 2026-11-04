@@ -58,7 +58,11 @@ describe('podeVerEstatisticas', () => {
 });
 
 describe('textoDaEsperaMaisAntiga', () => {
-  const fila = (oldest_queued_at: string | null, size = 3) => ({ size, oldest_queued_at });
+  const fila = (oldest_queued_at: string | null, size = 3) => ({
+    size,
+    oldest_queued_at,
+    oldest_student: null,
+  });
 
   it('tells how many days the oldest student waits and since when', () => {
     assert.equal(
@@ -162,7 +166,11 @@ describe('montarPainel', () => {
       profissional({ id: 8, full_name: 'Bia AEE', in_service: 15, free: 0 }),
       profissional({ id: 9, full_name: 'Caio AEE', in_service: 0, free: 15 }),
     ],
-    queue: { size: 3, oldest_queued_at: '2026-10-13T12:00:00.000Z' },
+    queue: {
+      size: 3,
+      oldest_queued_at: '2026-10-13T12:00:00.000Z',
+      oldest_student: { id: 21, full_name: 'Davi Aluno' },
+    },
   };
 
   it('lists the three totals with the status names of the student list', () => {
@@ -187,6 +195,27 @@ describe('montarPainel', () => {
     );
   });
 
+  it('names the oldest waiting student only on the waiting queue total', () => {
+    const { totais } = montarPainel(estatisticas, AGORA);
+
+    assert.deepEqual(
+      totais.map(({ alunoMaisAntigo }) => alunoMaisAntigo),
+      [{ id: 21, nome: 'Davi Aluno' }, null, null],
+    );
+  });
+
+  it('names nobody when the queue has no student with an entry date', () => {
+    const { totais } = montarPainel(
+      {
+        ...estatisticas,
+        queue: { size: 2, oldest_queued_at: null, oldest_student: null },
+      },
+      AGORA,
+    );
+
+    assert.equal(totais[0].alunoMaisAntigo, null);
+  });
+
   it('keeps the professionals in the order the API sent', () => {
     const { profissionais } = montarPainel(estatisticas, AGORA);
 
@@ -205,7 +234,7 @@ describe('montarPainel', () => {
       {
         totals: { WAITING: 0, IN_SERVICE: 0, CLOSED: 0 },
         professionals: [],
-        queue: { size: 0, oldest_queued_at: null },
+        queue: { size: 0, oldest_queued_at: null, oldest_student: null },
       },
       AGORA,
     );

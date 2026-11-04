@@ -11,6 +11,7 @@ export interface ProfessionalLoad {
 export interface ServiceQueue {
   size: number;
   oldest_queued_at: string | null;
+  oldest_student: { id: number; full_name: string } | null;
 }
 
 export interface ServiceStats {
