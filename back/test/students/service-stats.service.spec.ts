@@ -18,7 +18,7 @@ const teacher = (id: number, full_name: string, inService: number) => ({
 describe('ServiceStatsService', () => {
   let service: ServiceStatsService;
   let prisma: {
-    user: { groupBy: jest.Mock; findMany: jest.Mock; aggregate: jest.Mock };
+    user: { groupBy: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -26,7 +26,7 @@ describe('ServiceStatsService', () => {
       user: {
         groupBy: jest.fn().mockResolvedValue([]),
         findMany: jest.fn().mockResolvedValue([]),
-        aggregate: jest.fn().mockResolvedValue({ _min: { queued_at: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
 
@@ -153,33 +153,48 @@ describe('ServiceStatsService', () => {
   });
 
   describe('queue', () => {
-    it('should report the size of the queue and the oldest entry', async () => {
+    it('should report the size of the queue, the oldest entry and who is in it', async () => {
       prisma.user.groupBy.mockResolvedValue([
         { service_status: ServiceStatus.WAITING, _count: { _all: 3 } },
       ]);
-      prisma.user.aggregate.mockResolvedValue({ _min: { queued_at: OLDEST } });
+      prisma.user.findFirst.mockResolvedValue({
+        id: 42,
+        full_name: 'Aluno Mais Antigo',
+        queued_at: OLDEST,
+        password: 'hash-que-nao-pode-sair',
+      });
 
       const { queue } = await service.getStats();
 
-      expect(queue).toEqual({ size: 3, oldest_queued_at: OLDEST });
+      expect(queue).toEqual({
+        size: 3,
+        oldest_queued_at: OLDEST,
+        oldest_student: { id: 42, full_name: 'Aluno Mais Antigo' },
+      });
     });
 
-    it('should report an empty queue with oldest_queued_at null', async () => {
+    it('should report an empty queue with no oldest entry and no student', async () => {
       const { queue } = await service.getStats();
 
-      expect(queue).toEqual({ size: 0, oldest_queued_at: null });
+      expect(queue).toEqual({
+        size: 0,
+        oldest_queued_at: null,
+        oldest_student: null,
+      });
     });
 
-    it('should take the oldest entry only among the waiting students', async () => {
+    it('should take the oldest entry only among the waiting students that have an entry date, ties by id', async () => {
       await service.getStats();
 
-      expect(prisma.user.aggregate).toHaveBeenCalledWith({
-        _min: { queued_at: true },
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
         where: {
           roles: { has: LEVELS.ALUNO_ESTUDANTE },
           deleted_at: null,
           service_status: ServiceStatus.WAITING,
+          queued_at: { not: null },
         },
+        orderBy: [{ queued_at: 'asc' }, { id: 'asc' }],
+        select: { id: true, full_name: true, queued_at: true },
       });
     });
   });
