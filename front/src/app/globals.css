@@ -34,8 +34,12 @@ body {
 
 .edutrace-app-shell {
   background:
-    radial-gradient(circle at 86% 12%, rgb(218 236 255 / 45%) 0, transparent 28rem),
-    linear-gradient(180deg, #f7faff 0%, #f6f8fb 32%, #f8fafc 100%);
+    radial-gradient(50rem 32rem at 0% 0%, rgb(191 247 223 / 55%), transparent 70%),
+    radial-gradient(54rem 36rem at 100% 6%, rgb(191 222 250 / 60%), transparent 70%),
+    radial-gradient(46rem 32rem at 100% 100%, rgb(198 240 226 / 45%), transparent 70%),
+    radial-gradient(46rem 32rem at 0% 100%, rgb(191 222 250 / 40%), transparent 70%),
+    linear-gradient(105deg, #f4fffb 0%, #f9fcff 45%, #eff7ff 100%);
+  background-attachment: fixed;
 }
 
 .edutrace-app-header {
