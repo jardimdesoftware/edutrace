@@ -1,8 +1,9 @@
 import { apiRequest } from "@/services/http";
+import type { CompleteRegistrationData } from "@/utils/completeRegistrationForm";
 
-export async function completeRegistration(cpf: string, password: string) {
+export async function completeRegistration(dados: CompleteRegistrationData) {
   return apiRequest("/auth/complete-registration", {
     method: "POST",
-    body: { cpf, password },
+    body: dados,
   });
 }
