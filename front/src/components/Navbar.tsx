@@ -2,15 +2,19 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { rotulosDosPapeis } from '@/utils/papeis';
-import { LogOut, UserCog } from 'lucide-react';
+import { podeVerEstatisticas } from '@/utils/estatisticasAtendimento';
+import { ChartColumn, LogOut, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import EstatisticasAtendimentoModal from './EstatisticasAtendimentoModal';
 import { clearCookie } from '@/services/auth/tokenCookie';
 import { logout } from '@/services/auth/login';
 
 export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: string } = {}) {
   const router = useRouter();
   const { user, setUser } = useAuth();
+  const [estatisticasAbertas, setEstatisticasAbertas] = useState(false);
   const levelLabel = previewLevelLabel || rotulosDosPapeis(user?.roles).join(", ") || "Não informado";
 
   // Função para limpar todos os cookies acessíveis pelo cliente
@@ -106,6 +110,20 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
               Meus dados
             </button>
 
+            {podeVerEstatisticas(user?.roles) && (
+              <>
+                <span className="mx-1 h-7 w-px bg-[#bfd3ec] sm:mx-2" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setEstatisticasAbertas(true)}
+                  className="edutrace-header-action"
+                >
+                  <ChartColumn className="h-5 w-5" aria-hidden="true" />
+                  Estatísticas de atendimento
+                </button>
+              </>
+            )}
+
             <span className="mx-1 h-7 w-px bg-[#bfd3ec] sm:mx-2" aria-hidden="true" />
 
             <button
@@ -119,6 +137,9 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
           </nav>
         </div>
       </div>
+      {estatisticasAbertas && (
+        <EstatisticasAtendimentoModal onClose={() => setEstatisticasAbertas(false)} />
+      )}
     </header>
   );
 }
