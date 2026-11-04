@@ -46,7 +46,7 @@ export default function SeletorDePapeis({
     return (
       <div className={className}>
         <span className={fieldLabelClass}>{legenda}</span>
-        <details className="group">
+        <details className="group relative">
           <summary
             className={`${fieldBoxClass} cursor-pointer list-none justify-between gap-2 [&::-webkit-details-marker]:hidden`}
           >
@@ -59,7 +59,7 @@ export default function SeletorDePapeis({
             />
           </summary>
           <fieldset
-            className="mt-2 flex flex-col gap-1.5 rounded-[10px] border-2 border-[#b9d0ee] bg-white p-3"
+            className="absolute inset-x-0 top-full z-20 mt-1 flex flex-col gap-1.5 rounded-[10px] border-2 border-[#b9d0ee] bg-white p-3 shadow-[0_12px_28px_rgba(33,91,140,0.18)]"
             aria-describedby={descritoPor}
           >
             <legend className="sr-only">{legenda}</legend>
