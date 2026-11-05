@@ -41,11 +41,19 @@ import {
   enterQueue,
 } from './service-queue';
 
-const UNIQUE_FIELD_MESSAGES = [
-  { field: 'cpf', message: 'Este CPF já está cadastrado.' },
+const UNIQUE_FIELD_MESSAGES: readonly {
+  field: string;
+  index?: string;
+  message: string;
+}[] = [
+  {
+    field: 'cpf',
+    index: 'User_cpf_account_type_key',
+    message: 'Este CPF já está cadastrado.',
+  },
   { field: 'email', message: 'Este e-mail já está cadastrado.' },
   { field: 'enrollment_number', message: 'Esta matrícula já está cadastrada.' },
-] as const;
+];
 
 const AEE_IN_SERVICE_MESSAGE =
   'Encerre os atendimentos do Professor do AEE antes de tirar esse papel ou excluir a conta.';
@@ -160,7 +168,7 @@ export class UsersService {
   }
 
   // Com o @prisma/adapter-pg (Prisma 7) o P2002 não traz meta.target: a
-  // constraint violada vem pelo nome do índice (User_cpf_key) em
+  // constraint violada vem pelo nome do índice (User_cpf_account_type_key) em
   // meta.driverAdapterError.cause.constraint.index, ou pelas colunas em
   // constraint.fields quando o driver não informa o índice. O meta.target do
   // Prisma sem adapter continua sendo lido. Sem esta leitura, CPF e e-mail
@@ -188,8 +196,9 @@ export class UsersService {
 
     const violated = this.violatedConstraints(error);
     const duplicate = UNIQUE_FIELD_MESSAGES.find(
-      ({ field }) =>
-        violated.includes(field) || violated.includes(`User_${field}_key`),
+      ({ field, index }) =>
+        violated.includes(field) ||
+        violated.includes(index ?? `User_${field}_key`),
     );
 
     return new ConflictException(

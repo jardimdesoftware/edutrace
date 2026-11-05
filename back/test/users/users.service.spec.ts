@@ -576,7 +576,7 @@ describe('UsersService', () => {
     it('should answer 409 when the cpf is already taken', async () => {
       jest
         .spyOn(prisma.user, 'create')
-        .mockRejectedValue(uniqueViolation('User_cpf_key'));
+        .mockRejectedValue(uniqueViolation('User_cpf_account_type_key'));
 
       await expect(service.create(createDto as any)).rejects.toThrow(
         new ConflictException('Este CPF já está cadastrado.'),
@@ -1196,7 +1196,7 @@ describe('UsersService', () => {
     it('should answer 409 and point to the administrator when the CPF belongs to another account', async () => {
       jest
         .spyOn(prisma.user, 'update')
-        .mockRejectedValue(uniqueViolation('User_cpf_key'));
+        .mockRejectedValue(uniqueViolation('User_cpf_account_type_key'));
 
       await expect(
         service.completeGoogleRegistration(
