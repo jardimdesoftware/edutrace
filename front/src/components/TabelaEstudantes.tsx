@@ -344,7 +344,7 @@ export default function TabelaEstudantes() {
   const totaisDoAtendimento = students ? contarPorStatus(students) : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#dce8f4] bg-white/95 shadow-[0_14px_40px_rgba(28,67,112,0.08)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+    <div className="overflow-hidden rounded-2xl border border-[#dce8f4] bg-white/95 shadow-[0_14px_40px_rgba(28,67,112,0.08)]">
       <div className="p-4 sm:p-5">
         <h1 className="edutrace-page-title">
           {isAdmin ? "Gestão de pessoas" : "Estudantes"}
@@ -521,7 +521,7 @@ export default function TabelaEstudantes() {
         )}
       </div>
 
-      <div className="hidden overflow-x-auto border-t border-[#dce8f4] md:block lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+      <div className="hidden overflow-x-auto border-t border-[#dce8f4] md:block">
         <table className="min-w-full table-auto text-sm text-left">
           <thead className="sticky top-0 z-10 bg-[#eef4fa] text-[#0b2455]">
             <tr>
