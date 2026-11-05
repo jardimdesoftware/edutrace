@@ -809,6 +809,84 @@ describe('UsersService', () => {
     });
   });
 
+  describe('contas com e-mail discente', () => {
+    const discente = 'aluno@discente.ifpe.edu.br';
+    const createDto = {
+      full_name: 'Aluno',
+      cpf: '12345678900',
+      email: discente,
+      enrollment_number: '20261TADS0012',
+      course: 'ADS',
+    };
+
+    function currentRoles(roles: number[]) {
+      tx.$queryRaw.mockResolvedValue([{ id: mockUser.id, roles }]);
+    }
+
+    it('should refuse to create a discente account with professional roles', async () => {
+      await expect(
+        service.create({
+          ...createDto,
+          roles: [LEVELS.PROFISSIONAL_EDUCACAO, LEVELS.PROFESSOR_AEE],
+        } as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should refuse to create a discente account as administrator, ignoring the case', async () => {
+      await expect(
+        service.create({
+          ...createDto,
+          email: 'ALUNO@Discente.IFPE.edu.br',
+          roles: [LEVELS.ADMIN],
+        } as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should refuse to raise the roles of a discente account', async () => {
+      currentRoles([LEVELS.ALUNO_ESTUDANTE]);
+
+      await expect(
+        service.update(discente, { roles: [LEVELS.PROFISSIONAL_NAPNE] } as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should let a discente account that is already elevated keep its roles while other fields change', async () => {
+      currentRoles([LEVELS.PROFISSIONAL_EDUCACAO]);
+      tx.user.update.mockResolvedValue(mockUser);
+
+      await service.update(discente, {
+        full_name: 'Novo Nome',
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO],
+      } as any);
+
+      expect(tx.user.update).toHaveBeenCalled();
+    });
+
+    it('should let the administrator bring an elevated discente account back to student', async () => {
+      currentRoles([LEVELS.PROFISSIONAL_EDUCACAO]);
+      tx.user.update.mockResolvedValue(mockUser);
+
+      await service.update(discente, {
+        roles: [LEVELS.ALUNO_ESTUDANTE],
+      } as any);
+
+      expect(tx.user.update).toHaveBeenCalled();
+    });
+
+    it('should still raise the roles of an account with another e-mail', async () => {
+      currentRoles([LEVELS.PROFISSIONAL_EDUCACAO]);
+      tx.user.update.mockResolvedValue(mockUser);
+
+      await service.update('prof@recife.ifpe.edu.br', {
+        roles: [LEVELS.PROFISSIONAL_NAPNE],
+      } as any);
+
+      expect(tx.user.update).toHaveBeenCalled();
+    });
+  });
+
   describe('setPasswordResetToken', () => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
