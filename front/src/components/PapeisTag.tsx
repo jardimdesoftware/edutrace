@@ -87,7 +87,7 @@ export default function PapeisTag({ roles, rotulo }: { roles: Papeis; rotulo?: s
                 style={{ top: posicao.top, right: posicao.right }}
                 className="fixed z-50 flex w-max max-w-[18rem] flex-col gap-1.5 rounded-2xl border border-[#bfd3ec] bg-white p-3 shadow-lg"
               >
-                {todos.map((texto) => (
+                {textosOcultos.map((texto) => (
                   <li key={texto} className="text-xs font-bold text-[#0b2455] sm:text-sm">
                     {texto}
                   </li>
