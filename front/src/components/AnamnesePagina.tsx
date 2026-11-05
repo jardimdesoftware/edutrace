@@ -33,6 +33,7 @@ export default function AnamnesePagina({ iniciarEditando = false }: { iniciarEdi
     <Suspense fallback={<Loading />}>
       <DocumentoEmPassos
         titulo="Anamnese"
+        tipoDeFormulario="ANAMNESIS"
         secoes={SECOES_ANAMNESE}
         prefixoDosIds="anamnese"
         chaveDeEdicao="/editar-anamnese"
