@@ -591,25 +591,35 @@ describe('AnamnesisController', () => {
       },
     );
 
-    it('should open findOne to the student and the NAPNE professional, relying on the ownership check', () => {
+    it('should open findOne to the student, the health, NAPNE and AEE professionals, relying on the ownership check', () => {
       const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
 
       expect(levels).toEqual([
         LEVELS.ALUNO_ESTUDANTE,
+        LEVELS.PROFISSIONAL_SAUDE,
         LEVELS.PROFISSIONAL_NAPNE,
+        LEVELS.PROFESSOR_AEE,
       ]);
     });
 
-    it.each(['create', 'findAll', 'findOne', 'update', 'remove'] as const)(
-      'should deny %s to the administrator, the education and the health professionals',
+    it.each(['create', 'findAll', 'update', 'remove'] as const)(
+      'should deny %s to the administrator, the education, health and AEE professionals',
       (route) => {
         const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller[route]);
 
         expect(levels).not.toContain(LEVELS.ADMIN);
         expect(levels).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
         expect(levels).not.toContain(LEVELS.PROFISSIONAL_SAUDE);
+        expect(levels).not.toContain(LEVELS.PROFESSOR_AEE);
       },
     );
+
+    it('should deny findOne to the administrator and the education professional', () => {
+      const levels = Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne);
+
+      expect(levels).not.toContain(LEVELS.ADMIN);
+      expect(levels).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
+    });
   });
 
   describe('findOne', () => {
