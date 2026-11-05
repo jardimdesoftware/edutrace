@@ -38,7 +38,7 @@ const PAGE_LEVELS: Record<string, readonly number[] | typeof ANY_LEVEL> = {
   "/alterar-dados": ANY_LEVEL,
   "/completar-cadastro": ANY_LEVEL,
   "/triagem": TODOS_MENOS_ADMIN,
-  "/anamnese": [ESTUDANTE, PROFISSIONAL_NAPNE],
+  "/anamnese": [ESTUDANTE, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE, PROFESSOR_AEE],
   "/pei": TODOS_MENOS_ADMIN,
   "/comentarios": TODOS_MENOS_ADMIN,
   "/estudo-de-caso": TODOS_MENOS_ADMIN,
