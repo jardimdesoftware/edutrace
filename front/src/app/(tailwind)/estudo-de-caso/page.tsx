@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Plus, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import AppLayout from '@/components/AppLayout';
+import AvisoDeVersao from '@/components/AvisoDeVersao';
 import EstudoDeCasoFormulario from '@/components/EstudoDeCasoFormulario';
+import HistoricoDeEdicoes from '@/components/HistoricoDeEdicoes';
 import Loading from '@/components/Loading';
 import {
   BOTAO_PERIGO,
@@ -21,7 +23,8 @@ import { ESTUDANTE } from '@/consts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEstudanteDaUrl } from '@/hooks/useEstudanteDaUrl';
 import { useEstudoDeCaso } from '@/hooks/useEstudoDeCaso';
-import type { CaseStudyPayload } from '@/interfaces/CaseStudy';
+import type { CaseStudy, CaseStudyPayload } from '@/interfaces/CaseStudy';
+import type { VersaoCompleta } from '@/utils/historicoDeEdicoes';
 import { errorAlertOptions } from '@/utils/errorAlert';
 import {
   cursoDoEstudo,
@@ -47,6 +50,8 @@ function EstudoDeCasoPage() {
 
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // Versão antiga aberta pelo histórico: a tela mostra o conteúdo dela, só para leitura.
+  const [versaoVista, setVersaoVista] = useState<VersaoCompleta<CaseStudy> | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -61,7 +66,8 @@ function EstudoDeCasoPage() {
   }, [editando]);
 
   const podeEditar = podeEditarEstudoDeCaso(user?.roles);
-  const curso = cursoDoEstudo(estudo, registro);
+  const exibido = versaoVista ? versaoVista.snapshot : estudo;
+  const curso = cursoDoEstudo(exibido, registro);
   const nomeDoEstudante = nome?.trim() || 'o estudante';
   const quemSemEstudo = temPapel(user?.roles, ESTUDANTE) ? 'Você' : nomeDoEstudante;
 
@@ -91,6 +97,7 @@ function EstudoDeCasoPage() {
     }
 
     await recarregar();
+    setVersaoVista(null);
     setEditando(false);
     setSalvando(false);
     Swal.fire({
@@ -133,6 +140,7 @@ function EstudoDeCasoPage() {
     }
 
     await recarregar();
+    setVersaoVista(null);
     Swal.fire({
       icon: 'success',
       title: 'Estudo de caso excluído com sucesso!',
@@ -164,20 +172,36 @@ function EstudoDeCasoPage() {
             </div>
           </div>
         ) : estudo || editando ? (
+          <>
+            {estudo && !editando && email && (
+              <div className="mb-4 space-y-3">
+                <HistoricoDeEdicoes<CaseStudy>
+                  tipo="CASE_STUDY"
+                  email={email}
+                  roles={user.roles}
+                  atualizadoEm={estudo.updated_at}
+                  versaoAberta={versaoVista?.version ?? null}
+                  onEscolher={setVersaoVista}
+                />
+                {versaoVista && (
+                  <AvisoDeVersao versao={versaoVista} onVoltar={() => setVersaoVista(null)} />
+                )}
+              </div>
+            )}
           <EstudoDeCasoFormulario
-            key={editando ? 'edicao' : 'leitura'}
-            inicial={estudo ? formularioDoEstudo(estudo) : formularioVazio()}
-            estudo={editando ? undefined : (estudo ?? undefined)}
+            key={editando ? 'edicao' : `leitura-${versaoVista?.version ?? 'atual'}`}
+            inicial={exibido ? formularioDoEstudo(exibido) : formularioVazio()}
+            estudo={editando ? undefined : (exibido ?? undefined)}
             modo={editando ? (estudo ? 'editar' : 'criar') : 'ver'}
             estudante={nome ?? undefined}
             curso={curso}
-            autor={estudo ? (estudo.author?.full_name ?? null) : user.name}
+            autor={exibido ? (exibido.author?.full_name ?? null) : user.name}
             salvando={salvando}
             onSalvar={handleSalvar}
             onCancelar={() => (editando ? setEditando(false) : router.back())}
-            onEditar={podeEditar ? () => setEditando(true) : undefined}
+            onEditar={podeEditar && !versaoVista ? () => setEditando(true) : undefined}
             acoesDoDocumento={
-              estudo && !editando && podeEditar ? (
+              estudo && !editando && podeEditar && !versaoVista ? (
                 <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
                   <Trash2 size={16} aria-hidden="true" />
                   Excluir
@@ -185,6 +209,7 @@ function EstudoDeCasoPage() {
               ) : undefined
             }
           />
+          </>
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-6">
             {cabecalho}
