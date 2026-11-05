@@ -56,15 +56,18 @@ describe('STUDENT_RECORD_READERS', () => {
 });
 
 describe('ANAMNESIS_READERS', () => {
-  it('should list only the NAPNE level as the reader of the anamnesis of any student', () => {
-    expect(ANAMNESIS_READERS).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
+  it('should list the Health, NAPNE and Professor do AEE levels as readers of the anamnesis of any student', () => {
+    expect(ANAMNESIS_READERS).toEqual([
+      LEVELS.PROFISSIONAL_SAUDE,
+      LEVELS.PROFISSIONAL_NAPNE,
+      LEVELS.PROFESSOR_AEE,
+    ]);
   });
 
-  it('should not include the student, the administrator, the education nor the health level', () => {
+  it('should not include the student, the administrator nor the education level', () => {
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.ALUNO_ESTUDANTE);
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.ADMIN);
     expect(ANAMNESIS_READERS).not.toContain(LEVELS.PROFISSIONAL_EDUCACAO);
-    expect(ANAMNESIS_READERS).not.toContain(LEVELS.PROFISSIONAL_SAUDE);
   });
 });
 
