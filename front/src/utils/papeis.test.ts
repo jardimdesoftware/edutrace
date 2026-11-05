@@ -5,6 +5,7 @@ import {
   alternarPapel,
   erroDosPapeis,
   estadoDoRascunhoDePapeis,
+  resumoDosPapeis,
   rotulosDosPapeis,
   temPapel,
 } from "./papeis";
@@ -168,5 +169,30 @@ describe("estadoDoRascunhoDePapeis", () => {
     assert.equal(mistura.alterado, true);
     assert.notEqual(mistura.erro, null);
     assert.equal(mistura.podeSalvar, false);
+  });
+});
+
+describe("resumoDosPapeis", () => {
+  const todos = [PROFISSIONAL_EDUCACAO, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE, PROFESSOR_AEE];
+
+  it("shows the first role and hides the rest behind the counter", () => {
+    const { visiveis, ocultos } = resumoDosPapeis(todos);
+    assert.deepEqual(visiveis, [ROTULO_DO_PAPEL[PROFISSIONAL_EDUCACAO]]);
+    assert.equal(ocultos.length, 3);
+  });
+
+  it("hides nothing when the roles fit the limit", () => {
+    assert.deepEqual(resumoDosPapeis([ADMIN]).ocultos, []);
+    assert.deepEqual(resumoDosPapeis(todos, 4).ocultos, []);
+  });
+
+  it("keeps ids order and never shows fewer than one role", () => {
+    assert.deepEqual(resumoDosPapeis([PROFESSOR_AEE, PROFISSIONAL_SAUDE], 0).visiveis, [
+      ROTULO_DO_PAPEL[PROFISSIONAL_SAUDE],
+    ]);
+  });
+
+  it("is empty without roles", () => {
+    assert.deepEqual(resumoDosPapeis(null), { visiveis: [], ocultos: [] });
   });
 });
