@@ -44,6 +44,17 @@ export function rotulosDosPapeis(roles: Papeis): string[] {
     .map((papel) => ROTULO_DO_PAPEL[papel] ?? PAPEL_DESCONHECIDO);
 }
 
+// Divide os rótulos entre os que aparecem na tag e os que ficam atrás do
+// contador "+N". Com `maximo` ou menos papéis, nada fica oculto.
+export function resumoDosPapeis(
+  roles: Papeis,
+  maximo = 1,
+): { visiveis: string[]; ocultos: string[] } {
+  const rotulos = rotulosDosPapeis(roles);
+  const limite = Math.max(1, maximo);
+  return { visiveis: rotulos.slice(0, limite), ocultos: rotulos.slice(limite) };
+}
+
 // Marcar Admin ou Estudante desmarca os demais; marcar um profissional
 // desmarca Admin e Estudante. Desmarcar só tira o papel. A lista sai em ordem
 // crescente e sem repetição, como o back a guarda.
