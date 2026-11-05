@@ -9,6 +9,7 @@ import {
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
+import { DISCENTE_EMAIL_DOMAIN } from 'src/users/email-domain';
 import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import { randomInt, randomUUID } from 'node:crypto';
@@ -39,7 +40,7 @@ const PENDING_DELETION_MESSAGE =
 // tokens desses endereços trazem o claim hd com o domínio. Sem hd, o Google não
 // é autoridade pelo e-mail, que só foi confirmado quando a Conta Google foi
 // criada.
-const GOOGLE_DISCENTE_HOSTED_DOMAIN = 'discente.ifpe.edu.br';
+const GOOGLE_DISCENTE_HOSTED_DOMAIN = DISCENTE_EMAIL_DOMAIN;
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 const GOOGLE_NOT_LINKED_MESSAGE =
   'Conta Google não vinculada. Entre com e-mail e senha e vincule a conta em Alterar meus dados.';
