@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { rotulosDosPapeis } from '@/utils/papeis';
+import PapeisTag from './PapeisTag';
 import { podeVerEstatisticas } from '@/utils/estatisticasAtendimento';
 import { ChartColumn, LogOut, UserCog } from 'lucide-react';
 import Image from 'next/image';
@@ -15,7 +15,6 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
   const router = useRouter();
   const { user, setUser } = useAuth();
   const [estatisticasAbertas, setEstatisticasAbertas] = useState(false);
-  const levelLabel = previewLevelLabel || rotulosDosPapeis(user?.roles).join(", ") || "Não informado";
 
   // Função para limpar todos os cookies acessíveis pelo cliente
   const clearAllCookies = () => {
@@ -102,12 +101,7 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
                 {user.name}
               </span>
             )}
-            <span
-              className="inline-flex shrink-0 items-center rounded-full bg-[#ddf8ee] px-3 py-1 text-xs font-bold text-[#0b2455] shadow-[inset_0_0_0_1px_rgba(42,169,143,0.08)] sm:text-sm"
-              aria-label={`Perfil: ${levelLabel}`}
-            >
-              {levelLabel}
-            </span>
+            <PapeisTag roles={user?.roles} rotulo={previewLevelLabel} />
           </div>
 
           <nav aria-label="Ações da conta" className="flex items-center text-[#0b2455]">
