@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import Swal from 'sweetalert2';
 import AppLayout from '@/components/AppLayout';
+import AvisoDeVersao from '@/components/AvisoDeVersao';
+import HistoricoDeEdicoes from '@/components/HistoricoDeEdicoes';
 import Loading from '@/components/Loading';
 import PaeeDoPeriodo from '@/components/PaeeDoPeriodo';
 import PaeeFormulario from '@/components/PaeeFormulario';
@@ -23,6 +25,7 @@ import { useAeePlans } from '@/hooks/useAeePlans';
 import { useEstudanteDaUrl } from '@/hooks/useEstudanteDaUrl';
 import type { AeePlan, AeePlanPayload } from '@/interfaces/AeePlan';
 import { errorAlertOptions } from '@/utils/errorAlert';
+import type { VersaoCompleta } from '@/utils/historicoDeEdicoes';
 import { cursoDoEstudante } from '@/utils/formularioPorTabela';
 import {
   formularioDoPlano,
@@ -50,6 +53,17 @@ function PaeePage() {
 
   const [edicao, setEdicao] = useState<Edicao | null>(null);
   const [salvando, setSalvando] = useState(false);
+  // Versões antigas abertas pelo histórico, por período letivo: a tela mostra o
+  // conteúdo delas, só para leitura.
+  const [versoesVistas, setVersoesVistas] = useState<Record<string, VersaoCompleta<AeePlan>>>({});
+
+  const escolherVersao = (periodo: string, versao: VersaoCompleta<AeePlan> | null) =>
+    setVersoesVistas((atuais) => {
+      const demais = Object.fromEntries(
+        Object.entries(atuais).filter(([chave]) => chave !== periodo),
+      );
+      return versao ? { ...demais, [periodo]: versao } : demais;
+    });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -89,6 +103,7 @@ function PaeePage() {
     }
 
     await recarregar();
+    setVersoesVistas({});
     setEdicao(null);
     setSalvando(false);
     Swal.fire({
@@ -125,6 +140,7 @@ function PaeePage() {
     }
 
     await recarregar();
+    setVersoesVistas({});
     Swal.fire({
       icon: 'success',
       title: 'PAEE excluído com sucesso!',
@@ -178,16 +194,41 @@ function PaeePage() {
             <>
               {botaoNovo}
               <div className="space-y-4">
-                {planos.map((plano, indice) => (
-                  <PaeeDoPeriodo
-                    key={plano.id}
-                    plano={plano}
-                    aberto={indice === 0}
-                    podeEditar={podeEditar}
-                    onEditar={() => setEdicao({ plano })}
-                    onExcluir={() => handleExcluir(plano)}
-                  />
-                ))}
+                {planos.map((plano, indice) => {
+                  const vista = versoesVistas[plano.semester];
+
+                  return (
+                    <PaeeDoPeriodo
+                      key={plano.id}
+                      plano={vista ? vista.snapshot : plano}
+                      aberto={indice === 0}
+                      podeEditar={podeEditar && !vista}
+                      onEditar={() => setEdicao({ plano })}
+                      onExcluir={() => handleExcluir(plano)}
+                      historico={
+                        email && (
+                          <div className="space-y-3">
+                            <HistoricoDeEdicoes<AeePlan>
+                              tipo="AEE_PLAN"
+                              email={email}
+                              periodo={plano.semester}
+                              roles={user.roles}
+                              atualizadoEm={plano.updated_at}
+                              versaoAberta={vista?.version ?? null}
+                              onEscolher={(versao) => escolherVersao(plano.semester, versao)}
+                            />
+                            {vista && (
+                              <AvisoDeVersao
+                                versao={vista}
+                                onVoltar={() => escolherVersao(plano.semester, null)}
+                              />
+                            )}
+                          </div>
+                        )
+                      }
+                    />
+                  );
+                })}
               </div>
             </>
           ) : (
