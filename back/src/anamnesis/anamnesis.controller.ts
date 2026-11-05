@@ -31,7 +31,12 @@ export class AnamnesisController {
     return this.anamnesisService.findAll();
   }
 
-  @AllowLevels(LEVELS.ALUNO_ESTUDANTE, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(
+    LEVELS.ALUNO_ESTUDANTE,
+    LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
+  )
   @Get(':email')
   findOne(
     @Param('email') email: string,

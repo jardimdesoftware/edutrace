@@ -27,7 +27,7 @@ const NIVEL_CRIADO_PELO_ADMIN = 7;
 // Página e níveis que podem abri-la, na regra atual de perfis.
 const MATRIZ: [string, number[]][] = [
   ["/triagem", SEM_ADMIN],
-  ["/anamnese", [ESTUDANTE, PROFISSIONAL_NAPNE]],
+  ["/anamnese", [ESTUDANTE, PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE, PROFESSOR_AEE]],
   ["/pei", SEM_ADMIN],
   ["/comentarios", SEM_ADMIN],
   ["/estudo-de-caso", SEM_ADMIN],
@@ -152,6 +152,7 @@ describe("canAccessPage with several roles", () => {
   it("gives the AEE teacher alone the reads and none of the NAPNE pages", () => {
     for (const pagina of [
       "/triagem",
+      "/anamnese",
       "/pei",
       "/comentarios",
       "/estudo-de-caso",
@@ -161,7 +162,6 @@ describe("canAccessPage with several roles", () => {
       assert.equal(canAccessPage(pagina, [PROFESSOR_AEE]), true, pagina);
     }
     for (const pagina of [
-      "/anamnese",
       "/editar-anamnese",
       "/editar-triagem",
       "/admin",

@@ -30,7 +30,13 @@ export const STUDENT_RECORD_READERS: readonly number[] = [
   LEVELS.PROFESSOR_AEE,
 ];
 
-export const ANAMNESIS_READERS: readonly number[] = [LEVELS.PROFISSIONAL_NAPNE];
+// Quem lê a anamnese de qualquer estudante. O estudante lê só a própria, e quem
+// escreve é só o NAPNE (declarado nas rotas).
+export const ANAMNESIS_READERS: readonly number[] = [
+  LEVELS.PROFISSIONAL_SAUDE,
+  LEVELS.PROFISSIONAL_NAPNE,
+  LEVELS.PROFESSOR_AEE,
+];
 
 // Quem lê o estudo de caso de qualquer estudante. O estudante lê só o próprio, e
 // quem escreve é só o Professor do AEE (declarado nas rotas).

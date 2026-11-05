@@ -27,17 +27,19 @@ const ROTULOS_SEM_ANAMNESE = [
 const NIVEL_CRIADO_PELO_ADMIN = 7;
 
 describe("fichasDoEstudante", () => {
-  for (const [nome, nivel] of [
-    ["education professional", PROFISSIONAL_EDUCACAO],
-    ["health professional", PROFISSIONAL_SAUDE],
-  ] as const) {
-    it(`does not give the ${nome} the anamnesis card, whose page the middleware denies`, () => {
-      assert.deepEqual(
-        fichasDoEstudante([nivel]).map((ficha) => ficha.label),
-        ROTULOS_SEM_ANAMNESE,
-      );
-    });
-  }
+  it("does not give the education professional the anamnesis card, whose page the middleware denies", () => {
+    assert.deepEqual(
+      fichasDoEstudante([PROFISSIONAL_EDUCACAO]).map((ficha) => ficha.label),
+      ROTULOS_SEM_ANAMNESE,
+    );
+  });
+
+  it("gives the health professional the anamnesis card, which opens in read mode", () => {
+    assert.deepEqual(
+      fichasDoEstudante([PROFISSIONAL_SAUDE]).map((ficha) => ficha.label),
+      ROTULOS,
+    );
+  });
 
   it("gives the NAPNE professional the six cards", () => {
     assert.deepEqual(
@@ -63,10 +65,10 @@ describe("fichasDoEstudante", () => {
 });
 
 describe("fichasDoEstudante with the AEE teacher", () => {
-  it("gives the AEE teacher alone the cards of the reads, without the anamnesis", () => {
+  it("gives the AEE teacher alone the six cards, the anamnesis in read mode", () => {
     assert.deepEqual(
       fichasDoEstudante([PROFESSOR_AEE]).map((ficha) => ficha.label),
-      ROTULOS_SEM_ANAMNESE,
+      ROTULOS,
     );
   });
 
