@@ -10,6 +10,11 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 import { CASE_STUDY_READERS } from 'src/constants';
 import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from 'src/students/students.service';
+import { FormType } from '@prisma/client';
+import {
+  FormRevisionsService,
+  RevisionAuthor,
+} from 'src/form-revisions/form-revisions.service';
 import {
   CASE_STUDY_SECTIONS_SELECT,
   CASE_STUDY_SELECT,
@@ -51,21 +56,32 @@ export class CaseStudiesService {
   constructor(
     private prisma: PrismaService,
     private studentsService: StudentsService,
+    private formRevisions: FormRevisionsService,
   ) {}
 
-  async create(createCaseStudyDto: CreateCaseStudyDto, idAuthor: number) {
+  async create(createCaseStudyDto: CreateCaseStudyDto, author: RevisionAuthor) {
     const student = await this.studentsService.findOneOrFail({
       email: createCaseStudyDto.student_email,
     });
 
     try {
-      return await this.prisma.caseStudy.create({
-        data: {
-          ...pickSections(createCaseStudyDto),
-          id_student: student.id,
-          id_author: idAuthor,
-        } as unknown as Prisma.CaseStudyUncheckedCreateInput,
-        select: CASE_STUDY_SELECT,
+      // O estudo de caso e a versão 1 são gravados juntos.
+      return await this.prisma.$transaction(async (tx) => {
+        const created = await tx.caseStudy.create({
+          data: {
+            ...pickSections(createCaseStudyDto),
+            id_student: student.id,
+            id_author: author.id,
+          } as unknown as Prisma.CaseStudyUncheckedCreateInput,
+          select: CASE_STUDY_SELECT,
+        });
+        await this.formRevisions.recordCreation(
+          tx,
+          { formType: FormType.CASE_STUDY, idStudent: student.id },
+          created,
+          author,
+        );
+        return created;
       });
     } catch (error) {
       if (isPrismaError(error, 'P2002')) {
@@ -102,16 +118,46 @@ export class CaseStudiesService {
 
   // Cada seção enviada substitui a seção inteira; as que não vieram ficam como
   // estão. O autor e o estudante não mudam.
-  async update(email: string, updateCaseStudyDto: UpdateCaseStudyDto) {
+  async update(
+    email: string,
+    updateCaseStudyDto: UpdateCaseStudyDto,
+    author: RevisionAuthor,
+  ) {
     const student = await this.studentsService.findOneOrFail({ email });
 
     try {
-      return await this.prisma.caseStudy.update({
-        where: { id_student: student.id },
-        data: pickSections(
-          updateCaseStudyDto,
-        ) as unknown as Prisma.CaseStudyUncheckedUpdateInput,
-        select: CASE_STUDY_SELECT,
+      // A edição e a versão nova são gravadas juntas; a edição que passa do
+      // teto de versões recebe 409 e o estudo de caso não muda.
+      return await this.prisma.$transaction(async (tx) => {
+        const before = await tx.caseStudy.findUnique({
+          where: { id_student: student.id },
+          select: CASE_STUDY_SELECT,
+        });
+        if (!before) {
+          throw new NotFoundException(NOT_FOUND_MESSAGE);
+        }
+
+        const updated = await tx.caseStudy.update({
+          where: { id_student: student.id },
+          data: pickSections(
+            updateCaseStudyDto,
+          ) as unknown as Prisma.CaseStudyUncheckedUpdateInput,
+          select: CASE_STUDY_SELECT,
+        });
+        await this.formRevisions.recordEdit(
+          tx,
+          { formType: FormType.CASE_STUDY, idStudent: student.id },
+          {
+            before,
+            beforeAt: before.updated_at ?? before.created_at,
+            beforeAuthor: before.author
+              ? { id: before.author.id, name: before.author.full_name }
+              : null,
+            after: updated,
+          },
+          author,
+        );
+        return updated;
       });
     } catch (error) {
       if (isPrismaError(error, 'P2025')) {
@@ -125,12 +171,22 @@ export class CaseStudiesService {
   // e da anamnese: o estudo de caso de uma conta que deixou de ser estudante
   // continua removível.
   async remove(email: string) {
-    const { count } = await this.prisma.caseStudy.deleteMany({
-      where: { student: { email } },
+    await this.prisma.$transaction(async (tx) => {
+      const owner = await tx.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      const { count } = await tx.caseStudy.deleteMany({
+        where: { student: { email } },
+      });
+      if (count === 0 || !owner) {
+        throw new NotFoundException(NOT_FOUND_MESSAGE);
+      }
+      await this.formRevisions.removeAll(tx, {
+        formType: FormType.CASE_STUDY,
+        idStudent: owner.id,
+      });
     });
-    if (count === 0) {
-      throw new NotFoundException(NOT_FOUND_MESSAGE);
-    }
 
     return {
       message: `Estudo de caso com email ${email} foi removido com sucesso`,

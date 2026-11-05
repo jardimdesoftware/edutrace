@@ -12,6 +12,7 @@ import { LEVELS } from 'src/constants';
 import { PrismaService } from 'src/database/prisma.service';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { StudentsService } from 'src/students/students.service';
+import { FormRevisionsService } from 'src/form-revisions/form-revisions.service';
 import {
   BODY_LIMIT_BYTES,
   SECTION_KEYS,
@@ -71,6 +72,8 @@ describe('estudo de caso, rotas de /case-studies', () => {
       update: jest.Mock;
       deleteMany: jest.Mock;
     };
+    user: { findUnique: jest.Mock };
+    $transaction: jest.Mock;
   };
   let studentsService: { findOneOrFail: jest.Mock };
 
@@ -84,6 +87,10 @@ describe('estudo de caso, rotas de /case-studies', () => {
         update: jest.fn().mockResolvedValue(STORED),
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      user: { findUnique: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+        callback(prisma),
+      ),
     };
     studentsService = {
       findOneOrFail: jest
@@ -95,6 +102,14 @@ describe('estudo de caso, rotas de /case-studies', () => {
       controllers: [CaseStudiesController],
       providers: [
         CaseStudiesService,
+        {
+          provide: FormRevisionsService,
+          useValue: {
+            recordCreation: jest.fn(),
+            recordEdit: jest.fn(),
+            removeAll: jest.fn(),
+          },
+        },
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: studentsService },

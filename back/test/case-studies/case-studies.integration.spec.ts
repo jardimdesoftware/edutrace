@@ -13,6 +13,7 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 import { LEVELS, PHASES } from 'src/constants';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
+import { FormRevisionsService } from 'src/form-revisions/form-revisions.service';
 import { requireIntegrationDatabaseUrl } from '../users/integration-database';
 import {
   Json,
@@ -33,6 +34,7 @@ import {
 // inteira. O beforeAll recusa rodar num banco cujo nome não termine em "_it".
 const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
 
+const REVISION_AUTHOR = { id: 1, name: 'Autor' };
 const EMAIL_DOMAIN = '@estudo-de-caso.test';
 const COURSE = 'Análise e Desenvolvimento de Sistemas';
 
@@ -123,7 +125,12 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       process.env.DATABASE_URL = databaseUrl;
 
       const module = await Test.createTestingModule({
-        providers: [CaseStudiesService, StudentsService, PrismaService],
+        providers: [
+          CaseStudiesService,
+          StudentsService,
+          FormRevisionsService,
+          PrismaService,
+        ],
       }).compile();
 
       await module.init();
@@ -161,10 +168,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const author = await createNapne();
         const student = await createStudent();
 
-        const created = await service.create(
-          await dtoOf(student.email),
-          author.id,
-        );
+        const created = await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
         const read = await service.findOne(
           student.email,
           requestOf(author.id, author.email, LEVELS.PROFISSIONAL_NAPNE),
@@ -209,10 +216,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const author = await createNapne();
         const student = await createStudent();
 
-        const created = await service.create(
-          await dtoOf(student.email),
-          author.id,
-        );
+        const created = await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         const serialized = JSON.stringify(created);
         expect(serialized).not.toContain(author.email);
@@ -228,7 +235,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
 
         const created = await service.create(
           await dtoOf(student.email, maxBody()),
-          author.id,
+          { id: author.id, name: 'Autor' },
         );
 
         expect(created.aee_opinion).toMatchObject({
@@ -246,7 +253,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
             student_email: student.email,
             ...blankSections(),
           }),
-          author.id,
+          { id: author.id, name: 'Autor' },
         );
 
         expect(created.identification).toEqual({ grade: '' });
@@ -264,7 +271,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
             first.email,
             setAt(validBody(), 'general_info.diagnosis', ''),
           ),
-          author.id,
+          { id: author.id, name: 'Autor' },
         );
         const without = await service.create(
           await dtoOf(
@@ -275,7 +282,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
               return body;
             })(),
           ),
-          author.id,
+          { id: author.id, name: 'Autor' },
         );
 
         expect(withEmpty.general_info).toMatchObject({ diagnosis: '' });
@@ -287,7 +294,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       it('should answer 409 for the second case study of the student and keep the first', async () => {
         const author = await createNapne();
         const student = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await expect(
           service.create(
@@ -295,7 +305,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
               student.email,
               setAt(validBody(), 'barriers', 'Outra versão'),
             ),
-            author.id,
+            { id: author.id, name: 'Autor' },
           ),
         ).rejects.toThrow(
           new ConflictException('Este estudante já tem um estudo de caso.'),
@@ -311,7 +321,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       it('should refuse the second row at the database, with the P2002 code', async () => {
         const author = await createNapne();
         const student = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
         const row = await prisma.caseStudy.findUniqueOrThrow({
           where: { id_student: student.id },
         });
@@ -327,10 +340,16 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const first = await createStudent();
         const second = await createStudent();
 
-        await service.create(await dtoOf(first.email), author.id);
+        await service.create(await dtoOf(first.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await expect(
-          service.create(await dtoOf(second.email), author.id),
+          service.create(await dtoOf(second.email), {
+            id: author.id,
+            name: 'Autor',
+          }),
         ).resolves.toBeDefined();
       });
 
@@ -339,7 +358,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const professional = await createNapne();
 
         await expect(
-          service.create(await dtoOf(professional.email), author.id),
+          service.create(await dtoOf(professional.email), {
+            id: author.id,
+            name: 'Autor',
+          }),
         ).rejects.toBeInstanceOf(NotFoundException);
         await expect(
           prisma.caseStudy.count({ where: { id_student: professional.id } }),
@@ -378,7 +400,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       it('should refuse to delete the student account while the case study exists (RESTRICT)', async () => {
         const author = await createNapne();
         const student = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await expect(
           prisma.user.delete({ where: { id: student.id } }),
@@ -391,7 +416,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       it('should keep the case study with an unknown author when the author account is deleted (SET NULL)', async () => {
         const author = await createNapne();
         const student = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await prisma.user.delete({ where: { id: author.id } });
 
@@ -421,8 +449,14 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const author = await createNapne();
         const student = await createStudent();
         const other = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
-        await service.create(await dtoOf(other.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
+        await service.create(await dtoOf(other.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await expect(
           service.findOne(
@@ -455,10 +489,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const author = await createNapne();
         const editor = await createNapne();
         const student = await createStudent();
-        const created = await service.create(
-          await dtoOf(student.email),
-          author.id,
-        );
+        const created = await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         const updated = await service.update(
           student.email,
@@ -466,6 +500,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
             barriers: 'Novas barreiras',
             aee_opinion: { opinion: 'Novo parecer', date: '2026-11-01' },
           }),
+          REVISION_AUTHOR,
         );
 
         expect(updated.barriers).toBe('Novas barreiras');
@@ -486,7 +521,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       it('should replace the whole section, dropping what it no longer has', async () => {
         const author = await createNapne();
         const student = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         const withoutDiagnosis = {
           has_medical_report: false,
@@ -495,6 +533,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const updated = await service.update(
           student.email,
           await updateDtoOf({ general_info: withoutDiagnosis }),
+          REVISION_AUTHOR,
         );
 
         expect(updated.general_info).toEqual(withoutDiagnosis);
@@ -507,6 +546,7 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
           service.update(
             student.email,
             await updateDtoOf({ barriers: 'Novas barreiras' }),
+            REVISION_AUTHOR,
           ),
         ).rejects.toThrow('Estudo de caso não encontrado');
       });
@@ -514,7 +554,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
       it('should delete the case study, answer 404 the second time and let a new one be created', async () => {
         const author = await createNapne();
         const student = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await expect(service.remove(student.email)).resolves.toMatchObject({
           message: expect.stringContaining('removido com sucesso'),
@@ -523,7 +566,10 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
           NotFoundException,
         );
         await expect(
-          service.create(await dtoOf(student.email), author.id),
+          service.create(await dtoOf(student.email), {
+            id: author.id,
+            name: 'Autor',
+          }),
         ).resolves.toBeDefined();
       });
 
@@ -531,8 +577,14 @@ const COURSE = 'Análise e Desenvolvimento de Sistemas';
         const author = await createNapne();
         const student = await createStudent();
         const other = await createStudent();
-        await service.create(await dtoOf(student.email), author.id);
-        await service.create(await dtoOf(other.email), author.id);
+        await service.create(await dtoOf(student.email), {
+          id: author.id,
+          name: 'Autor',
+        });
+        await service.create(await dtoOf(other.email), {
+          id: author.id,
+          name: 'Autor',
+        });
 
         await service.remove(student.email);
 
