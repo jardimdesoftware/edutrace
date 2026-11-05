@@ -31,6 +31,7 @@ import {
   GOOGLE_ACCOUNT_IN_USE_MESSAGE,
   GOOGLE_CPF_PREFIX,
 } from './google-account';
+import { DISCENTE_ROLES_MESSAGE, isDiscenteEmail } from './email-domain';
 import { Prisma, ServiceStatus } from '@prisma/client';
 import { PUBLIC_USER_SELECT, PublicUser } from './users.select';
 import type { DeleteUserDto } from './dto/delete-user.dto';
@@ -89,6 +90,7 @@ export class UsersService {
     const { roles: requestedRoles, ...userData } = createUserDto;
     const roles = sortRoles(requestedRoles ?? [LEVELS.ALUNO_ESTUDANTE]);
     this.assertStudentOnlyFields(roles, createUserDto);
+    this.assertDiscenteStaysStudent(userData.email, roles);
     const activation = generateActivationToken();
     const activationExpires = new Date(Date.now() + ACTIVATION_TOKEN_TTL_MS);
 
@@ -193,6 +195,17 @@ export class UsersService {
     return new ConflictException(
       duplicate?.message ?? 'Registro já cadastrado.',
     );
+  }
+
+  // O endereço discente é do Google Workspace do IFPE e identifica o aluno: o
+  // administrador não o eleva a profissional, nem cria a conta já elevada.
+  private assertDiscenteStaysStudent(email: string, roles: readonly number[]) {
+    const studentOnly =
+      roles.length === 1 && roles[0] === LEVELS.ALUNO_ESTUDANTE;
+
+    if (isDiscenteEmail(email) && !studentOnly) {
+      throw new BadRequestException(DISCENTE_ROLES_MESSAGE);
+    }
   }
 
   // Matrícula e curso só existem para o estudante. Os papéis são os finais da
@@ -336,6 +349,9 @@ export class UsersService {
     // Conta inexistente (current indefinido) fica para o update, que falha.
     const finalRoles = roles ?? current?.roles;
     this.assertStudentOnlyFields(finalRoles, updateUserDto);
+    if (current && roles !== undefined && !sameRoles(roles, current.roles)) {
+      this.assertDiscenteStaysStudent(email, roles);
+    }
 
     const rolesChange = await this.applyRolesChange(tx, current, roles);
 
