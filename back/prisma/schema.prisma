@@ -27,7 +27,9 @@ enum CommentType {
 model User {
   id                      Int        @id @default(autoincrement())
   full_name               String
-  cpf                     String     @unique
+  // Único por tipo de conta (discente ou profissional): o índice User_cpf_account_type_key
+  // existe só na migration 20261105100000, porque o Prisma não declara índice de expressão.
+  cpf                     String
   email                   String     @unique
   password                String
   affliation              String?
