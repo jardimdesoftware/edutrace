@@ -19,6 +19,13 @@ enum ServiceStatus {
   CLOSED
 }
 
+enum FormType {
+  SCREENING
+  ANAMNESIS
+  CASE_STUDY
+  AEE_PLAN
+}
+
 enum CommentType {
   NOTE
   CLASS_COUNCIL_REPORT
@@ -75,6 +82,8 @@ model User {
 
   pei_entries          PeiEntry[] @relation("PeiEntryStudent")
   authored_pei_entries PeiEntry[] @relation("PeiEntryAuthor")
+
+  form_revisions FormRevision[]
 
   roles Int[]
 
@@ -283,4 +292,26 @@ model PeiEntry {
   @@unique([id_student, semester, subject], where: { deleted_at: null })
   @@index([id_student])
   @@index([id_author])
+}
+
+// Uma linha por versão salva de um formulário do estudante. record_key é vazia
+// para os formulários únicos por estudante e traz o período letivo no PAEE. O
+// índice único também sustenta o teto de versões: duas edições simultâneas
+// disputam o mesmo número e só uma grava.
+model FormRevision {
+  id          Int      @id @default(autoincrement())
+  form_type   FormType
+  record_key  String   @default("")
+  version     Int
+  snapshot    Json
+  author_name String
+  created_at  DateTime @default(now())
+
+  id_student Int
+  student    User @relation(fields: [id_student], references: [id], onDelete: Cascade)
+
+  id_author Int?
+
+  @@unique([form_type, id_student, record_key, version])
+  @@index([id_student])
 }
