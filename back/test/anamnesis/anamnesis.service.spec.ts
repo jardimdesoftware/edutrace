@@ -860,11 +860,24 @@ describe('AnamnesisService', () => {
       expect(result).toEqual(anamnesis);
     });
 
-    it.each([
-      LEVELS.ADMIN,
-      LEVELS.PROFISSIONAL_EDUCACAO,
-      LEVELS.PROFISSIONAL_SAUDE,
-    ])(
+    it.each([LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFESSOR_AEE])(
+      "should allow level %s to read any student's anamnesis",
+      async (id_level) => {
+        const email = 'other@example.com';
+        const request = {
+          user: { email: 'professional@example.com', roles: [id_level] },
+        } as any;
+        const anamnesis = { id: 1, email } as any;
+        jest.spyOn(prisma.anamnesis, 'findUnique').mockResolvedValue(anamnesis);
+
+        const result = await service.findOne(email, request);
+
+        expect(studentsService.findOneOrFail).toHaveBeenCalledWith({ email });
+        expect(result).toEqual(anamnesis);
+      },
+    );
+
+    it.each([LEVELS.ADMIN, LEVELS.PROFISSIONAL_EDUCACAO])(
       "should throw ForbiddenException if level %s views another student's anamnesis",
       async (id_level) => {
         const request = {
