@@ -14,6 +14,7 @@ import { UpdateScreeningDto } from './dto/update-screening.dto';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { authorOf } from 'src/form-revisions/revision-author';
 
 @Controller('screenings')
 export class ScreeningsController {
@@ -21,8 +22,11 @@ export class ScreeningsController {
 
   @AllowLevels(LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_NAPNE)
   @Post()
-  create(@Body() createScreeningDto: CreateScreeningDto) {
-    return this.screeningsService.create(createScreeningDto);
+  create(
+    @Body() createScreeningDto: CreateScreeningDto,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.screeningsService.create(createScreeningDto, authorOf(request));
   }
 
   @AllowLevels(
@@ -56,8 +60,13 @@ export class ScreeningsController {
   update(
     @Param('email') email: string,
     @Body() updateScreeningDto: UpdateScreeningDto,
+    @Request() request: AuthenticatedRequest,
   ) {
-    return this.screeningsService.update(email, updateScreeningDto);
+    return this.screeningsService.update(
+      email,
+      updateScreeningDto,
+      authorOf(request),
+    );
   }
 
   @AllowLevels(LEVELS.PROFISSIONAL_SAUDE, LEVELS.PROFISSIONAL_NAPNE)
