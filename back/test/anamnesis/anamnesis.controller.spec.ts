@@ -6,6 +6,9 @@ import { UpdateAnamnesisDto } from 'src/anamnesis/dto/update-anamnesis.dto';
 import { LEVELS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
+const REQUEST = { user: { sub: 7, name: 'Autor' } } as any;
+const AUTHOR = { id: 7, name: 'Autor' };
+
 describe('AnamnesisController', () => {
   let controller: AnamnesisController;
   let service: AnamnesisService;
@@ -215,8 +218,10 @@ describe('AnamnesisController', () => {
       };
       jest.spyOn(service, 'create').mockResolvedValue(result);
 
-      expect(await controller.create(createAnamnesisDto)).toEqual(result);
-      expect(service.create).toHaveBeenCalledWith(createAnamnesisDto);
+      expect(await controller.create(createAnamnesisDto, REQUEST)).toEqual(
+        result,
+      );
+      expect(service.create).toHaveBeenCalledWith(createAnamnesisDto, AUTHOR);
     });
   });
 
@@ -812,13 +817,17 @@ describe('AnamnesisController', () => {
   describe('update', () => {
     it('should update an anamnesis by email', async () => {
       const email = 'joao@example.com';
-      const updateDto = { identification: { nome_completo: 'Novo Nome' } } as any;
+      const updateDto = {
+        identification: { nome_completo: 'Novo Nome' },
+      } as any;
       const result = { id: 1, email, ...updateDto } as any;
 
       jest.spyOn(service, 'update').mockResolvedValue(result);
 
-      expect(await controller.update(email, updateDto)).toEqual(result);
-      expect(service.update).toHaveBeenCalledWith(email, updateDto);
+      expect(await controller.update(email, updateDto, REQUEST)).toEqual(
+        result,
+      );
+      expect(service.update).toHaveBeenCalledWith(email, updateDto, AUTHOR);
     });
 
     it('should type the body as UpdateAnamnesisDto so the ValidationPipe validates it', () => {
@@ -835,7 +844,9 @@ describe('AnamnesisController', () => {
   describe('remove', () => {
     it('should remove an anamnesis by email', async () => {
       const email = 'joao@example.com';
-      const result = { message: `Anamnese com email ${email} foi removida com sucesso` };
+      const result = {
+        message: `Anamnese com email ${email} foi removida com sucesso`,
+      };
 
       jest.spyOn(service, 'remove').mockResolvedValue(result as any);
 
