@@ -26,6 +26,8 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
     let originalDatabaseUrl: string | undefined;
     let originalFrontendUrl: string | undefined;
 
+    const DISCENTE_FIXTURE_EMAIL = 'cpf.duplo@discente.ifpe.edu.br';
+
     const student: CreateUserDto = {
       full_name: 'Estudante de Teste',
       cpf: '01234567890',
@@ -67,7 +69,13 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
 
     const deleteFixtures = () =>
       prisma.user.deleteMany({
-        where: { email: { endsWith: '@edutrace.test' } },
+        where: {
+          OR: [
+            { email: { endsWith: '@edutrace.test' } },
+            { email: { endsWith: '@dup-it.ifpe.edu.br' } },
+            { email: DISCENTE_FIXTURE_EMAIL },
+          ],
+        },
       });
 
     afterAll(async () => {
@@ -168,6 +176,56 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
       );
     });
 
+    describe('até duas contas por CPF', () => {
+      const discente: CreateUserDto = {
+        ...student,
+        cpf: '52998224725',
+        email: DISCENTE_FIXTURE_EMAIL,
+        enrollment_number: '20261TADS0500',
+      };
+      const profissional: CreateUserDto = {
+        full_name: 'Ex-aluno Professor',
+        cpf: '52998224725',
+        email: 'ex.aluno@dup-it.ifpe.edu.br',
+        roles: [LEVELS.PROFISSIONAL_EDUCACAO],
+      };
+
+      it('should accept a discente account and a professional account with the same CPF', async () => {
+        await service.create(discente);
+
+        await expect(service.create(profissional)).resolves.toMatchObject({
+          cpf: '52998224725',
+        });
+      });
+
+      it('should answer 409 with the CPF message for a second professional account of the same CPF', async () => {
+        await service.create(profissional);
+
+        await expect(
+          service.create({
+            ...profissional,
+            email: 'segundo@dup-it.ifpe.edu.br',
+          }),
+        ).rejects.toThrow(
+          new ConflictException('Este CPF já está cadastrado.'),
+        );
+      });
+
+      it('should answer 409 with the CPF message for a third account of the same CPF', async () => {
+        await service.create(discente);
+        await service.create(profissional);
+
+        await expect(
+          service.create({
+            ...profissional,
+            email: 'terceiro@dup-it.ifpe.edu.br',
+          }),
+        ).rejects.toThrow(
+          new ConflictException('Este CPF já está cadastrado.'),
+        );
+      });
+    });
+
     it('should accept accounts without matrícula side by side', async () => {
       const professional = {
         full_name: 'Professor de Teste',
@@ -175,6 +233,7 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
         email: 'professor@edutrace.test',
         roles: [LEVELS.PROFISSIONAL_EDUCACAO],
       };
+      professional.email = 'professor@dup-it.ifpe.edu.br';
 
       await service.create(professional);
 
@@ -182,7 +241,7 @@ const integrationDatabaseUrl = process.env.INTEGRATION_DATABASE_URL;
         service.create({
           ...professional,
           cpf: '52998224725',
-          email: 'professor2@edutrace.test',
+          email: 'professor2@dup-it.ifpe.edu.br',
         }),
       ).resolves.toMatchObject({ enrollment_number: null });
     });
