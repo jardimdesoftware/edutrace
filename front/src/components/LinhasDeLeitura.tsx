@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { NAO_INFORMADO, type LinhaDeLeitura } from "@/utils/formularioPorTabela";
 
 const TEXTO_LONGO = 60;
@@ -27,15 +27,16 @@ function Opcoes({ opcoes }: { opcoes: NonNullable<LinhaDeLeitura["opcoes"]> }) {
       {opcoes.map((opcao) => (
         <li
           key={opcao.rotulo}
-          className={`flex items-start gap-2 ${opcao.marcado ? "text-gray-900" : "text-gray-600"}`}
+          className={`flex items-start gap-2 text-sm ${
+            opcao.marcado ? "font-medium text-gray-900" : "text-gray-500"
+          }`}
         >
-          <span
-            aria-hidden="true"
-            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-              opcao.marcado ? "border-emerald-700 bg-emerald-700 text-white" : "border-gray-400 bg-white"
-            }`}
-          >
-            {opcao.marcado && <Check size={12} strokeWidth={3} />}
+          <span aria-hidden="true" className="mt-0.5 shrink-0">
+            {opcao.marcado ? (
+              <Check size={16} strokeWidth={3} className="text-emerald-700" />
+            ) : (
+              <Minus size={16} className="text-gray-400" />
+            )}
           </span>
           <span className="sr-only">{opcao.marcado ? "Marcado: " : "Não marcado: "}</span>
           {opcao.rotulo}
@@ -47,8 +48,12 @@ function Opcoes({ opcoes }: { opcoes: NonNullable<LinhaDeLeitura["opcoes"]> }) {
 
 function Campo({ linha }: { linha: LinhaDeLeitura }) {
   return (
-    <div className={ocupaLarguraToda(linha) ? LARGURA_TODA : undefined}>
-      <dt className="text-sm font-medium text-gray-600">{linha.rotulo ?? linha.label}</dt>
+    <div
+      className={`border-l-2 border-slate-300 pl-3 ${ocupaLarguraToda(linha) ? LARGURA_TODA : ""}`}
+    >
+      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {linha.rotulo ?? linha.label}
+      </dt>
       <dd
         className={`mt-1 whitespace-pre-wrap break-words ${
           linha.value === NAO_INFORMADO ? "text-gray-600 italic" : "text-gray-900"
@@ -80,8 +85,8 @@ function Bloco({ linhas }: { linhas: LinhaDeLeitura[] }) {
   if (grupo === undefined) return conteudo;
 
   return (
-    <fieldset className="min-w-0 rounded-xl border border-gray-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-gray-900">{grupo}</legend>
+    <fieldset className="min-w-0 rounded-xl border-0 bg-slate-50 p-4">
+      <legend className="px-1 text-sm font-semibold text-slate-700">{grupo}</legend>
       {conteudo}
     </fieldset>
   );
