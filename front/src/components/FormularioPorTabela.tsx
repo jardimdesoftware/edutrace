@@ -37,6 +37,8 @@ interface FormularioPorTabelaProps<F extends object> {
   resumo?: ReactNode;
   // Botões do documento que não são do formulário, como Excluir.
   acoesDoDocumento?: ReactNode;
+  // Só aparece na última página do assistente (por exemplo, o encaminhamento).
+  extraDoUltimoPasso?: ReactNode;
   // Autoria do documento, à direita do título.
   ladoDoTitulo?: ReactNode;
   // Aviso do documento, sob o título (por exemplo, uma versão antiga aberta).
@@ -70,6 +72,7 @@ export default function FormularioPorTabela<F extends object>({
   acoesDoDocumento,
   ladoDoTitulo,
   aviso,
+  extraDoUltimoPasso,
   secoes,
   prefixoDosIds,
   inicial,
@@ -201,6 +204,7 @@ export default function FormularioPorTabela<F extends object>({
         acoesDoDocumento={acoesDoDocumento}
         ladoDoTitulo={ladoDoTitulo}
         aviso={aviso}
+        extraDoUltimoPasso={extraDoUltimoPasso}
         passos={passos}
         atual={atual}
         comPendencia={situacao.comPendencia.map((pendente, indice) => pendente && aparece(indice))}
