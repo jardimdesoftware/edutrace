@@ -1,11 +1,11 @@
 import Swal from "sweetalert2";
-import { deleteUser, type RespostaDaExclusao } from "@/api/user";
+import { deleteUser, getDeletionPreview, type RespostaDaExclusao } from "@/api/user";
 import type { StudentData } from "@/interfaces/StudentData";
 import { ApiError } from "@/services/http";
 import {
-  DIAS_DE_CARENCIA,
   corpoDaExclusao,
   janelaDeSenhaAberta,
+  textoDoAvisoDaLixeira,
 } from "@/utils/exclusaoDeUsuario";
 import { rotulosDosPapeis } from "@/utils/papeis";
 
@@ -37,12 +37,23 @@ function htmlDoModal(pedirSenha: boolean): string {
     ${campos}`;
 }
 
-function preencher(alvo: StudentData): void {
+// A prévia diz se a conta tem dados. Se ela falhar, o aviso fala dos dois casos,
+// e a exclusão segue possível.
+async function buscarTemDados(id: number): Promise<boolean | null> {
+  try {
+    return (await getDeletionPreview(id)).has_data;
+  } catch (error) {
+    console.error("Não foi possível consultar os dados da conta.", error);
+    return null;
+  }
+}
+
+function preencher(alvo: StudentData, temDados: boolean | null): void {
   const aviso = document.getElementById(ID.aviso);
   const papeis = document.getElementById(ID.papeis);
 
   if (aviso) {
-    aviso.textContent = `A conta de "${alvo.full_name}" (${alvo.email}) fica sem acesso agora e é apagada em ${DIAS_DE_CARENCIA} dias. Até lá você pode restaurá-la.`;
+    aviso.textContent = textoDoAvisoDaLixeira(alvo, temDados, new Date());
   }
 
   if (papeis) {
@@ -65,13 +76,13 @@ async function enviar(alvo: StudentData): Promise<Desfecho | false> {
     }
 
     Swal.showValidationMessage(
-      error instanceof Error ? error.message : "Erro ao excluir o usuário",
+      error instanceof Error ? error.message : "Erro ao desativar o usuário",
     );
     return false;
   }
 }
 
-// Pede a confirmação e marca o usuário para exclusão. A confirmação sempre
+// Pede a confirmação e inicia a carência do usuário. A confirmação sempre
 // aparece; o campo de senha só some enquanto a janela que o back abriu vale.
 // Devolve null quando o administrador cancela.
 export async function excluirUsuarioComConfirmacao(
@@ -79,20 +90,21 @@ export async function excluirUsuarioComConfirmacao(
   janelaAte: string | null,
 ): Promise<RespostaDaExclusao | null> {
   let pedirSenha = !janelaDeSenhaAberta(janelaAte, new Date());
+  const temDados = await buscarTemDados(alvo.id);
 
   for (;;) {
     const confirmacao = await Swal.fire<Desfecho>({
       icon: "warning",
-      title: "Excluir usuário",
+      title: "Desativar usuário",
       html: htmlDoModal(pedirSenha),
       showCancelButton: true,
       confirmButtonColor: "#b91c1c",
       cancelButtonColor: "#6b7280",
-      confirmButtonText: "Confirmar exclusão",
+      confirmButtonText: "Sim, desativar",
       cancelButtonText: "Cancelar",
       showLoaderOnConfirm: true,
       allowOutsideClick: () => !Swal.isLoading(),
-      didOpen: () => preencher(alvo),
+      didOpen: () => preencher(alvo, temDados),
       preConfirm: () => enviar(alvo),
     });
 
