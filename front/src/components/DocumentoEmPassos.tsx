@@ -21,7 +21,7 @@ import type { ModoDoFormulario } from "./AcoesDoAssistente";
 import AppLayout from "./AppLayout";
 import AvisoDeVersao from "./AvisoDeVersao";
 import FormularioPorTabela from "./FormularioPorTabela";
-import HistoricoDeEdicoes from "./HistoricoDeEdicoes";
+import { useHistoricoDeEdicoes } from "./HistoricoDeEdicoes";
 import Loading from "./Loading";
 import { BOTAO_PERIGO, COR_CANCELAR, COR_CONFIRMAR, COR_EXCLUIR } from "./form/botoes";
 
@@ -82,6 +82,14 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
   const podeEditar = !!user && canAccessPage(chaveDeEdicao, user.roles);
   const alvo = user && temPapel(user.roles, ESTUDANTE) ? user.email : email;
   const voltarParaOEstudante = () => router.push(rotaDoEstudante("/estudantes/visualizar", id));
+  const historico = useHistoricoDeEdicoes<R>({
+    tipo: tipoDeFormulario,
+    email: alvo,
+    roles: user?.roles,
+    atualizadoEm: (documento as { updated_at?: string | null } | null)?.updated_at,
+    versaoAberta: versaoVista?.version ?? null,
+    onEscolher: setVersaoVista,
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -212,24 +220,10 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
     : !versaoVista && editando && podeEditar
       ? "editar"
       : "ver";
-  const atualizadoEm = (documento as { updated_at?: string | null } | null)?.updated_at;
 
   return (
     <AppLayout ocuparTela>
       <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
-        {documento && modo === "ver" && alvo && (
-          <div className="mb-4 mt-3 space-y-3">
-            <HistoricoDeEdicoes<R>
-              tipo={tipoDeFormulario}
-              email={alvo}
-              roles={user.roles}
-              atualizadoEm={atualizadoEm}
-              versaoAberta={versaoVista?.version ?? null}
-              onEscolher={setVersaoVista}
-            />
-            {versaoVista && <AvisoDeVersao versao={versaoVista} onVoltar={() => setVersaoVista(null)} />}
-          </div>
-        )}
         <FormularioPorTabela
           key={`${modo}-${versaoVista?.version ?? "atual"}`}
           titulo={titulo}
@@ -244,12 +238,23 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
           onCancelar={() => (modo === "editar" ? setEditando(false) : voltarParaOEstudante())}
           onEditar={podeEditar && !versaoVista ? () => setEditando(true) : undefined}
           leituraDoPasso={exibido ? (passo) => secoesDeLeitura(passo, exibido) : undefined}
+          ladoDoTitulo={modo === "ver" ? historico.autoria : undefined}
+          aviso={
+            versaoVista ? (
+              <AvisoDeVersao versao={versaoVista} onVoltar={() => setVersaoVista(null)} />
+            ) : undefined
+          }
           acoesDoDocumento={
-            modo === "ver" && podeEditar && !versaoVista ? (
-              <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
-                <Trash2 size={16} aria-hidden="true" />
-                Excluir
-              </button>
+            modo === "ver" && (historico.botao || (podeEditar && !versaoVista)) ? (
+              <div className="flex flex-wrap items-center gap-3">
+                {historico.botao}
+                {podeEditar && !versaoVista && (
+                  <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
+                    <Trash2 size={16} aria-hidden="true" />
+                    Excluir
+                  </button>
+                )}
+              </div>
             ) : undefined
           }
         />
