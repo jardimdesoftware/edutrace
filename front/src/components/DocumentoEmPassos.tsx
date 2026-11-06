@@ -15,16 +15,21 @@ import {
   type SecaoDef,
 } from "@/utils/formularioPorTabela";
 import { canAccessPage } from "@/utils/pageAccess";
+import type { TipoDeFormulario, VersaoCompleta } from "@/utils/historicoDeEdicoes";
 import { temPapel } from "@/utils/papeis";
 import type { ModoDoFormulario } from "./AcoesDoAssistente";
 import AppLayout from "./AppLayout";
+import AvisoDeVersao from "./AvisoDeVersao";
 import FormularioPorTabela from "./FormularioPorTabela";
+import { useHistoricoDeEdicoes } from "./HistoricoDeEdicoes";
 import Loading from "./Loading";
 import { BOTAO_PERIGO, COR_CANCELAR, COR_CONFIRMAR, COR_EXCLUIR } from "./form/botoes";
 
 interface DocumentoEmPassosProps<R extends object, F extends object, P extends object> {
   // "Anamnese", "Triagem": os dois são femininos, e as mensagens concordam.
   titulo: string;
+  // Qual histórico de versões a tela consulta.
+  tipoDeFormulario: TipoDeFormulario;
   secoes: readonly SecaoDef[];
   prefixoDosIds: string;
   // Rota que decide quem edita (a regra está em pageAccess) e a rota da leitura,
@@ -48,6 +53,7 @@ interface DocumentoEmPassosProps<R extends object, F extends object, P extends o
 // estudante lê o próprio.
 export default function DocumentoEmPassos<R extends object, F extends object, P extends object>({
   titulo,
+  tipoDeFormulario,
   secoes,
   prefixoDosIds,
   chaveDeEdicao,
@@ -69,11 +75,21 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
   const [carregandoDocumento, setCarregandoDocumento] = useState(true);
   const [editando, setEditando] = useState(iniciarEditando);
   const [salvando, setSalvando] = useState(false);
+  // Versão antiga aberta pelo histórico: a tela mostra o conteúdo dela, só para leitura.
+  const [versaoVista, setVersaoVista] = useState<VersaoCompleta<R> | null>(null);
 
   const minusculo = titulo.toLowerCase();
   const podeEditar = !!user && canAccessPage(chaveDeEdicao, user.roles);
   const alvo = user && temPapel(user.roles, ESTUDANTE) ? user.email : email;
   const voltarParaOEstudante = () => router.push(rotaDoEstudante("/estudantes/visualizar", id));
+  const historico = useHistoricoDeEdicoes<R>({
+    tipo: tipoDeFormulario,
+    email: alvo,
+    roles: user?.roles,
+    atualizadoEm: (documento as { updated_at?: string | null } | null)?.updated_at,
+    versaoAberta: versaoVista?.version ?? null,
+    onEscolher: setVersaoVista,
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -124,6 +140,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
       if (documento) await atualizar(alvo, corpo);
       else await criar(alvo, nome, corpo);
       setDocumento(await carregar(alvo));
+      setVersaoVista(null);
     } catch (error) {
       console.error('Erro ao salvar a %s:', minusculo, error);
       await avisarFalha(`Falha ao salvar a ${minusculo}`, error, `Não foi possível salvar a ${minusculo}.`);
@@ -197,31 +214,47 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
     );
   }
 
-  const modo: ModoDoFormulario = !documento ? "criar" : editando && podeEditar ? "editar" : "ver";
+  const exibido = versaoVista ? versaoVista.snapshot : documento;
+  const modo: ModoDoFormulario = !documento
+    ? "criar"
+    : !versaoVista && editando && podeEditar
+      ? "editar"
+      : "ver";
 
   return (
     <AppLayout ocuparTela>
       <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
         <FormularioPorTabela
-          key={modo}
+          key={`${modo}-${versaoVista?.version ?? "atual"}`}
           titulo={titulo}
           estudante={nome ?? undefined}
           secoes={secoes}
           prefixoDosIds={prefixoDosIds}
-          inicial={documento ? formularioDoDocumento(documento) : formularioVazio()}
+          inicial={exibido ? formularioDoDocumento(exibido) : formularioVazio()}
           validar={validar}
           modo={modo}
           salvando={salvando}
           onSalvar={(form) => handleSalvar(montarCorpo(form))}
           onCancelar={() => (modo === "editar" ? setEditando(false) : voltarParaOEstudante())}
-          onEditar={podeEditar ? () => setEditando(true) : undefined}
-          leituraDoPasso={documento ? (passo) => secoesDeLeitura(passo, documento) : undefined}
+          onEditar={podeEditar && !versaoVista ? () => setEditando(true) : undefined}
+          leituraDoPasso={exibido ? (passo) => secoesDeLeitura(passo, exibido) : undefined}
+          ladoDoTitulo={modo === "ver" ? historico.autoria : undefined}
+          aviso={
+            versaoVista ? (
+              <AvisoDeVersao versao={versaoVista} onVoltar={() => setVersaoVista(null)} />
+            ) : undefined
+          }
           acoesDoDocumento={
-            modo === "ver" && podeEditar ? (
-              <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
-                <Trash2 size={16} aria-hidden="true" />
-                Excluir
-              </button>
+            modo === "ver" && (historico.botao || (podeEditar && !versaoVista)) ? (
+              <div className="flex flex-wrap items-center gap-3">
+                {historico.botao}
+                {podeEditar && !versaoVista && (
+                  <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
+                    <Trash2 size={16} aria-hidden="true" />
+                    Excluir
+                  </button>
+                )}
+              </div>
             ) : undefined
           }
         />

@@ -40,6 +40,7 @@ export default function TriagemPagina({ iniciarEditando = false }: { iniciarEdit
     <Suspense fallback={<Loading />}>
       <DocumentoEmPassos
         titulo="Triagem"
+        tipoDeFormulario="SCREENING"
         secoes={SECOES_TRIAGEM}
         prefixoDosIds="triagem"
         chaveDeEdicao="/editar-triagem"

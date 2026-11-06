@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import type { AeePlan } from "@/interfaces/AeePlan";
 import { secoesDoPlanoParaLeitura } from "@/utils/paee";
@@ -10,6 +11,8 @@ interface PaeeDoPeriodoProps {
   podeEditar: boolean;
   onEditar: () => void;
   onExcluir: () => void;
+  // Autoria e histórico de edições do período.
+  historico?: ReactNode;
 }
 
 // O PAEE de um período letivo, recolhível: o estudante acumula um por período, e
@@ -20,6 +23,7 @@ export default function PaeeDoPeriodo({
   podeEditar,
   onEditar,
   onExcluir,
+  historico,
 }: PaeeDoPeriodoProps) {
   return (
     <details open={aberto} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
@@ -27,6 +31,7 @@ export default function PaeeDoPeriodo({
         <h2 className="inline">Período letivo {plano.semester}</h2>
       </summary>
       <div className="mt-4 space-y-4">
+        {historico}
         {podeEditar && (
           <div className="flex flex-wrap gap-3">
             <button type="button" className={BOTAO_PRIMARIO} onClick={onEditar}>

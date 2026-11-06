@@ -11,6 +11,10 @@ interface AssistenteDePassosProps {
   resumo?: ReactNode;
   // Botões do documento que não são do formulário, como Excluir.
   acoesDoDocumento?: ReactNode;
+  // Autoria do documento, à direita do título.
+  ladoDoTitulo?: ReactNode;
+  // Aviso do documento, sob o título (por exemplo, uma versão antiga aberta).
+  aviso?: ReactNode;
   passos: readonly { rotulo: string }[];
   atual: number;
   comPendencia: readonly boolean[];
@@ -30,6 +34,8 @@ export default function AssistenteDePassos({
   estudante,
   resumo,
   acoesDoDocumento,
+  ladoDoTitulo,
+  aviso,
   passos,
   atual,
   comPendencia,
@@ -52,11 +58,15 @@ export default function AssistenteDePassos({
       >
         <header className="space-y-3 border-b border-gray-100 px-5 pt-5 pb-3 lg:px-8">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-            <h1 id="assistente-titulo" className="edutrace-page-title">
-              {titulo}
-            </h1>
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+              <h1 id="assistente-titulo" className="edutrace-page-title">
+                {titulo}
+              </h1>
+              {ladoDoTitulo}
+            </div>
             {estudante && <p className="text-sm text-gray-600">Estudante: {estudante}</p>}
           </div>
+          {aviso}
           {(resumo || acoesDoDocumento) && (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-gray-600">{resumo}</div>
