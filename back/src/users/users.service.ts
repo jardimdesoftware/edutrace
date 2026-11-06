@@ -314,6 +314,27 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { google_sub: googleSub } });
   }
 
+  // Vincula o sub só à conta que ainda não tem Conta Google, em uma única
+  // operação condicional: dois logins simultâneos não sobrescrevem o vínculo
+  // um do outro. Devolve null quando não há conta livre para esse e-mail.
+  async linkGoogleSubIfFree(email: string, googleSub: string) {
+    try {
+      const { count } = await this.prisma.user.updateMany({
+        where: { email, google_sub: null },
+        data: { google_sub: googleSub },
+      });
+
+      return count === 1
+        ? await this.prisma.user.findUnique({ where: { email } })
+        : null;
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException(GOOGLE_ACCOUNT_IN_USE_MESSAGE);
+      }
+      throw error;
+    }
+  }
+
   async setGoogleSub(email: string, googleSub: string | null) {
     try {
       return await this.prisma.user.update({

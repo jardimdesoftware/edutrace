@@ -102,6 +102,7 @@ describe('AuthService', () => {
             clearLoginLock: jest.fn(),
             createGoogleStudentUser: jest.fn(),
             findByGoogleSub: jest.fn(),
+            linkGoogleSubIfFree: jest.fn().mockResolvedValue(null),
             setGoogleSub: jest.fn(),
           },
         },
@@ -747,6 +748,115 @@ describe('AuthService', () => {
           new UnauthorizedException(NOT_LINKED_MESSAGE),
         );
         expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('signInWithGoogle, first login of an account registered by the administrator', () => {
+      const professionalEmail = 'eriak.cardeal@belojardim.ifpe.edu.br';
+      const registered = { ...mockUser, email: professionalEmail, roles: [3] };
+
+      it('should link the sub and sign in when the token has the institutional hd', async () => {
+        mockGoogleCredential({
+          email: professionalEmail,
+          hd: 'belojardim.ifpe.edu.br',
+        });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest
+          .spyOn(usersService, 'linkGoogleSubIfFree')
+          .mockResolvedValue({ ...registered, google_sub: 'google-sub' });
+
+        const result = await service.signInWithGoogle('credencial');
+
+        expect(usersService.linkGoogleSubIfFree).toHaveBeenCalledWith(
+          professionalEmail,
+          'google-sub',
+        );
+        expect(mailService.sendGoogleAccountLinkNotice).toHaveBeenCalledWith(
+          professionalEmail,
+          true,
+        );
+        expect(result).toEqual({ access_token: 'mock.jwt.token' });
+      });
+
+      it.each([
+        ['without hd', undefined],
+        ['with the hd of another domain', 'outra.edu.br'],
+        [
+          'with an hd that is not the domain of the e-mail',
+          'discente.ifpe.edu.br',
+        ],
+      ])('should not link %s', async (_, hd) => {
+        mockGoogleCredential({ email: professionalEmail, hd });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+        expect(usersService.linkGoogleSubIfFree).not.toHaveBeenCalled();
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+
+      it('should not link an institutional hd with an e-mail of another domain', async () => {
+        mockGoogleCredential({ email: 'pessoa@gmail.com', hd: 'ifpe.edu.br' });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+        expect(usersService.linkGoogleSubIfFree).not.toHaveBeenCalled();
+      });
+
+      it('should refuse when the account already has another Google account', async () => {
+        mockGoogleCredential({
+          email: professionalEmail,
+          hd: 'belojardim.ifpe.edu.br',
+        });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest.spyOn(usersService, 'linkGoogleSubIfFree').mockResolvedValue(null);
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(NOT_LINKED_MESSAGE),
+        );
+        expect(mailService.sendGoogleAccountLinkNotice).not.toHaveBeenCalled();
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+
+      it('should link and then refuse a locked account', async () => {
+        mockGoogleCredential({
+          email: professionalEmail,
+          hd: 'belojardim.ifpe.edu.br',
+        });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest.spyOn(usersService, 'linkGoogleSubIfFree').mockResolvedValue({
+          ...registered,
+          google_sub: 'google-sub',
+          locked_until: new Date(Date.now() + 10 * 60 * 1000),
+        });
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
+        );
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      });
+
+      it('should link the account marked for deletion and say why it cannot enter', async () => {
+        mockGoogleCredential({
+          email: professionalEmail,
+          hd: 'belojardim.ifpe.edu.br',
+        });
+        jest.spyOn(usersService, 'findByGoogleSub').mockResolvedValue(null);
+        jest.spyOn(usersService, 'linkGoogleSubIfFree').mockResolvedValue({
+          ...registered,
+          google_sub: 'google-sub',
+          deleted_at: new Date('2026-11-01T00:00:00.000Z'),
+        });
+
+        await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
+          new UnauthorizedException(
+            'Esta conta foi desativada. Entre em contato com um administrador.',
+          ),
+        );
+        expect(sessionsService.create).not.toHaveBeenCalled();
       });
     });
 

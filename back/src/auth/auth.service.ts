@@ -9,7 +9,10 @@ import {
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
-import { DISCENTE_EMAIL_DOMAIN } from 'src/users/email-domain';
+import {
+  DISCENTE_EMAIL_DOMAIN,
+  isInstitutionalHostedAccount,
+} from 'src/users/email-domain';
 import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import { randomInt, randomUUID } from 'node:crypto';
@@ -132,10 +135,12 @@ export class AuthService {
 
   // A identidade Google é o sub do token, único entre as Contas Google e nunca
   // reaproveitado, e o login só abre a conta já vinculada a ele. Coincidência de
-  // e-mail nunca abre nem vincula conta existente (OWASP Authentication Cheat
-  // Sheet, Secure Federated Account Linking): quem cria uma Conta Google com o
-  // e-mail de outra pessoa, num domínio que não é Gmail nem Workspace, recebe o
-  // token com email_verified e entraria na conta dela.
+  // e-mail sozinha nunca abre nem vincula conta existente (OWASP Authentication
+  // Cheat Sheet, Secure Federated Account Linking): quem cria uma Conta Google
+  // com o e-mail de outra pessoa, num domínio que não é Gmail nem Workspace,
+  // recebe o token com email_verified e entraria na conta dela. A exceção é o
+  // token com hd institucional, que só o Workspace do IFPE emite: a conta
+  // cadastrada com esse e-mail é vinculada na primeira entrada.
   async signInWithGoogle(
     credential: string,
     context?: SessionContext,
@@ -153,6 +158,7 @@ export class AuthService {
     try {
       user =
         (await this.userService.findByGoogleSub(sub)) ??
+        (await this.linkInstitutionalAccount(email, sub, tokenInfo)) ??
         (await this.createGoogleStudent(email, sub, tokenInfo));
     } catch (error) {
       this.throwIfDatabaseUnavailable(error);
@@ -177,6 +183,30 @@ export class AuthService {
       this.throwIfDatabaseUnavailable(error);
       throw error;
     }
+  }
+
+  // Conta cadastrada pelo administrador que entra pela primeira vez com a Conta
+  // Google do Workspace do IFPE. Sem hd institucional, ou com conta que já tem
+  // outra Conta Google, nada é vinculado.
+  private async linkInstitutionalAccount(
+    email: string,
+    sub: string,
+    tokenInfo: GoogleTokenInfo,
+  ) {
+    if (!isInstitutionalHostedAccount(email, tokenInfo.hd)) {
+      return null;
+    }
+
+    const user = await this.userService.linkGoogleSubIfFree(email, sub);
+
+    if (user) {
+      this.logger.log(
+        `Conta Google vinculada no primeiro login institucional: usuário ${user.id}`,
+      );
+      this.sendGoogleLinkNotice(user, true);
+    }
+
+    return user;
   }
 
   // Só o estudante novo do domínio discente entra sem vínculo prévio, porque o

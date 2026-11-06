@@ -516,6 +516,48 @@ describe('UsersService', () => {
     });
   });
 
+  describe('linkGoogleSubIfFree', () => {
+    it('should store the sub only in an account that has no Google account and return it', async () => {
+      jest.spyOn(prisma.user, 'updateMany').mockResolvedValue({ count: 1 });
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
+
+      const result = await service.linkGoogleSubIfFree(
+        'test@test.com',
+        'google-sub',
+      );
+
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { email: 'test@test.com', google_sub: null },
+        data: { google_sub: 'google-sub' },
+      });
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should return null and read nothing when the account is not free', async () => {
+      jest.spyOn(prisma.user, 'updateMany').mockResolvedValue({ count: 0 });
+      const find = jest.spyOn(prisma.user, 'findUnique');
+      find.mockClear();
+
+      const result = await service.linkGoogleSubIfFree(
+        'test@test.com',
+        'google-sub',
+      );
+
+      expect(result).toBeNull();
+      expect(find).not.toHaveBeenCalled();
+    });
+
+    it('should propagate database errors', async () => {
+      jest
+        .spyOn(prisma.user, 'updateMany')
+        .mockRejectedValue(new Error('banco indisponível'));
+
+      await expect(
+        service.linkGoogleSubIfFree('test@test.com', 'google-sub'),
+      ).rejects.toThrow('banco indisponível');
+    });
+  });
+
   describe('setGoogleSub', () => {
     it('should store the Google sub of the account', async () => {
       await service.setGoogleSub('test@test.com', 'google-sub');
