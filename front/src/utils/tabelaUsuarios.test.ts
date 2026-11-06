@@ -58,6 +58,16 @@ describe('listarUsuariosDaTabela', () => {
     });
   }
 
+  it('passes the situation to the administrator, and ignores it for the others', async () => {
+    await listarUsuariosDaTabela([ADMIN], 'desativados');
+    await listarUsuariosDaTabela([PROFISSIONAL_NAPNE], 'desativados');
+
+    assert.deepEqual(urls, [
+      `${API_URL}/users?situation=desativados`,
+      `${API_URL}/students`,
+    ]);
+  });
+
   it('lists only the students when the session has no level', async () => {
     await listarUsuariosDaTabela(undefined);
 

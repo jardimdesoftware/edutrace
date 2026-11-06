@@ -5,12 +5,15 @@ import {
   MOTIVO_PROPRIA_CONTA,
   corpoDaExclusao,
   dataDaExclusao,
+  estaDesativado,
   estaMarcado,
   janelaDeSenhaAberta,
   motivoDaLixeiraDesativada,
   podeExcluir,
   podeRestaurar,
-  textoDaExclusao,
+  textoDaDesativacao,
+  textoDoAvisoDaLixeira,
+  textoDoSucessoDaLixeira,
 } from "./exclusaoDeUsuario";
 import {
   ADMIN,
@@ -30,7 +33,7 @@ describe("estaMarcado", () => {
   });
 });
 
-describe("dataDaExclusao e textoDaExclusao", () => {
+describe("dataDaExclusao e textoDaDesativacao", () => {
   it("adds the 7 days of grace to the day of the mark", () => {
     assert.equal(DIAS_DE_CARENCIA, 7);
     assert.equal(
@@ -40,14 +43,14 @@ describe("dataDaExclusao e textoDaExclusao", () => {
   });
 
   it("writes the day in the local calendar, as dd/mm/aaaa", () => {
-    assert.equal(textoDaExclusao(MARCADO_EM), "Exclusão em 10/11/2026");
+    assert.equal(textoDaDesativacao(MARCADO_EM), "Desativação em 10/11/2026");
   });
 
   it("keeps the local day when the mark is close to midnight in Recife", () => {
     // 02:30 UTC ainda é o dia anterior em Recife (UTC-3).
     assert.equal(
-      textoDaExclusao("2026-11-03T02:30:00.000Z"),
-      "Exclusão em 09/11/2026",
+      textoDaDesativacao("2026-11-03T02:30:00.000Z"),
+      "Desativação em 09/11/2026",
     );
   });
 });
@@ -136,5 +139,63 @@ describe("corpoDaExclusao", () => {
   it("sends an empty body while the window is open, even if the box is checked", () => {
     assert.deepEqual(corpoDaExclusao("", true), {});
     assert.deepEqual(corpoDaExclusao("", false), {});
+  });
+});
+
+describe("estaDesativado", () => {
+  it("is true only when deactivated_at has a value", () => {
+    assert.equal(estaDesativado({ deactivated_at: null }), false);
+    assert.equal(estaDesativado({ deactivated_at: undefined }), false);
+    assert.equal(estaDesativado({ deactivated_at: "2026-11-10T00:00:00Z" }), true);
+  });
+});
+
+describe("textoDoAvisoDaLixeira", () => {
+  const alvo = { full_name: "Maria Clara", email: "maria@discente.ifpe.edu.br" };
+  const AGORA = new Date("2026-11-03T12:00:00.000Z");
+
+  it("says the account will be deactivated, keeping the data, when it has data", () => {
+    const texto = textoDoAvisoDaLixeira(alvo, true, AGORA);
+
+    assert.match(texto, /Maria Clara/);
+    assert.match(texto, /maria@discente\.ifpe\.edu\.br/);
+    assert.match(texto, /desativação pendente/);
+    assert.match(texto, /Em 10\/11\/2026 ela será desativada, e os dados serão mantidos/);
+    assert.match(texto, /você pode restaurar o acesso/);
+    assert.doesNotMatch(texto, /excluída/);
+  });
+
+  it("says the account will be deleted, or deactivated if it gets data, when it has none", () => {
+    const texto = textoDoAvisoDaLixeira(alvo, false, AGORA);
+
+    assert.match(texto, /Em 10\/11\/2026 ela será excluída, porque não tem dados cadastrados/);
+    assert.match(texto, /Se ganhar dados até lá, será desativada/);
+  });
+
+  it("describes both cases when the preview failed", () => {
+    const texto = textoDoAvisoDaLixeira(alvo, null, AGORA);
+
+    assert.match(texto, /Em 10\/11\/2026 ela será desativada, ou excluída se não tiver dados cadastrados/);
+  });
+
+  it("never writes the word in capital letters", () => {
+    for (const temDados of [true, false, null]) {
+      assert.doesNotMatch(textoDoAvisoDaLixeira(alvo, temDados, AGORA), /DELETAD/);
+    }
+  });
+
+  it("uses the local day of Recife for the end of the grace period", () => {
+    const quaseMeiaNoite = new Date("2026-11-03T02:30:00.000Z");
+
+    assert.match(textoDoAvisoDaLixeira(alvo, true, quaseMeiaNoite), /Em 09\/11\/2026/);
+  });
+});
+
+describe("textoDoSucessoDaLixeira", () => {
+  it("gives the day and both outcomes", () => {
+    assert.equal(
+      textoDoSucessoDaLixeira(MARCADO_EM),
+      "Em 10/11/2026, a conta será desativada, ou excluída se não tiver dados cadastrados. Até lá, você pode restaurar o acesso.",
+    );
   });
 });

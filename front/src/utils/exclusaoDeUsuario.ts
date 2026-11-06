@@ -18,11 +18,11 @@ export function dataDaExclusao(marcadoEm: string): Date {
   return new Date(new Date(marcadoEm).getTime() + DIAS_DE_CARENCIA * DIA_EM_MS);
 }
 
-export function textoDaExclusao(marcadoEm: string): string {
+export function textoDaDesativacao(marcadoEm: string): string {
   const data = dataDaExclusao(marcadoEm).toLocaleDateString('pt-BR', {
     timeZone: 'America/Recife',
   });
-  return `Exclusão em ${data}`;
+  return `Desativação em ${data}`;
 }
 
 // A regra definitiva é do back (DELETE /users/:id é só do administrador, e
@@ -71,4 +71,46 @@ export function corpoDaExclusao(
 ): { currentPassword?: string; remember?: boolean } {
   if (!senha) return {};
   return lembrar ? { currentPassword: senha, remember: true } : { currentPassword: senha };
+}
+
+// Desativado é quem passou da carência com dados: continua guardado e só o
+// administrador o vê, no filtro de desativados.
+export function estaDesativado(usuario: Pick<StudentData, 'deactivated_at'>): boolean {
+  return !!usuario.deactivated_at;
+}
+
+function diaDoFimDaCarencia(agora: Date): string {
+  return dataDaExclusao(agora.toISOString()).toLocaleDateString('pt-BR', {
+    timeZone: 'America/Recife',
+  });
+}
+
+// O aviso da lixeira diz o que vai acontecer com a conta no fim da carência.
+// temDados vem da prévia do back; null é a prévia que falhou, e o aviso fala dos
+// dois casos.
+export function textoDoAvisoDaLixeira(
+  alvo: Pick<StudentData, 'full_name' | 'email'>,
+  temDados: boolean | null,
+  agora: Date,
+): string {
+  const data = diaDoFimDaCarencia(agora);
+  const abertura = `A conta de "${alvo.full_name}" (${alvo.email}) perde o acesso agora e fica com a desativação pendente.`;
+  const fechamento = 'Até lá, você pode restaurar o acesso.';
+
+  if (temDados === true) {
+    return `${abertura} Em ${data} ela será desativada, e os dados serão mantidos. ${fechamento}`;
+  }
+
+  if (temDados === false) {
+    return `${abertura} Em ${data} ela será excluída, porque não tem dados cadastrados. Se ganhar dados até lá, será desativada. ${fechamento}`;
+  }
+
+  return `${abertura} Em ${data} ela será desativada, ou excluída se não tiver dados cadastrados. ${fechamento}`;
+}
+
+export function textoDoSucessoDaLixeira(marcadoEm: string): string {
+  const data = dataDaExclusao(marcadoEm).toLocaleDateString('pt-BR', {
+    timeZone: 'America/Recife',
+  });
+  return `Em ${data}, a conta será desativada, ou excluída se não tiver dados cadastrados. Até lá, você pode restaurar o acesso.`;
 }

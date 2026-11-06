@@ -15,6 +15,9 @@ export interface StudentData {
   created_at: string; 
   updated_at: string; 
   deleted_at: string | null;
+  // Só o administrador recebe este campo preenchido: a lista dos demais não traz
+  // desativados.
+  deactivated_at?: string | null;
   roles: number[];
   id_current_phase: number;
   service_status?: ServiceStatus | null;

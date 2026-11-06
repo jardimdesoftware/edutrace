@@ -1,8 +1,17 @@
 import type { StudentData } from "@/interfaces/StudentData";
 import { apiRequest } from "@/services/http";
+import { SITUACAO_PADRAO, type SituacaoDaLista } from "@/utils/filtroPorSituacao";
 
-export async function getAllUsers() {
-  return apiRequest('/users');
+// A lista padrão não leva query: o back já esconde os desativados. Só o
+// administrador chama esta rota.
+export async function getAllUsers(situacao: SituacaoDaLista = SITUACAO_PADRAO) {
+  return apiRequest(situacao === SITUACAO_PADRAO ? '/users' : `/users?situation=${situacao}`);
+}
+
+// O que acontece com a conta no fim da carência: com dados ela é desativada, sem
+// dados é excluída.
+export async function getDeletionPreview(id: number): Promise<{ has_data: boolean }> {
+  return apiRequest(`/users/${id}/deletion-preview`);
 }
 
 export async function updateUser(email: string, roles: number[]): Promise<StudentData> {
@@ -17,7 +26,8 @@ export type RespostaDaExclusao = {
   reauth_until: string | null;
 };
 
-// Marca o usuário para exclusão; o back o apaga de vez depois da carência. O
+// Inicia a carência de 7 dias do usuário; no fim dela o back o apaga, se não
+// tem dados, ou o desativa, se tem. O
 // 401 desta rota significa senha ausente ou incorreta, não sessão expirada.
 export async function deleteUser(
   id: number,

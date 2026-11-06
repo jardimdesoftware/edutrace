@@ -31,12 +31,21 @@ import {
 } from "@/utils/filtroPorPapel";
 import { paginar, textoDoIntervalo } from "@/utils/paginacao";
 import {
+  estaDesativado,
   estaMarcado,
   motivoDaLixeiraDesativada,
   podeExcluir,
   podeRestaurar,
-  textoDaExclusao,
+  textoDaDesativacao,
+  textoDoSucessoDaLixeira,
 } from "@/utils/exclusaoDeUsuario";
+import {
+  OPCOES_FILTRO_SITUACAO,
+  SITUACAO_PADRAO,
+  lerFiltroSituacao,
+  permaneceNaSituacao,
+  type SituacaoDaLista,
+} from "@/utils/filtroPorSituacao";
 import {
   rotulosDosPapeis,
   temPapel,
@@ -96,6 +105,8 @@ export default function TabelaEstudantes() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
   const [filtroPapel, setFiltroPapel] = useState<FiltroPapel>("TODOS");
+  // Só o administrador filtra por situação (carência ou desativados).
+  const [filtroSituacao, setFiltroSituacao] = useState<SituacaoDaLista>(SITUACAO_PADRAO);
   const [pagina, setPagina] = useState(1);
   const [acaoEmAndamento, setAcaoEmAndamento] = useState(false);
   // Fim da janela de senha que o back abriu com "lembrar". O back é quem vale; o
@@ -205,8 +216,8 @@ export default function TabelaEstudantes() {
       setStudents((prev) => prev && substituirUsuario(prev, resultado.user));
       await Swal.fire({
         icon: "success",
-        title: "Usuário marcado para exclusão",
-        text: `A conta fica sem acesso e será apagada em definitivo. ${textoDaExclusao(resultado.user.deleted_at ?? new Date().toISOString())}.`,
+        title: "Desativação pendente",
+        text: textoDoSucessoDaLixeira(resultado.user.deleted_at ?? new Date().toISOString()),
         confirmButtonColor: "#047857",
         confirmButtonText: "Ok",
       });
@@ -214,9 +225,9 @@ export default function TabelaEstudantes() {
       console.error(error);
       Swal.fire({
         ...errorAlertOptions(
-          "Falha ao excluir o usuário",
+          "Falha ao desativar o usuário",
           error,
-          "Não foi possível excluir o usuário.",
+          "Não foi possível desativar o usuário.",
         ),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
@@ -227,12 +238,14 @@ export default function TabelaEstudantes() {
   const handleRestaurar = async (alvo: StudentData): Promise<void> => {
     const confirmacao = await Swal.fire({
       icon: "question",
-      title: "Restaurar usuário",
-      text: `Deseja restaurar o acesso de "${alvo.full_name}"?`,
+      title: estaDesativado(alvo) ? "Reativar usuário" : "Restaurar usuário",
+      text: estaDesativado(alvo)
+        ? `Deseja reativar a conta de "${alvo.full_name}"? Ela volta a ter acesso, com os mesmos papéis e dados.`
+        : `Deseja restaurar o acesso de "${alvo.full_name}"?`,
       showCancelButton: true,
       confirmButtonColor: "#047857",
       cancelButtonColor: "#6b7280",
-      confirmButtonText: "Sim, restaurar",
+      confirmButtonText: estaDesativado(alvo) ? "Sim, reativar" : "Sim, restaurar",
       cancelButtonText: "Cancelar",
     });
 
@@ -240,10 +253,19 @@ export default function TabelaEstudantes() {
 
     try {
       const restaurado = await restoreUser(alvo.id);
-      setStudents((prev) => prev && substituirUsuario(prev, restaurado));
+      // Na lista de carência ou de desativados, a conta ativa sai da lista.
+      setStudents(
+        (prev) =>
+          prev &&
+          substituirUsuario(prev, restaurado).filter((usuario) =>
+            permaneceNaSituacao(usuario, filtroSituacao),
+          ),
+      );
       Swal.fire({
         icon: "success",
-        title: "Usuário restaurado com sucesso!",
+        title: estaDesativado(alvo)
+          ? "Usuário reativado com sucesso!"
+          : "Usuário restaurado com sucesso!",
         confirmButtonColor: "#047857",
         confirmButtonText: "Ok",
       });
@@ -251,9 +273,11 @@ export default function TabelaEstudantes() {
       console.error(error);
       Swal.fire({
         ...errorAlertOptions(
-          "Falha ao restaurar o usuário",
+          estaDesativado(alvo) ? "Falha ao reativar o usuário" : "Falha ao restaurar o usuário",
           error,
-          "Não foi possível restaurar o usuário.",
+          estaDesativado(alvo)
+            ? "Não foi possível reativar o usuário."
+            : "Não foi possível restaurar o usuário.",
         ),
         confirmButtonColor: "#047857",
         confirmButtonText: "Entendi",
@@ -272,7 +296,7 @@ export default function TabelaEstudantes() {
       console.error("Erro ao reler o estudante", error);
     }
     try {
-      setStudents(await listarUsuariosDaTabela(user?.roles));
+      setStudents(await listarUsuariosDaTabela(user?.roles, filtroSituacao));
     } catch (error) {
       console.error("Erro ao recarregar a lista de estudantes", error);
     }
@@ -318,14 +342,14 @@ export default function TabelaEstudantes() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await listarUsuariosDaTabela(user?.roles);
+        const data = await listarUsuariosDaTabela(user?.roles, filtroSituacao);
         setStudents(data);
       } catch (error) {
         console.error("Erro ao buscar estudantes", error);
       }
     }
     fetchData();
-  }, [user?.roles]);
+  }, [user?.roles, filtroSituacao]);
 
 
   const renderAtendimento = (estudante: StudentData) => (
@@ -370,6 +394,25 @@ export default function TabelaEstudantes() {
           )}
           <div className="flex flex-col gap-3 lg:ml-auto sm:flex-row sm:items-center">
           {isAdmin ? (
+            <>
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#0b2455]">
+              <span className="font-semibold">Situação:</span>
+              <select
+                value={filtroSituacao}
+                onChange={(e) => {
+                  setStudents(null);
+                  setFiltroSituacao(lerFiltroSituacao(e.target.value));
+                  setPagina(1);
+                }}
+                className="h-11 min-w-48 rounded-xl border border-[#a9c5e8] bg-white px-3 outline-none transition focus:border-[#006ee8] focus:ring-4 focus:ring-[#dcecff]"
+              >
+                {OPCOES_FILTRO_SITUACAO.map((opcao) => (
+                  <option key={opcao.value} value={opcao.value}>
+                    {opcao.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-2 text-sm font-semibold text-[#0b2455]">
               <span className="font-semibold">Papel:</span>
               <select
@@ -387,6 +430,7 @@ export default function TabelaEstudantes() {
                 ))}
               </select>
             </label>
+            </>
           ) : (
             <label className="flex items-center gap-2 text-sm font-semibold text-[#0b2455]">
               <span className="font-semibold">Atendimento:</span>
@@ -446,7 +490,7 @@ export default function TabelaEstudantes() {
               {estudante.deleted_at && (
                 <p>
                   <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">
-                    {textoDaExclusao(estudante.deleted_at)}
+                    {estaDesativado(estudante) ? "Desativado" : textoDaDesativacao(estudante.deleted_at)}
                   </span>
                 </p>
               )}
@@ -495,22 +539,22 @@ export default function TabelaEstudantes() {
               {isAdmin && podeRestaurar(user, estudante) && (
                 <button
                   onClick={() => handleRestaurar(estudante)}
-                  title="Restaurar usuário"
+                  title={estaDesativado(estudante) ? "Reativar usuário" : "Restaurar usuário"}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
                 >
                   <Undo2 className="w-4 h-4" />
-                  Restaurar
+                  {estaDesativado(estudante) ? "Reativar" : "Restaurar"}
                 </button>
               )}
               {isAdmin && !estaMarcado(estudante) && (
                 <button
                   onClick={() => handleExcluir(estudante)}
-                  title={motivoDaLixeiraDesativada(user, estudante) ?? "Excluir usuário"}
+                  title={motivoDaLixeiraDesativada(user, estudante) ?? "Desativar usuário"}
                   disabled={!podeExcluir(user, estudante)}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-red-700 shadow-sm hover:bg-red-50 hover:shadow disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:shadow-none"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Excluir
+                  Desativar
                 </button>
               )}
             </div>
@@ -541,7 +585,7 @@ export default function TabelaEstudantes() {
                   {estudante.full_name}
                   {estudante.deleted_at && (
                     <span className="ml-2 inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">
-                      {textoDaExclusao(estudante.deleted_at)}
+                      {estaDesativado(estudante) ? "Desativado" : textoDaDesativacao(estudante.deleted_at)}
                     </span>
                   )}
                 </td>
@@ -588,7 +632,7 @@ export default function TabelaEstudantes() {
                     {isAdmin && podeRestaurar(user, estudante) && (
                       <button
                         type="button"
-                        title="Restaurar usuário"
+                        title={estaDesativado(estudante) ? "Reativar usuário" : "Restaurar usuário"}
                         onClick={() => handleRestaurar(estudante)}
                         className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
                       >
@@ -598,7 +642,7 @@ export default function TabelaEstudantes() {
                     {isAdmin && !estaMarcado(estudante) && (
                       <button
                         type="button"
-                        title={motivoDaLixeiraDesativada(user, estudante) ?? "Excluir usuário"}
+                        title={motivoDaLixeiraDesativada(user, estudante) ?? "Desativar usuário"}
                         disabled={!podeExcluir(user, estudante)}
                         onClick={() => handleExcluir(estudante)}
                         className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-red-700 shadow-sm transition hover:bg-red-50 hover:shadow disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:shadow-none"
