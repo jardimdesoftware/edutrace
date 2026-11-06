@@ -8,6 +8,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import EstatisticasAtendimentoModal from './EstatisticasAtendimentoModal';
+import NotificacoesDoAee from './NotificacoesDoAee';
+import { recebeAvisosDeEncaminhamento } from '@/utils/encaminhamentoAee';
 import { clearCookie } from '@/services/auth/tokenCookie';
 import { logout } from '@/services/auth/login';
 
@@ -144,6 +146,7 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
       {estatisticasAbertas && (
         <EstatisticasAtendimentoModal onClose={() => setEstatisticasAbertas(false)} />
       )}
+      {recebeAvisosDeEncaminhamento(user?.roles) && <NotificacoesDoAee />}
     </header>
   );
 }
