@@ -19,6 +19,13 @@ enum ServiceStatus {
   CLOSED
 }
 
+// Tipo do aviso ao Professor do AEE: recebeu o estudante ou o perdeu para outro
+// professor.
+enum ReferralKind {
+  ASSIGNED
+  REMOVED
+}
+
 enum FormType {
   SCREENING
   ANAMNESIS
@@ -87,6 +94,9 @@ model User {
   authored_pei_entries PeiEntry[] @relation("PeiEntryAuthor")
 
   form_revisions FormRevision[]
+
+  referrals_received AeeReferral[] @relation("ReferralTo")
+  referrals_about    AeeReferral[] @relation("ReferralStudent")
 
   roles Int[]
 
@@ -316,5 +326,28 @@ model FormRevision {
   id_author Int?
 
   @@unique([form_type, id_student, record_key, version])
+  @@index([id_student])
+}
+
+// Aviso ao Professor do AEE de que um estudante foi encaminhado a ele (ASSIGNED)
+// ou passou a outro professor (REMOVED). Os nomes são os do momento do envio, e
+// seen_at vazio é o aviso que o professor ainda não viu. id_from não tem chave
+// estrangeira: o aviso guarda o nome de quem encaminhou e sobrevive a essa conta.
+model AeeReferral {
+  id           Int          @id @default(autoincrement())
+  kind         ReferralKind
+  student_name String
+  from_name    String
+  id_from      Int
+  created_at   DateTime     @default(now())
+  seen_at      DateTime?
+
+  id_student Int
+  student    User @relation("ReferralStudent", fields: [id_student], references: [id], onDelete: Cascade)
+
+  id_to Int
+  to    User @relation("ReferralTo", fields: [id_to], references: [id], onDelete: Cascade)
+
+  @@index([id_to, seen_at])
   @@index([id_student])
 }
