@@ -121,7 +121,7 @@ export function useHistoricoDeEdicoes<T>({
       <>
         <button type="button" className={BOTAO_SECUNDARIO} onClick={() => setModalAberto(true)}>
           <History size={16} aria-hidden="true" />
-          Histórico de edições ({versoes.length} de {MAXIMO_DE_VERSOES})
+          Histórico de edições
         </button>
         {modalAberto && (
           <ModalDoHistorico
@@ -193,7 +193,7 @@ function ModalDoHistorico({
     >
       <div className="p-5 sm:p-7">
         <h2 id="historico-titulo" className="text-xl font-bold text-gray-900">
-          Histórico de edições
+          Histórico de edições ({versoes.length} de {MAXIMO_DE_VERSOES})
         </h2>
         <p className="mt-1 text-sm text-gray-600">
           Escolha uma versão para abrir o formulário como ele estava naquele momento.
