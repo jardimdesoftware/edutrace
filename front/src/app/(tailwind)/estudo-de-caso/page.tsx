@@ -174,7 +174,7 @@ function EstudoDeCasoPage() {
         ) : estudo || editando ? (
           <>
             {estudo && !editando && email && (
-              <div className="mb-4 space-y-3">
+              <div className="mb-4 mt-3 space-y-3">
                 <HistoricoDeEdicoes<CaseStudy>
                   tipo="CASE_STUDY"
                   email={email}
