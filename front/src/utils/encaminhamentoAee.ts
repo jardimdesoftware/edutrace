@@ -53,5 +53,5 @@ export function podeEscolherProfessor(professor: Pick<ProfessionalLoad, "free">)
 }
 
 export function textoDaConfirmacaoDoEncaminhamento(aluno: string | null, professor: string): string {
-  return `Encaminhar ${aluno?.trim() || "o estudante"} para ${professor}? O estudante passa a ser atendido por ele agora, e ele recebe um aviso.`;
+  return `Encaminhar ${aluno?.trim() || "o estudante"} para ${professor}? O estudante passa a ser atendido agora por este professor, que recebe um aviso.`;
 }

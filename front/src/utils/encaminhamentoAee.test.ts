@@ -93,7 +93,7 @@ describe("textoDaConfirmacaoDoEncaminhamento", () => {
   it("names the student and the teacher and says the student is assigned now", () => {
     assert.equal(
       textoDaConfirmacaoDoEncaminhamento("Maria Clara", "Beatriz AEE"),
-      "Encaminhar Maria Clara para Beatriz AEE? O estudante passa a ser atendido por ele agora, e ele recebe um aviso.",
+      "Encaminhar Maria Clara para Beatriz AEE? O estudante passa a ser atendido agora por este professor, que recebe um aviso.",
     );
   });
 
