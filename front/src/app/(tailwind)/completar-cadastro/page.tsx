@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { PasswordField, SelectField, TextField } from "@/components/auth/AuthFields";
 import { useAuth } from "@/contexts/AuthContext";
 import { completeRegistration } from "@/services/auth/completeRegistration";
-import { fetchSessionUser } from "@/services/auth/sessionUser";
 import { logout } from "@/services/auth/login";
 import { endSession } from "@/services/auth/session";
 import { buildCompleteRegistration } from "@/utils/completeRegistrationForm";
@@ -17,7 +15,6 @@ import AppLayout from "@/components/AppLayout";
 
 export default function CompletarCadastroPage() {
   const { user, setUser } = useAuth();
-  const router = useRouter();
   const [formData, setFormData] = useState({
     cpf: "",
     matricula: "",
@@ -56,8 +53,6 @@ export default function CompletarCadastroPage() {
 
     try {
       await completeRegistration(resultado.data);
-      setUser(await fetchSessionUser());
-
       await Swal.fire({
         icon: "success",
         title: "Cadastro concluído",
@@ -65,7 +60,7 @@ export default function CompletarCadastroPage() {
         confirmButtonColor: "#047857",
         confirmButtonText: "Continuar",
       });
-      router.push("/home");
+      await handleLogout();
     } catch (error) {
       avisarErro(error instanceof Error ? error.message : String(error));
     } finally {
@@ -201,12 +196,6 @@ export default function CompletarCadastroPage() {
           </section>
         </div>
 
-        <p className="pointer-events-none hidden self-end pr-2 text-right text-[15px] font-medium leading-6 text-[#5571a6] lg:block">
-          Juntos por uma
-          <br />
-          educação sem barreiras.
-          <span className="mt-3 ml-auto block h-1 w-16 rounded-full bg-[#7edbd0]" />
-        </p>
       </div>
     </div>
     </AppLayout>
