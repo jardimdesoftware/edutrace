@@ -11,6 +11,8 @@ interface AssistenteDePassosProps {
   resumo?: ReactNode;
   // Botões do documento que não são do formulário, como Excluir.
   acoesDoDocumento?: ReactNode;
+  // Só aparece na última página do assistente (por exemplo, o encaminhamento).
+  extraDoUltimoPasso?: ReactNode;
   // Autoria do documento, à direita do título.
   ladoDoTitulo?: ReactNode;
   // Aviso do documento, sob o título (por exemplo, uma versão antiga aberta).
@@ -36,6 +38,7 @@ export default function AssistenteDePassos({
   acoesDoDocumento,
   ladoDoTitulo,
   aviso,
+  extraDoUltimoPasso,
   passos,
   atual,
   comPendencia,
@@ -112,6 +115,7 @@ export default function AssistenteDePassos({
             {tituloDoPasso}
           </h2>
           {children}
+          {atual === total - 1 && extraDoUltimoPasso}
         </div>
       </section>
 

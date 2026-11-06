@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import EncaminharAoAee from "./EncaminharAoAee";
 import {
   deleteAnamnesis,
   getAnamneseByEmail,
@@ -47,6 +48,7 @@ export default function AnamnesePagina({ iniciarEditando = false }: { iniciarEdi
         formularioDoDocumento={formularioDaAnamnese}
         montarCorpo={montarCorpo}
         validar={validarFormulario}
+        extraDoUltimoPasso={({ email, nome }) => <EncaminharAoAee email={email} nome={nome} />}
       />
     </Suspense>
   );

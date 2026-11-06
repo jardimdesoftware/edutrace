@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Swal from "sweetalert2";
 import { ESTUDANTE } from "@/consts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,6 +46,9 @@ interface DocumentoEmPassosProps<R extends object, F extends object, P extends o
   formularioDoDocumento: (documento: R) => F;
   montarCorpo: (form: F) => P;
   validar: (form: F) => ErrosDoFormulario;
+  // Conteúdo da última página, para o documento que já existe (por exemplo, o
+  // encaminhamento da anamnese).
+  extraDoUltimoPasso?: (contexto: { email: string; nome: string | null }) => ReactNode;
 }
 
 // Página de um documento do estudante que se cria, lê, edita e exclui em passos
@@ -67,6 +70,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
   formularioDoDocumento,
   montarCorpo,
   validar,
+  extraDoUltimoPasso,
 }: DocumentoEmPassosProps<R, F, P>) {
   const router = useRouter();
   const { id, email, nome, carregando } = useEstudanteDaUrl();
@@ -238,6 +242,11 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
           onCancelar={() => (modo === "editar" ? setEditando(false) : voltarParaOEstudante())}
           onEditar={podeEditar && !versaoVista ? () => setEditando(true) : undefined}
           leituraDoPasso={exibido ? (passo) => secoesDeLeitura(passo, exibido) : undefined}
+          extraDoUltimoPasso={
+            documento && alvo && !versaoVista && extraDoUltimoPasso
+              ? extraDoUltimoPasso({ email: alvo, nome: nome ?? null })
+              : undefined
+          }
           ladoDoTitulo={modo === "ver" ? historico.autoria : undefined}
           aviso={
             versaoVista ? (
