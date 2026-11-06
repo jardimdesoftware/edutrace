@@ -23,6 +23,7 @@ describe('ReportsController', () => {
           provide: ReportsService,
           useValue: {
             findOne: jest.fn(),
+            generator: jest.fn(),
           },
         },
       ],
@@ -55,6 +56,31 @@ describe('ReportsController', () => {
         LEVELS.PROFISSIONAL_NAPNE,
         LEVELS.PROFESSOR_AEE,
       ]);
+    });
+  });
+
+  describe('generator', () => {
+    it('should ask the service for the user of the session', async () => {
+      const identity = { full_name: 'Ana', cpf: '***.456.789-**' };
+      jest.spyOn(service, 'generator').mockResolvedValue(identity);
+
+      const result = await controller.generator({
+        user: { sub: 7 },
+      } as never);
+
+      expect(service.generator).toHaveBeenCalledWith(7);
+      expect(result).toEqual(identity);
+    });
+
+    it('should allow the same levels of the report', () => {
+      const levels = Reflect.getMetadata(
+        ALLOW_LEVELS_KEY,
+        controller.generator,
+      );
+
+      expect(levels).toEqual(
+        Reflect.getMetadata(ALLOW_LEVELS_KEY, controller.findOne),
+      );
     });
   });
 });
