@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { maskCpf } from 'src/common/mask-cpf';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
 import { AEE_PLAN_SECTIONS_SELECT } from 'src/aee-plans/aee-plan-select';
@@ -61,6 +62,21 @@ export class ReportsService {
     private prisma: PrismaService,
     private studentsService: StudentsService,
   ) {}
+
+  // Quem gera o PDF: o nome e o CPF mascarado do usuário da sessão. O CPF
+  // completo não sai do back.
+  async generator(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { full_name: true, cpf: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    return { full_name: user.full_name, cpf: maskCpf(user.cpf) };
+  }
 
   async findOne(email: string) {
     const student = await this.studentsService.findOneOrFail({ email });
