@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   podeEncaminhar,
+  mostrarExtraDoUltimoPasso,
   podeEscolherProfessor,
   recebeAvisosDeEncaminhamento,
   textoDaConfirmacaoDoEncaminhamento,
@@ -100,5 +101,21 @@ describe("textoDaConfirmacaoDoEncaminhamento", () => {
   it("falls back to o estudante when the name is unknown", () => {
     assert.match(textoDaConfirmacaoDoEncaminhamento(null, "Beatriz AEE"), /^Encaminhar o estudante para Beatriz AEE\?/);
     assert.match(textoDaConfirmacaoDoEncaminhamento("  ", "Beatriz AEE"), /^Encaminhar o estudante/);
+  });
+});
+
+describe("mostrarExtraDoUltimoPasso", () => {
+  it("shows the referral while the document is still being created, edited or read", () => {
+    assert.equal(mostrarExtraDoUltimoPasso("aluno@discente.ifpe.edu.br", false), true);
+  });
+
+  it("hides it while an old version is open", () => {
+    assert.equal(mostrarExtraDoUltimoPasso("aluno@discente.ifpe.edu.br", true), false);
+  });
+
+  it("hides it without a student", () => {
+    assert.equal(mostrarExtraDoUltimoPasso(null, false), false);
+    assert.equal(mostrarExtraDoUltimoPasso(undefined, false), false);
+    assert.equal(mostrarExtraDoUltimoPasso("", false), false);
   });
 });

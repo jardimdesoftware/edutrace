@@ -23,6 +23,7 @@ import AvisoDeVersao from "./AvisoDeVersao";
 import FormularioPorTabela from "./FormularioPorTabela";
 import { useHistoricoDeEdicoes } from "./HistoricoDeEdicoes";
 import Loading from "./Loading";
+import { mostrarExtraDoUltimoPasso } from "@/utils/encaminhamentoAee";
 import { BOTAO_PERIGO, COR_CANCELAR, COR_CONFIRMAR, COR_EXCLUIR } from "./form/botoes";
 
 interface DocumentoEmPassosProps<R extends object, F extends object, P extends object> {
@@ -46,8 +47,8 @@ interface DocumentoEmPassosProps<R extends object, F extends object, P extends o
   formularioDoDocumento: (documento: R) => F;
   montarCorpo: (form: F) => P;
   validar: (form: F) => ErrosDoFormulario;
-  // Conteúdo da última página, para o documento que já existe (por exemplo, o
-  // encaminhamento da anamnese).
+  // Conteúdo da última página, em qualquer modo (por exemplo, o encaminhamento
+  // da anamnese).
   extraDoUltimoPasso?: (contexto: { email: string; nome: string | null }) => ReactNode;
 }
 
@@ -243,7 +244,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
           onEditar={podeEditar && !versaoVista ? () => setEditando(true) : undefined}
           leituraDoPasso={exibido ? (passo) => secoesDeLeitura(passo, exibido) : undefined}
           extraDoUltimoPasso={
-            documento && alvo && !versaoVista && extraDoUltimoPasso
+            alvo && mostrarExtraDoUltimoPasso(alvo, Boolean(versaoVista)) && extraDoUltimoPasso
               ? extraDoUltimoPasso({ email: alvo, nome: nome ?? null })
               : undefined
           }
