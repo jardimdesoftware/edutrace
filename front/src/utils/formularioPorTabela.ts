@@ -244,9 +244,23 @@ export function validarFormularioDe(secoes: readonly SecaoDef[], form: unknown):
   );
 }
 
+export interface OpcaoDeLeitura {
+  rotulo: string;
+  marcado: boolean;
+}
+
+// label e value são o que o PDF imprime. Os demais campos só a tela usa, para
+// refazer o esqueleto do formulário: grupo é a legenda do grupo que a linha
+// integra, rotulo é o nome do campo dentro dele, larga é o texto longo, que
+// ocupa a largura toda, e opcoes são todos os itens de uma lista de verificação,
+// marcados ou não.
 export interface LinhaDeLeitura {
   label: string;
   value: string;
+  grupo?: string;
+  rotulo?: string;
+  larga?: true;
+  opcoes?: OpcaoDeLeitura[];
 }
 
 export interface SecaoDeLeitura {
@@ -281,19 +295,30 @@ function linhasDoGrupo(grupo: GrupoDef, registro: unknown): LinhaDeLeitura[] {
   const linhaDe = (campo: CampoDef, label: string): LinhaDeLeitura => ({
     label,
     value: valorDoCampo(campo, lerCaminho(registro, campo.caminho)),
+    ...(grupo.titulo ? { grupo: grupo.titulo, rotulo: campo.rotulo } : {}),
+    ...(campo.tipo === 'textoLongo' ? { larga: true as const } : {}),
   });
 
   if (!grupo.lista) return grupo.campos.map((campo) => linhaDe(campo, campo.rotulo));
 
-  const marcados = grupo.campos
-    .filter((campo) => campo.tipo === 'marcacao' && lerCaminho(registro, campo.caminho) === true)
+  const itens = grupo.campos.filter((campo) => campo.tipo === 'marcacao');
+  const marcados = itens
+    .filter((campo) => lerCaminho(registro, campo.caminho) === true)
     .map((campo) => `• ${campo.rotulo}`);
   const textos = grupo.campos
     .filter((campo) => campo.tipo !== 'marcacao')
     .map((campo) => linhaDe(campo, `${grupo.titulo}: ${campo.rotulo.toLowerCase()}`));
 
   return [
-    { label: grupo.titulo, value: marcados.length ? marcados.join('\n') : NENHUMA_OPCAO },
+    {
+      label: grupo.titulo,
+      value: marcados.length ? marcados.join('\n') : NENHUMA_OPCAO,
+      grupo: grupo.titulo,
+      opcoes: itens.map((campo) => ({
+        rotulo: campo.rotulo,
+        marcado: lerCaminho(registro, campo.caminho) === true,
+      })),
+    },
     ...textos,
   ];
 }

@@ -54,6 +54,11 @@ const TABELA: readonly SecaoDef[] = [
   },
 ];
 
+const OPCOES_DOS_APOIOS_A = [
+  { rotulo: 'Apoio A', marcado: true },
+  { rotulo: 'Apoio B', marcado: false },
+];
+
 const REGISTRO = {
   nome: 'Ana',
   detalhe: { observacoes: 'Texto', horas: 12, dia: '2026-10-17' },
@@ -417,8 +422,8 @@ describe('secoesDeLeitura', () => {
     const secoes = secoesDeLeitura(TABELA, REGISTRO);
 
     assert.deepEqual(secoes[1].linhas, [
-      { label: 'Apoios', value: '• Apoio A' },
-      { label: 'Apoios: outro', value: 'Monitor' },
+      { label: 'Apoios', value: '• Apoio A', grupo: 'Apoios', opcoes: OPCOES_DOS_APOIOS_A },
+      { label: 'Apoios: outro', value: 'Monitor', grupo: 'Apoios', rotulo: 'Outro' },
     ]);
   });
 
@@ -426,9 +431,48 @@ describe('secoesDeLeitura', () => {
     const secoes = secoesDeLeitura(TABELA, {});
 
     assert.deepEqual(secoes[1].linhas, [
-      { label: 'Apoios', value: 'Nenhuma opção marcada' },
-      { label: 'Apoios: outro', value: NAO_INFORMADO },
+      {
+        label: 'Apoios',
+        value: 'Nenhuma opção marcada',
+        grupo: 'Apoios',
+        opcoes: [
+          { rotulo: 'Apoio A', marcado: false },
+          { rotulo: 'Apoio B', marcado: false },
+        ],
+      },
+      { label: 'Apoios: outro', value: NAO_INFORMADO, grupo: 'Apoios', rotulo: 'Outro' },
     ]);
+  });
+
+  it('lists every item of a checklist, marked or not, under the title of the group, also when it repeats the section title', () => {
+    const [linhaDaLista] = secoesDeLeitura(TABELA, REGISTRO)[1].linhas;
+
+    assert.equal(linhaDaLista.grupo, 'Apoios');
+    assert.deepEqual(linhaDaLista.opcoes, OPCOES_DOS_APOIOS_A);
+  });
+
+  it('marks the long texts as wide and leaves the short fields as they are', () => {
+    const linhas = secoesDeLeitura(TABELA, REGISTRO)[0].linhas;
+
+    assert.equal(linhas.find((linha) => linha.label === 'Observações')?.larga, true);
+    assert.equal(linhas.find((linha) => linha.label === 'Nome')?.larga, undefined);
+  });
+
+  it('gives the lines of a titled group the title as group, and leaves the untitled ones without', () => {
+    const tabela: readonly SecaoDef[] = [
+      {
+        titulo: 'Saúde',
+        grupos: [
+          { campos: [texto('a', 'A', 5)] },
+          { titulo: 'Rotina', campos: [texto('b', 'B', 5)] },
+        ],
+      },
+    ];
+    const [a, b] = secoesDeLeitura(tabela, { a: 'x', b: 'y' })[0].linhas;
+
+    assert.equal(a.grupo, undefined);
+    assert.equal(b.grupo, 'Rotina');
+    assert.equal(b.rotulo, 'B');
   });
 });
 
