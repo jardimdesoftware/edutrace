@@ -33,6 +33,7 @@ import {
 } from './google-account';
 import { DISCENTE_ROLES_MESSAGE, isDiscenteEmail } from './email-domain';
 import { Prisma, ServiceStatus } from '@prisma/client';
+import { USER_SITUATIONS, type UserSituation } from './user-situation';
 import { PUBLIC_USER_SELECT, PublicUser } from './users.select';
 import type { DeleteUserDto } from './dto/delete-user.dto';
 import {
@@ -64,10 +65,12 @@ const LAST_ADMIN_MESSAGE = 'Não é possível excluir o último administrador.';
 
 const ALREADY_MARKED_MESSAGE = 'Este usuário já está marcado para exclusão.';
 
-const NOT_MARKED_MESSAGE = 'Este usuário não está marcado para exclusão.';
-
+// O apagar definitivo nunca leva dado junto: quem tem registro, escrito por
+// ele ou sobre ele, é desativado no fim da carência.
 const HAS_RECORDS_MESSAGE =
-  'Este usuário tem registros no sistema (anotações, triagem, anamnese, estudo de caso, PAEE ou PEI) e não pode ser excluído.';
+  'Este usuário tem registros no sistema e só pode ser desativado, não apagado.';
+
+const NOT_MARKED_MESSAGE = 'Este usuário não está marcado para exclusão.';
 
 export const REAUTH_REQUIRED_MESSAGE =
   'Informe sua senha para excluir o usuário.';
@@ -239,8 +242,18 @@ export class UsersService {
     }
   }
 
-  async findAll() {
+  // A lista do administrador esconde os desativados, salvo no pedido deles. A
+  // carência continua visível, para o administrador restaurar quem se arrependeu.
+  async findAll(situation: UserSituation = USER_SITUATIONS.DEFAULT) {
+    const where: Prisma.UserWhereInput =
+      situation === USER_SITUATIONS.DEACTIVATED
+        ? { deactivated_at: { not: null } }
+        : situation === USER_SITUATIONS.GRACE
+          ? { deleted_at: { not: null }, deactivated_at: null }
+          : { deactivated_at: null };
+
     return this.prisma.user.findMany({
+      where,
       select: PUBLIC_USER_SELECT,
     });
   }
@@ -728,7 +741,14 @@ export class UsersService {
 
       await this.assertNotLastAdmin(tx, target);
       await this.assertNoServiceInProgress(tx, id);
-      await this.assertNoLinkedRecords(tx, target);
+
+      // Quem sai da carência desativado ou apagado deixa de ser responsável: o
+      // estudante volta a "responsável não atribuído" já agora, como quando o
+      // servidor perde o papel.
+      await tx.user.updateMany({
+        where: { pedagogical_manager_id: id },
+        data: { pedagogical_manager_id: null },
+      });
 
       await tx.session.updateMany({
         where: { id_user: id, revoked_at: null },
@@ -746,7 +766,7 @@ export class UsersService {
   async restore(id: number): Promise<PublicUser> {
     const { count } = await this.prisma.user.updateMany({
       where: { id: id, deleted_at: { not: null } },
-      data: { deleted_at: null },
+      data: { deleted_at: null, deactivated_at: null },
     });
 
     if (count === 0) {
@@ -762,42 +782,118 @@ export class UsersService {
     });
   }
 
-  // Apaga de vez quem passou do prazo. As travas rodam de novo, porque desde a
-  // marcação o usuário pode ter ganhado um registro ou um atendimento. A falha
-  // de um usuário é registrada e não interrompe os demais.
-  async purgeExpired(now: Date = new Date()): Promise<number> {
+  // Fecha a carência de quem passou do prazo: quem não tem nenhum dado é apagado
+  // de vez, e quem tem dado é desativado e guardado sem prazo. As travas rodam de
+  // novo, porque desde a marcação o usuário pode ter ganhado um registro ou um
+  // atendimento. A falha de um usuário é registrada e não interrompe os demais.
+  async purgeExpired(
+    now: Date = new Date(),
+  ): Promise<{ deleted: number; deactivated: number }> {
     const limit = new Date(now.getTime() - USER_DELETION_GRACE_DAYS * DAY_MS);
 
     const expired = await this.prisma.user.findMany({
-      where: { deleted_at: { lte: limit } },
+      where: { deleted_at: { lte: limit }, deactivated_at: null },
       select: { id: true },
     });
 
-    let purged = 0;
+    const result = { deleted: 0, deactivated: 0 };
 
     for (const { id } of expired) {
       try {
-        if (await this.remove(id, limit)) {
-          purged += 1;
+        const outcome = await this.settleExpired(id, limit);
+        if (outcome) {
+          result[outcome] += 1;
         }
       } catch (error) {
         this.logger.error(
-          `Falha ao apagar o usuário ${id} marcado para exclusão`,
+          `Falha ao fechar a carência do usuário ${id}`,
           error instanceof Error ? error.stack : String(error),
         );
       }
     }
 
-    return purged;
+    return result;
   }
 
-  // Exclusão definitiva. Com expiredBefore, só apaga quem continua marcado
-  // desde antes dessa data, o que deixa um usuário restaurado a salvo.
+  // Fecha a carência de um usuário: apaga de vez se ele não tem dado, e o
+  // desativa se tem. Só age sobre quem continua marcado desde antes de
+  // expiredBefore, o que deixa um usuário restaurado a salvo e torna a repetição
+  // inofensiva. A recusa por dado vem do próprio remove, dentro da transação que
+  // apaga, então um registro criado no meio não é apagado junto.
+  async settleExpired(
+    id: number,
+    expiredBefore: Date,
+  ): Promise<'deleted' | 'deactivated' | null> {
+    try {
+      return (await this.remove(id, expiredBefore)) ? 'deleted' : null;
+    } catch (error) {
+      if (
+        !(error instanceof ConflictException) ||
+        error.message !== HAS_RECORDS_MESSAGE
+      ) {
+        throw error;
+      }
+    }
+
+    const { count } = await this.prisma.user.updateMany({
+      where: {
+        id: id,
+        deleted_at: { lte: expiredBefore },
+        deactivated_at: null,
+      },
+      data: { deactivated_at: new Date() },
+    });
+
+    return count > 0 ? 'deactivated' : null;
+  }
+
+  // A conta tem dado quando há registro escrito por ela ou sobre ela. Esse dado
+  // nunca é apagado: a conta é desativada e os registros ficam, com a autoria.
+  async hasLinkedData(
+    db: Prisma.TransactionClient | PrismaService,
+    target: { id: number; email: string },
+  ): Promise<boolean> {
+    const writtenOrAbout = {
+      OR: [{ id_student: target.id }, { id_author: target.id }],
+    };
+
+    const counts = await Promise.all([
+      db.comments.count({
+        where: { OR: [{ id_user: target.id }, { id_author: target.id }] },
+      }),
+      db.caseStudy.count({ where: writtenOrAbout }),
+      db.aeePlan.count({ where: writtenOrAbout }),
+      db.peiEntry.count({ where: writtenOrAbout }),
+      db.screening.count({ where: { email: target.email } }),
+      db.anamnesis.count({ where: { email: target.email } }),
+      db.formRevision.count({ where: writtenOrAbout }),
+    ]);
+
+    return counts.some((count) => count > 0);
+  }
+
+  // Informa ao administrador, antes de excluir, o que vai acontecer com a conta
+  // no fim da carência.
+  async deletionPreview(id: number): Promise<{ has_data: boolean }> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: id },
+      select: { id: true, email: true },
+    });
+
+    if (!target) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    return { has_data: await this.hasLinkedData(this.prisma, target) };
+  }
+
+  // Exclusão definitiva, só de conta sem dado. Com expiredBefore, só apaga quem
+  // continua marcado desde antes dessa data.
   //
-  // Mesma trava e mesma recusa do update, mas sem condicionar ao papel 6: uma
-  // conta que perdeu o papel com estudantes em atendimento ainda é responsável
-  // por eles, e excluí-la quebraria o CHECK da chave estrangeira (500). Quem
-  // tem estudantes em atendimento não é excluído até encerrar os atendimentos.
+  // A recusa do atendimento em andamento não depende do papel 6: uma conta que
+  // perdeu o papel com estudantes em atendimento ainda é responsável por eles, e
+  // apagá-la quebraria o CHECK da chave estrangeira (500). Quem tem estudantes
+  // em atendimento não é apagado até encerrar os atendimentos.
   async remove(id: number, expiredBefore?: Date) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
@@ -819,7 +915,10 @@ export class UsersService {
       }
 
       await this.assertNoServiceInProgress(tx, id);
-      await this.assertNoLinkedRecords(tx, target);
+
+      if (await this.hasLinkedData(tx, target)) {
+        throw new ConflictException(HAS_RECORDS_MESSAGE);
+      }
 
       return tx.user.delete({
         select: PUBLIC_USER_SELECT,
@@ -854,21 +953,4 @@ export class UsersService {
   // Triagem e anamnese ligam-se ao usuário só pelo e-mail, sem chave
   // estrangeira, e ficariam órfãs com dados pessoais. As demais tabelas têm
   // chave estrangeira que o banco recusaria com 500.
-  private async assertNoLinkedRecords(
-    tx: Prisma.TransactionClient,
-    target: { id: number; email: string },
-  ) {
-    const counts = await Promise.all([
-      tx.comments.count({ where: { id_user: target.id } }),
-      tx.caseStudy.count({ where: { id_student: target.id } }),
-      tx.aeePlan.count({ where: { id_student: target.id } }),
-      tx.peiEntry.count({ where: { id_student: target.id } }),
-      tx.screening.count({ where: { email: target.email } }),
-      tx.anamnesis.count({ where: { email: target.email } }),
-    ]);
-
-    if (counts.some((count) => count > 0)) {
-      throw new ConflictException(HAS_RECORDS_MESSAGE);
-    }
-  }
 }

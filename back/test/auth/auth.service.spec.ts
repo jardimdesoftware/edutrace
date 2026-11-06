@@ -66,6 +66,7 @@ describe('AuthService', () => {
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
+    deactivated_at: null,
   };
 
   const mockUserFirstAccess = { ...mockUser, must_change_password: true };
@@ -565,7 +566,7 @@ describe('AuthService', () => {
 
         await expect(service.signInWithGoogle('credencial')).rejects.toThrow(
           new UnauthorizedException(
-            'Esta conta está em processo de exclusão. Procure a administração.',
+            'Esta conta foi desativada. Entre em contato com um administrador.',
           ),
         );
 
@@ -1864,7 +1865,7 @@ describe('AuthService', () => {
 
       await expect(service.signIn('user@test.com', 'certa')).rejects.toThrow(
         new UnauthorizedException(
-          'Esta conta está em processo de exclusão. Procure a administração.',
+          'Esta conta foi desativada. Entre em contato com um administrador.',
         ),
       );
 

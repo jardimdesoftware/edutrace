@@ -9,13 +9,15 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  ParseEnumPipe,
   ParseIntPipe,
+  Query,
   Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiBody, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
@@ -26,6 +28,7 @@ import { AUTH_THROTTLE } from 'src/auth/constants/constants';
 import { DeleteUserDto } from './dto/delete-user.dto';
 import { hasAnyRole } from 'src/auth/roles';
 import { sameRoles } from './roles';
+import { USER_SITUATIONS, type UserSituation } from './user-situation';
 
 @Controller('users')
 export class UsersController {
@@ -72,10 +75,28 @@ export class UsersController {
     );
   }
 
+  // A lista padrão esconde os desativados; situation=desativados mostra só eles e
+  // situation=carencia mostra só quem está nos 7 dias.
   @AllowLevels(LEVELS.ADMIN)
+  @ApiQuery({
+    name: 'situation',
+    required: false,
+    enum: Object.values(USER_SITUATIONS),
+  })
   @Get()
-  async findAll() {
-    return maskUsersCpf(await this.usersService.findAll());
+  async findAll(
+    @Query('situation', new ParseEnumPipe(USER_SITUATIONS, { optional: true }))
+    situation?: UserSituation,
+  ) {
+    return maskUsersCpf(await this.usersService.findAll(situation));
+  }
+
+  // Diz ao administrador, antes de excluir, se a conta tem dados: com dados ela
+  // será desativada no fim da carência, sem dados será apagada.
+  @AllowLevels(LEVELS.ADMIN)
+  @Get(':id/deletion-preview')
+  async deletionPreview(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.deletionPreview(id);
   }
 
   @AllowLevels(LEVELS.ADMIN)
