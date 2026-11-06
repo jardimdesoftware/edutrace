@@ -8,7 +8,7 @@ import Swal from 'sweetalert2';
 import AppLayout from '@/components/AppLayout';
 import AvisoDeVersao from '@/components/AvisoDeVersao';
 import EstudoDeCasoFormulario from '@/components/EstudoDeCasoFormulario';
-import HistoricoDeEdicoes from '@/components/HistoricoDeEdicoes';
+import { useHistoricoDeEdicoes } from '@/components/HistoricoDeEdicoes';
 import Loading from '@/components/Loading';
 import {
   BOTAO_PERIGO,
@@ -64,6 +64,15 @@ function EstudoDeCasoPage() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [editando]);
+
+  const historico = useHistoricoDeEdicoes<CaseStudy>({
+    tipo: 'CASE_STUDY',
+    email,
+    roles: user?.roles,
+    atualizadoEm: estudo?.updated_at,
+    versaoAberta: versaoVista?.version ?? null,
+    onEscolher: setVersaoVista,
+  });
 
   const podeEditar = podeEditarEstudoDeCaso(user?.roles);
   const exibido = versaoVista ? versaoVista.snapshot : estudo;
@@ -172,22 +181,6 @@ function EstudoDeCasoPage() {
             </div>
           </div>
         ) : estudo || editando ? (
-          <>
-            {estudo && !editando && email && (
-              <div className="mb-4 mt-3 space-y-3">
-                <HistoricoDeEdicoes<CaseStudy>
-                  tipo="CASE_STUDY"
-                  email={email}
-                  roles={user.roles}
-                  atualizadoEm={estudo.updated_at}
-                  versaoAberta={versaoVista?.version ?? null}
-                  onEscolher={setVersaoVista}
-                />
-                {versaoVista && (
-                  <AvisoDeVersao versao={versaoVista} onVoltar={() => setVersaoVista(null)} />
-                )}
-              </div>
-            )}
           <EstudoDeCasoFormulario
             key={editando ? 'edicao' : `leitura-${versaoVista?.version ?? 'atual'}`}
             inicial={exibido ? formularioDoEstudo(exibido) : formularioVazio()}
@@ -200,16 +193,26 @@ function EstudoDeCasoPage() {
             onSalvar={handleSalvar}
             onCancelar={() => (editando ? setEditando(false) : router.back())}
             onEditar={podeEditar && !versaoVista ? () => setEditando(true) : undefined}
+            ladoDoTitulo={estudo && !editando ? historico.autoria : undefined}
+            aviso={
+              versaoVista ? (
+                <AvisoDeVersao versao={versaoVista} onVoltar={() => setVersaoVista(null)} />
+              ) : undefined
+            }
             acoesDoDocumento={
-              estudo && !editando && podeEditar && !versaoVista ? (
-                <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
-                  <Trash2 size={16} aria-hidden="true" />
-                  Excluir
-                </button>
+              estudo && !editando && (historico.botao || (podeEditar && !versaoVista)) ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  {historico.botao}
+                  {podeEditar && !versaoVista && (
+                    <button type="button" className={BOTAO_PERIGO} onClick={handleExcluir}>
+                      <Trash2 size={16} aria-hidden="true" />
+                      Excluir
+                    </button>
+                  )}
+                </div>
               ) : undefined
             }
           />
-          </>
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-6">
             {cabecalho}
