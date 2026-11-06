@@ -65,3 +65,29 @@ export function mostrarExtraDoUltimoPasso(
 ): boolean {
   return Boolean(alvo) && !lendoVersaoAntiga;
 }
+
+export interface PassosDoEncaminhamento {
+  fecharLista: () => void;
+  confirmar: () => Promise<boolean>;
+  encaminhar: () => Promise<void>;
+  avisarSucesso: () => void;
+  avisarErro: (erro: unknown) => Promise<void>;
+}
+
+// A lista de professores é um <dialog> modal, que fica na camada de cima da
+// página e esconderia o alerta de confirmação, então ela fecha antes de qualquer
+// aviso. Quem cancela a confirmação ou recebe o erro reabre a lista pelo botão.
+export async function executarEncaminhamento(passos: PassosDoEncaminhamento): Promise<void> {
+  passos.fecharLista();
+
+  if (!(await passos.confirmar())) return;
+
+  try {
+    await passos.encaminhar();
+  } catch (erro) {
+    await passos.avisarErro(erro);
+    return;
+  }
+
+  passos.avisarSucesso();
+}

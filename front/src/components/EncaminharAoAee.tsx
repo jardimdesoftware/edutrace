@@ -8,6 +8,7 @@ import { getServiceStats } from "@/api/serviceStats";
 import { useAuth } from "@/contexts/AuthContext";
 import type { ProfessionalLoad } from "@/interfaces/ServiceStats";
 import {
+  executarEncaminhamento,
   podeEncaminhar,
   podeEscolherProfessor,
   textoDaConfirmacaoDoEncaminhamento,
@@ -53,7 +54,6 @@ function ListaDeProfessores({ email, nome, onFechar }: ListaDeProfessoresProps) 
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [professores, setProfessores] = useState<ProfessionalLoad[] | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -75,45 +75,41 @@ function ListaDeProfessores({ email, nome, onFechar }: ListaDeProfessoresProps) 
     };
   }, []);
 
-  const escolher = async (professor: ProfessionalLoad) => {
-    const confirmacao = await Swal.fire({
-      icon: "question",
-      title: "Encaminhar ao AEE",
-      text: textoDaConfirmacaoDoEncaminhamento(nome, professor.full_name),
-      showCancelButton: true,
-      confirmButtonColor: COR_CONFIRMAR,
-      cancelButtonColor: COR_CANCELAR,
-      confirmButtonText: "Sim, encaminhar",
-      cancelButtonText: "Cancelar",
+  const escolher = (professor: ProfessionalLoad) =>
+    executarEncaminhamento({
+      fecharLista: onFechar,
+      confirmar: async () => {
+        const confirmacao = await Swal.fire({
+          icon: "question",
+          title: "Encaminhar ao AEE",
+          text: textoDaConfirmacaoDoEncaminhamento(nome, professor.full_name),
+          showCancelButton: true,
+          confirmButtonColor: COR_CONFIRMAR,
+          cancelButtonColor: COR_CANCELAR,
+          confirmButtonText: "Sim, encaminhar",
+          cancelButtonText: "Cancelar",
+        });
+        return confirmacao.isConfirmed;
+      },
+      encaminhar: () => encaminharEstudante(email, professor.id),
+      avisarSucesso: () => {
+        void Swal.fire({
+          icon: "success",
+          title: "Estudante encaminhado",
+          text: `${professor.full_name} recebeu o estudante e vai ver o aviso no próximo acesso.`,
+          confirmButtonColor: COR_CONFIRMAR,
+          confirmButtonText: "Ok",
+        });
+      },
+      avisarErro: async (error) => {
+        console.error("Erro ao encaminhar o estudante:", error);
+        await Swal.fire({
+          ...errorAlertOptions("Falha ao encaminhar", error, "Não foi possível encaminhar o estudante."),
+          confirmButtonColor: COR_CONFIRMAR,
+          confirmButtonText: "Entendi",
+        });
+      },
     });
-    if (!confirmacao.isConfirmed) return;
-
-    setEnviando(true);
-    try {
-      await encaminharEstudante(email, professor.id);
-    } catch (error) {
-      console.error("Erro ao encaminhar o estudante:", error);
-      await Swal.fire({
-        ...errorAlertOptions("Falha ao encaminhar", error, "Não foi possível encaminhar o estudante."),
-        confirmButtonColor: COR_CONFIRMAR,
-        confirmButtonText: "Entendi",
-      });
-      setEnviando(false);
-      // O limite pode ter mudado desde que a lista abriu.
-      getServiceStats().then((e) => setProfessores(e.professionals)).catch(() => undefined);
-      return;
-    }
-
-    setEnviando(false);
-    onFechar();
-    Swal.fire({
-      icon: "success",
-      title: "Estudante encaminhado",
-      text: `${professor.full_name} recebeu o estudante e vai ver o aviso no próximo acesso.`,
-      confirmButtonColor: COR_CONFIRMAR,
-      confirmButtonText: "Ok",
-    });
-  };
 
   return (
     <dialog
@@ -157,7 +153,7 @@ function ListaDeProfessores({ email, nome, onFechar }: ListaDeProfessoresProps) 
                 </div>
                 <button
                   type="button"
-                  disabled={!livre || enviando}
+                  disabled={!livre}
                   onClick={() => escolher(professor)}
                   className={BOTAO_SECUNDARIO + " disabled:cursor-not-allowed disabled:opacity-50"}
                 >

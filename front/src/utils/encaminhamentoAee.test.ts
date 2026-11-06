@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   podeEncaminhar,
+  executarEncaminhamento,
   mostrarExtraDoUltimoPasso,
   podeEscolherProfessor,
   recebeAvisosDeEncaminhamento,
@@ -117,5 +118,52 @@ describe("mostrarExtraDoUltimoPasso", () => {
     assert.equal(mostrarExtraDoUltimoPasso(null, false), false);
     assert.equal(mostrarExtraDoUltimoPasso(undefined, false), false);
     assert.equal(mostrarExtraDoUltimoPasso("", false), false);
+  });
+});
+
+describe("executarEncaminhamento", () => {
+  const montar = (confirmado: boolean, falha?: Error) => {
+    const chamadas: string[] = [];
+    const passos = {
+      fecharLista: () => chamadas.push("fechar"),
+      confirmar: async () => {
+        chamadas.push("confirmar");
+        return confirmado;
+      },
+      encaminhar: async () => {
+        chamadas.push("encaminhar");
+        if (falha) throw falha;
+      },
+      avisarSucesso: () => chamadas.push("sucesso"),
+      avisarErro: async () => {
+        chamadas.push("erro");
+      },
+    };
+
+    return { chamadas, passos };
+  };
+
+  it("closes the list before the confirmation, so the alert is not hidden behind the modal", async () => {
+    const { chamadas, passos } = montar(true);
+
+    await executarEncaminhamento(passos);
+
+    assert.deepEqual(chamadas, ["fechar", "confirmar", "encaminhar", "sucesso"]);
+  });
+
+  it("sends nothing when the confirmation is cancelled", async () => {
+    const { chamadas, passos } = montar(false);
+
+    await executarEncaminhamento(passos);
+
+    assert.deepEqual(chamadas, ["fechar", "confirmar"]);
+  });
+
+  it("warns about the error, with the list already closed, and does not announce success", async () => {
+    const { chamadas, passos } = montar(true, new Error("sem vaga"));
+
+    await executarEncaminhamento(passos);
+
+    assert.deepEqual(chamadas, ["fechar", "confirmar", "encaminhar", "erro"]);
   });
 });
