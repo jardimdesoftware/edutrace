@@ -12,21 +12,27 @@ export class UsersPurgeService {
   constructor(private usersService: UsersService) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
-  async purgeExpiredUsers(): Promise<number> {
+  async purgeExpiredUsers(): Promise<{ deleted: number; deactivated: number }> {
     try {
-      const purged = await this.usersService.purgeExpired();
+      const result = await this.usersService.purgeExpired();
 
-      if (purged > 0) {
-        this.logger.log('Usuários apagados ao fim do prazo: ' + purged);
+      if (result.deleted > 0 || result.deactivated > 0) {
+        this.logger.log(
+          'Carência encerrada: ' +
+            result.deleted +
+            ' apagados, ' +
+            result.deactivated +
+            ' desativados',
+        );
       }
 
-      return purged;
+      return result;
     } catch (error) {
       this.logger.error(
         'Falha na limpeza dos usuários marcados para exclusão',
         error instanceof Error ? error.stack : String(error),
       );
-      return 0;
+      return { deleted: 0, deactivated: 0 };
     }
   }
 }

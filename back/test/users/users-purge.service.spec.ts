@@ -8,7 +8,9 @@ describe('UsersPurgeService', () => {
   let usersService: { purgeExpired: jest.Mock };
 
   beforeEach(() => {
-    usersService = { purgeExpired: jest.fn().mockResolvedValue(0) };
+    usersService = {
+      purgeExpired: jest.fn().mockResolvedValue({ deleted: 0, deactivated: 0 }),
+    };
     service = new UsersPurgeService(usersService as unknown as UsersService);
   });
 
@@ -21,10 +23,13 @@ describe('UsersPurgeService', () => {
     expect(cron.cronTime).toBe(CronExpression.EVERY_DAY_AT_3AM);
   });
 
-  it('should answer how many users were deleted', async () => {
-    usersService.purgeExpired.mockResolvedValue(3);
+  it('should answer how many users were deleted and how many were deactivated', async () => {
+    usersService.purgeExpired.mockResolvedValue({ deleted: 3, deactivated: 2 });
 
-    await expect(service.purgeExpiredUsers()).resolves.toBe(3);
+    await expect(service.purgeExpiredUsers()).resolves.toEqual({
+      deleted: 3,
+      deactivated: 2,
+    });
 
     expect(usersService.purgeExpired).toHaveBeenCalledTimes(1);
   });
@@ -35,7 +40,10 @@ describe('UsersPurgeService', () => {
       .spyOn(service['logger'], 'error')
       .mockImplementation(() => undefined);
 
-    await expect(service.purgeExpiredUsers()).resolves.toBe(0);
+    await expect(service.purgeExpiredUsers()).resolves.toEqual({
+      deleted: 0,
+      deactivated: 0,
+    });
 
     expect(error).toHaveBeenCalledTimes(1);
   });
