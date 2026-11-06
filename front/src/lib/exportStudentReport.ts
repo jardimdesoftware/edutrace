@@ -1,5 +1,5 @@
-import { getReportByEmail } from "@/api/reports";
-import type { ReportsData } from "@/interfaces/ReportsData";
+import { getReportByEmail, getReportGenerator } from "@/api/reports";
+import type { ReportGenerator, ReportsData } from "@/interfaces/ReportsData";
 import type { StudentData } from "@/interfaces/StudentData";
 import { buildReportSections, relatorioVazio, reportFileName } from "@/utils/reportSections";
 import type { jsPDF } from "jspdf";
@@ -18,6 +18,7 @@ const CINZA_CLARO: [number, number, number] = [240, 244, 242];
 // formulários, embutir uma fonte TTF com doc.addFont.
 export async function renderReportPdf(
   estudante: Estudante,
+  gerador: ReportGenerator,
   report: ReportsData,
   geradoEm: Date = new Date(),
 ): Promise<jsPDF> {
@@ -43,6 +44,7 @@ export async function renderReportPdf(
   doc.text(`Nome: ${estudante.full_name}`, MARGEM, 94);
   doc.text(`E-mail: ${estudante.email}`, MARGEM, 108);
   doc.text(`Gerado em: ${geradoEm.toLocaleString("pt-BR")}`, MARGEM, 122);
+  doc.text(`Gerado por: ${gerador.full_name} (CPF ${gerador.cpf})`, MARGEM, 136);
 
   const body = buildReportSections(report).flatMap((section) => [
     [
@@ -58,7 +60,7 @@ export async function renderReportPdf(
   ]);
 
   autoTable(doc, {
-    startY: 140,
+    startY: 154,
     body,
     theme: "grid",
     margin: { left: MARGEM, right: MARGEM, bottom: 40 },
@@ -86,7 +88,10 @@ export async function exportStudentReportPdf(estudante: Estudante): Promise<"dow
     return "empty";
   }
 
-  const doc = await renderReportPdf(estudante, report);
+  // Sem a identificação de quem gera, o relatório não sai: a busca falha e a
+  // exportação é interrompida.
+  const gerador = await getReportGenerator();
+  const doc = await renderReportPdf(estudante, gerador, report);
   doc.save(reportFileName(estudante.full_name));
 
   return "downloaded";
