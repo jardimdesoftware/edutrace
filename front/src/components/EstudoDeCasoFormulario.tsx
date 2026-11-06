@@ -29,6 +29,10 @@ interface FormularioProps {
   onCancelar: () => void;
   onEditar?: () => void;
   acoesDoDocumento?: ReactNode;
+  // Autoria do documento, à direita do título.
+  ladoDoTitulo?: ReactNode;
+  // Aviso do documento, sob o título (por exemplo, uma versão antiga aberta).
+  aviso?: ReactNode;
 }
 
 export default function EstudoDeCasoFormulario({
@@ -43,12 +47,16 @@ export default function EstudoDeCasoFormulario({
   onCancelar,
   onEditar,
   acoesDoDocumento,
+  ladoDoTitulo,
+  aviso,
 }: FormularioProps) {
   return (
     <FormularioPorTabela
       titulo="Estudo de caso"
       estudante={estudante}
       acoesDoDocumento={acoesDoDocumento}
+      ladoDoTitulo={ladoDoTitulo}
+      aviso={aviso}
       resumo={
         estudo &&
         resumoDoDocumento(estudo.created_at, estudo.updated_at, estudo.author?.full_name ?? null, formatarData)
