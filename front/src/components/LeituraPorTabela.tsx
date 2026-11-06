@@ -1,5 +1,6 @@
 import { formatarData } from "@/utils/formatDate";
-import { NAO_INFORMADO, type SecaoDeLeitura } from "@/utils/formularioPorTabela";
+import type { SecaoDeLeitura } from "@/utils/formularioPorTabela";
+import LinhasDeLeitura from "./LinhasDeLeitura";
 
 interface LeituraPorTabelaProps {
   secoes: SecaoDeLeitura[];
@@ -31,28 +32,9 @@ function SecaoDoDocumento({
       <Titulo id={tituloId} className="text-lg font-semibold text-emerald-800">
         {secao.titulo}
       </Titulo>
-      <dl className="mt-4 space-y-4">
-        {secao.linhas.map((linha) => (
-          <div key={linha.label}>
-            <dt
-              className={
-                linha.label === secao.titulo
-                  ? "sr-only"
-                  : "text-sm font-medium text-gray-600"
-              }
-            >
-              {linha.label}
-            </dt>
-            <dd
-              className={`mt-1 whitespace-pre-wrap break-words ${
-                linha.value === NAO_INFORMADO ? "text-gray-600 italic" : "text-gray-900"
-              }`}
-            >
-              {linha.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div className="mt-4">
+        <LinhasDeLeitura linhas={secao.linhas} />
+      </div>
     </section>
   );
 }

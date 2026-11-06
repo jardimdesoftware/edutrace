@@ -189,7 +189,7 @@ export default function FormularioPorTabela<F extends object>({
           )}
           {cabecalhoDaSecao?.(secao, controle)}
           {secao.grupos.map((grupo, indice) => (
-            <GrupoDaTabela key={indice} grupo={grupo} tituloDaSecao={secao.titulo} controle={controle} />
+            <GrupoDaTabela key={indice} grupo={grupo} controle={controle} />
           ))}
         </section>
       ))

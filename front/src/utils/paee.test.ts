@@ -501,7 +501,7 @@ describe('secoesDoPlanoParaLeitura', () => {
       { label: 'Período letivo', value: '2026.1' },
       { label: 'Professor(a) do AEE', value: 'Marina Duarte' },
       { label: 'Carga horária semanal do AEE', value: '4 horas' },
-      { label: 'Disciplinas em que o estudante está matriculado', value: 'Matemática, Português e Física' },
+      { label: 'Disciplinas em que o estudante está matriculado', value: 'Matemática, Português e Física', larga: true },
     ]);
   });
 

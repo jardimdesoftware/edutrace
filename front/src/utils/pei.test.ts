@@ -677,10 +677,10 @@ describe('secoesDoPeiParaLeitura', () => {
 
   it('prints the four texts of the opinion under the labels of the contract', () => {
     assert.deepEqual(linhasDe(secoesDoPeiParaLeitura(registro()), TITULO_DO_PARECER), [
-      { label: ROTULOS_DO_PARECER[0], value: 'Passou a resolver as operações sozinho' },
-      { label: ROTULOS_DO_PARECER[1], value: 'Perde o foco em provas longas' },
-      { label: ROTULOS_DO_PARECER[2], value: 'Manter o tempo ampliado nas provas' },
-      { label: ROTULOS_DO_PARECER[3], value: 'Terças, 14h, sala 3, convocado pela coordenação' },
+      { label: ROTULOS_DO_PARECER[0], value: 'Passou a resolver as operações sozinho', larga: true },
+      { label: ROTULOS_DO_PARECER[1], value: 'Perde o foco em provas longas', larga: true },
+      { label: ROTULOS_DO_PARECER[2], value: 'Manter o tempo ampliado nas provas', larga: true },
+      { label: ROTULOS_DO_PARECER[3], value: 'Terças, 14h, sala 3, convocado pela coordenação', larga: true },
     ]);
   });
 
@@ -737,10 +737,10 @@ describe('secoesDoPeiParaLeitura', () => {
     const secoes = secoesDoPeiParaLeitura(registro());
 
     assert.deepEqual(linhasDe(secoes, 'Objetivos adaptados'), [
-      { label: 'Objetivos adaptados', value: 'Ampliar a autonomia nas operações' },
+      { label: 'Objetivos adaptados', value: 'Ampliar a autonomia nas operações', larga: true },
     ]);
     assert.deepEqual(linhasDe(secoes, 'Conteúdos priorizados no semestre'), [
-      { label: 'Conteúdos priorizados no semestre', value: 'Funções e geometria' },
+      { label: 'Conteúdos priorizados no semestre', value: 'Funções e geometria', larga: true },
     ]);
     assert.equal(linhasDe(secoes, 'Metodologias adaptadas')?.[0].value, 'Aulas com recursos visuais');
     assert.equal(linhasDe(secoes, 'Atividades avaliativas adaptadas')?.[0].value, 'Prova com tempo ampliado');
