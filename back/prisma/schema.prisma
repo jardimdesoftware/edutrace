@@ -57,6 +57,9 @@ model User {
   created_at              DateTime   @default(now())
   updated_at              DateTime?  @updatedAt
   deleted_at              DateTime?
+  // Marca o usuário desativado (guardado sem prazo, com os dados). Só existe com
+  // deleted_at preenchido; o CHECK está na migration 20261106100000.
+  deactivated_at          DateTime?
 
   service_status     ServiceStatus?
   queued_at          DateTime?
