@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { History } from "lucide-react";
 import { buscarVersao, listarVersoes } from "@/api/formRevisions";
 import {
@@ -18,9 +18,10 @@ import {
 import type { Papeis } from "@/utils/papeis";
 import { BOTAO_SECUNDARIO } from "./form/botoes";
 
-interface HistoricoDeEdicoesProps<T> {
+export interface HistoricoDeEdicoesProps<T> {
   tipo: TipoDeFormulario;
-  email: string;
+  // Ainda indefinido enquanto a tela descobre o estudante.
+  email: string | null | undefined;
   // Período letivo, só no PAEE.
   periodo?: string;
   roles: Papeis;
@@ -31,10 +32,17 @@ interface HistoricoDeEdicoesProps<T> {
   onEscolher: (versao: VersaoCompleta<T> | null) => void;
 }
 
-// A autoria do formulário (quem criou e quem editou por último) e o botão que
-// abre o histórico de versões. Quem não pode ler o histórico, e o formulário que
-// ainda não tem versões, não veem nada.
-export default function HistoricoDeEdicoes<T>({
+export interface PecasDoHistorico {
+  // "Criado por ... em ..." e a última edição, em uma linha.
+  autoria: ReactNode;
+  // O botão do histórico, com o modal das versões.
+  botao: ReactNode;
+}
+
+// Busca as versões do formulário e entrega a autoria e o botão do histórico em
+// peças separadas, para a tela pôr cada uma no seu lugar. Quem não pode ler o
+// histórico, e o formulário que ainda não tem versões, recebem null nas duas.
+export function useHistoricoDeEdicoes<T>({
   tipo,
   email,
   periodo,
@@ -42,7 +50,7 @@ export default function HistoricoDeEdicoes<T>({
   atualizadoEm,
   versaoAberta,
   onEscolher,
-}: HistoricoDeEdicoesProps<T>) {
+}: HistoricoDeEdicoesProps<T>): PecasDoHistorico {
   const permitido = podeVerHistorico(tipo, roles);
   const [versoes, setVersoes] = useState<VersaoResumida[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
@@ -50,7 +58,7 @@ export default function HistoricoDeEdicoes<T>({
   const [falha, setFalha] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!permitido) return;
+    if (!permitido || !email) return;
 
     let ativo = true;
     listarVersoes(tipo, email, periodo)
@@ -69,7 +77,7 @@ export default function HistoricoDeEdicoes<T>({
   }, [permitido, tipo, email, periodo, atualizadoEm]);
 
   const resumo = resumoDeAutoria(versoes);
-  if (!permitido || !resumo) return null;
+  if (!permitido || !resumo || !email) return { autoria: null, botao: null };
 
   const maisRecente = Math.max(...versoes.map((v) => v.version));
 
@@ -93,36 +101,55 @@ export default function HistoricoDeEdicoes<T>({
     }
   };
 
-  return (
-    <section
-      aria-label="Autoria do formulário"
-      className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-700"
-    >
-      <p>
-        Criado por <strong>{resumo.criadoPor}</strong> em {resumo.criadoEm}
-      </p>
-      {resumo.editadoPor && (
-        <p>
-          Última edição por <strong>{resumo.editadoPor}</strong> em {resumo.editadoEm}
-        </p>
-      )}
-      <button type="button" className={BOTAO_SECUNDARIO} onClick={() => setModalAberto(true)}>
-        <History size={16} aria-hidden="true" />
-        Histórico de edições ({versoes.length} de {MAXIMO_DE_VERSOES})
-      </button>
+  return {
+    autoria: (
+      <div
+        aria-label="Autoria do formulário"
+        className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 text-sm text-gray-700"
+      >
+        <span>
+          Criado por <strong>{resumo.criadoPor}</strong> em {resumo.criadoEm}
+        </span>
+        {resumo.editadoPor && (
+          <span>
+            Última edição por <strong>{resumo.editadoPor}</strong> em {resumo.editadoEm}
+          </span>
+        )}
+      </div>
+    ),
+    botao: (
+      <>
+        <button type="button" className={BOTAO_SECUNDARIO} onClick={() => setModalAberto(true)}>
+          <History size={16} aria-hidden="true" />
+          Histórico de edições ({versoes.length} de {MAXIMO_DE_VERSOES})
+        </button>
+        {modalAberto && (
+          <ModalDoHistorico
+            versoes={ordenarDaMaisRecente(versoes)}
+            maisRecente={maisRecente}
+            versaoAberta={versaoAberta}
+            abrindo={abrindo}
+            falha={falha}
+            limiteAtingido={limiteDeVersoesAtingido(versoes)}
+            onEscolher={escolher}
+            onFechar={() => setModalAberto(false)}
+          />
+        )}
+      </>
+    ),
+  };
+}
 
-      {modalAberto && (
-        <ModalDoHistorico
-          versoes={ordenarDaMaisRecente(versoes)}
-          maisRecente={maisRecente}
-          versaoAberta={versaoAberta}
-          abrindo={abrindo}
-          falha={falha}
-          limiteAtingido={limiteDeVersoesAtingido(versoes)}
-          onEscolher={escolher}
-          onFechar={() => setModalAberto(false)}
-        />
-      )}
+// Autoria e botão juntos, para as telas que não têm um cabeçalho próprio (o PAEE,
+// que mostra um bloco por período letivo).
+export default function HistoricoDeEdicoes<T>(props: HistoricoDeEdicoesProps<T>) {
+  const { autoria, botao } = useHistoricoDeEdicoes(props);
+  if (!autoria) return null;
+
+  return (
+    <section aria-label="Histórico do formulário" className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      {autoria}
+      {botao}
     </section>
   );
 }
