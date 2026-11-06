@@ -75,6 +75,7 @@ describe('UsersService', () => {
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
+    deactivated_at: null,
   };
 
   let tx: {
@@ -93,6 +94,7 @@ describe('UsersService', () => {
     session: { updateMany: jest.Mock };
     screening: { updateMany: jest.Mock; count: jest.Mock };
     anamnesis: { updateMany: jest.Mock; count: jest.Mock };
+    formRevision: { count: jest.Mock };
     plansEducationLegacy: { updateMany: jest.Mock };
   };
 
@@ -113,6 +115,7 @@ describe('UsersService', () => {
           email: mockUser.email,
           roles: [LEVELS.ALUNO_ESTUDANTE],
           deleted_at: null,
+          deactivated_at: null,
         }),
       },
       comments: { count: jest.fn().mockResolvedValue(0) },
@@ -128,6 +131,7 @@ describe('UsersService', () => {
         updateMany: jest.fn(),
         count: jest.fn().mockResolvedValue(0),
       },
+      formRevision: { count: jest.fn().mockResolvedValue(0) },
       plansEducationLegacy: { updateMany: jest.fn() },
     };
 
@@ -400,6 +404,7 @@ describe('UsersService', () => {
       const result = await service.findAll();
 
       expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { deactivated_at: null },
         select: PUBLIC_USER_SELECT,
       });
       expect(result).toEqual(usersList);

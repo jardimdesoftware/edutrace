@@ -52,6 +52,7 @@ describe('UsersService, fila de atendimento do Professor do AEE', () => {
     peiEntry: { count: jest.Mock };
     screening: { count: jest.Mock };
     anamnesis: { count: jest.Mock };
+    formRevision: { count: jest.Mock };
   };
   let sessions: { revokeAllFromUser: jest.Mock };
   let events: string[];
@@ -81,7 +82,11 @@ describe('UsersService, fila de atendimento do Professor do AEE', () => {
         delete: jest.fn().mockResolvedValue({ id: 7 }),
         findUnique: jest
           .fn()
-          .mockResolvedValue({ id: 7, email: 'novo@test.com', deleted_at: null }),
+          .mockResolvedValue({
+            id: 7,
+            email: 'novo@test.com',
+            deleted_at: null,
+          }),
       },
       comments: { count: jest.fn().mockResolvedValue(0) },
       caseStudy: { count: jest.fn().mockResolvedValue(0) },
@@ -89,6 +94,7 @@ describe('UsersService, fila de atendimento do Professor do AEE', () => {
       peiEntry: { count: jest.fn().mockResolvedValue(0) },
       screening: { count: jest.fn().mockResolvedValue(0) },
       anamnesis: { count: jest.fn().mockResolvedValue(0) },
+      formRevision: { count: jest.fn().mockResolvedValue(0) },
     };
     prisma = {
       user: { create: jest.fn().mockResolvedValue(created) },

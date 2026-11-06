@@ -46,6 +46,7 @@ describe('UsersService, exclusão com carência', () => {
       findUnique: jest.Mock;
       count: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
       delete: jest.Mock;
     };
     session: { updateMany: jest.Mock };
@@ -55,6 +56,7 @@ describe('UsersService, exclusão com carência', () => {
     peiEntry: { count: jest.Mock };
     screening: { count: jest.Mock };
     anamnesis: { count: jest.Mock };
+    formRevision: { count: jest.Mock };
   };
   let prisma: {
     user: {
@@ -77,6 +79,7 @@ describe('UsersService, exclusão com carência', () => {
         findUnique: jest.fn().mockResolvedValue(STUDENT),
         count: jest.fn().mockResolvedValue(0),
         update: jest.fn().mockResolvedValue({ id: TARGET_ID }),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         delete: jest.fn().mockResolvedValue({ id: TARGET_ID }),
       },
       session: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
@@ -86,6 +89,7 @@ describe('UsersService, exclusão com carência', () => {
       peiEntry: { count: jest.fn().mockResolvedValue(0) },
       screening: { count: jest.fn().mockResolvedValue(0) },
       anamnesis: { count: jest.fn().mockResolvedValue(0) },
+      formRevision: { count: jest.fn().mockResolvedValue(0) },
     };
     prisma = {
       user: {
@@ -333,41 +337,52 @@ describe('UsersService, exclusão com carência', () => {
       expect(tx.user.update).not.toHaveBeenCalled();
     });
 
-    it.each(['comments', 'caseStudy', 'aeePlan', 'peiEntry'] as const)(
-      'should answer 409 when %s points at the user',
+    it.each([
+      'comments',
+      'caseStudy',
+      'aeePlan',
+      'peiEntry',
+      'screening',
+      'anamnesis',
+      'formRevision',
+    ] as const)(
+      'should start the grace period of a user that has %s, without refusing',
       async (table) => {
         tx[table].count.mockResolvedValue(1);
 
-        await expect(
-          service.markForDeletion(TARGET_ID, ADMIN_ID),
-        ).rejects.toThrow(ConflictException);
+        await service.markForDeletion(TARGET_ID, ADMIN_ID);
 
-        expect(tx[table].count).toHaveBeenCalledWith({
-          where:
-            table === 'comments'
-              ? { id_user: TARGET_ID }
-              : { id_student: TARGET_ID },
+        expect(tx.user.update).toHaveBeenCalledWith({
+          select: PUBLIC_USER_SELECT,
+          where: { id: TARGET_ID },
+          data: { deleted_at: NOW },
         });
-        expect(tx.user.update).not.toHaveBeenCalled();
-        expect(tx.session.updateMany).not.toHaveBeenCalled();
       },
     );
 
-    it.each(['screening', 'anamnesis'] as const)(
-      'should answer 409 when a %s exists for the e-mail of the user',
-      async (table) => {
-        tx[table].count.mockResolvedValue(1);
+    it('should send the students of the user back to no pedagogical manager', async () => {
+      await service.markForDeletion(TARGET_ID, ADMIN_ID);
 
-        await expect(
-          service.markForDeletion(TARGET_ID, ADMIN_ID),
-        ).rejects.toThrow(ConflictException);
+      expect(tx.user.updateMany).toHaveBeenCalledWith({
+        where: { pedagogical_manager_id: TARGET_ID },
+        data: { pedagogical_manager_id: null },
+      });
+    });
 
-        expect(tx[table].count).toHaveBeenCalledWith({
-          where: { email: STUDENT.email },
-        });
-        expect(tx.user.update).not.toHaveBeenCalled();
-      },
-    );
+    it('should not touch the students when the user is refused', async () => {
+      tx.user.findUnique.mockResolvedValue({
+        ...STUDENT,
+        id: ADMIN_ID,
+        roles: [LEVELS.ADMIN],
+      });
+      tx.user.count.mockResolvedValue(3);
+
+      await expect(service.markForDeletion(ADMIN_ID, ADMIN_ID)).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(tx.user.updateMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('restore', () => {
@@ -376,7 +391,7 @@ describe('UsersService, exclusão com carência', () => {
 
       expect(prisma.user.updateMany).toHaveBeenCalledWith({
         where: { id: TARGET_ID, deleted_at: { not: null } },
-        data: { deleted_at: null },
+        data: { deleted_at: null, deactivated_at: null },
       });
       expect(prisma.user.findUniqueOrThrow).toHaveBeenCalledWith({
         select: PUBLIC_USER_SELECT,
@@ -447,36 +462,240 @@ describe('UsersService, exclusão com carência', () => {
     });
   });
 
+  describe('settleExpired', () => {
+    const limit = new Date(NOW.getTime() - USER_DELETION_GRACE_DAYS * DAY_MS);
+    const expired = () => ({
+      ...STUDENT,
+      deleted_at: new Date(limit.getTime() - 1),
+    });
+
+    it('should delete the user that has no data', async () => {
+      tx.user.findUnique.mockResolvedValue(expired());
+
+      await expect(service.settleExpired(TARGET_ID, limit)).resolves.toBe(
+        'deleted',
+      );
+
+      expect(tx.user.delete).toHaveBeenCalledTimes(1);
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      'comments',
+      'caseStudy',
+      'aeePlan',
+      'peiEntry',
+      'screening',
+      'anamnesis',
+      'formRevision',
+    ] as const)(
+      'should deactivate, and never delete, a user that has %s',
+      async (table) => {
+        tx.user.findUnique.mockResolvedValue(expired());
+        tx[table].count.mockResolvedValue(1);
+
+        await expect(service.settleExpired(TARGET_ID, limit)).resolves.toBe(
+          'deactivated',
+        );
+
+        expect(tx.user.delete).not.toHaveBeenCalled();
+        expect(prisma.user.updateMany).toHaveBeenCalledWith({
+          where: {
+            id: TARGET_ID,
+            deleted_at: { lte: limit },
+            deactivated_at: null,
+          },
+          data: { deactivated_at: NOW },
+        });
+      },
+    );
+
+    it('should do nothing for a user restored in the meantime', async () => {
+      tx.user.findUnique.mockResolvedValue({ ...STUDENT, deleted_at: null });
+
+      await expect(service.settleExpired(TARGET_ID, limit)).resolves.toBeNull();
+
+      expect(tx.user.delete).not.toHaveBeenCalled();
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('should report nothing when the user was restored between the check and the deactivation', async () => {
+      tx.user.findUnique.mockResolvedValue(expired());
+      tx.comments.count.mockResolvedValue(1);
+      prisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.settleExpired(TARGET_ID, limit)).resolves.toBeNull();
+    });
+
+    it('should let the refusal for an AEE teacher in service through, leaving him in the grace period', async () => {
+      tx.user.findUnique.mockResolvedValue(expired());
+      tx.user.count.mockResolvedValue(1);
+
+      await expect(service.settleExpired(TARGET_ID, limit)).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(tx.user.delete).not.toHaveBeenCalled();
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('purgeExpired', () => {
     const limit = new Date(NOW.getTime() - USER_DELETION_GRACE_DAYS * DAY_MS);
 
-    it('should look for the users marked 7 days ago or before', async () => {
+    it('should look for the users marked 7 days ago or before that are not deactivated yet', async () => {
       expect(USER_DELETION_GRACE_DAYS).toBe(7);
 
-      await expect(service.purgeExpired()).resolves.toBe(0);
+      await expect(service.purgeExpired()).resolves.toEqual({
+        deleted: 0,
+        deactivated: 0,
+      });
 
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { deleted_at: { lte: limit } },
+        where: { deleted_at: { lte: limit }, deactivated_at: null },
         select: { id: true },
       });
     });
 
-    it('should count only the users it deleted and go on after a failure', async () => {
-      prisma.user.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
-      const remove = jest
-        .spyOn(service, 'remove')
-        .mockResolvedValueOnce({ id: 1 } as never)
-        .mockRejectedValueOnce(new ConflictException('com registros'))
+    it('should count what it deleted and what it deactivated, and go on after a failure', async () => {
+      prisma.user.findMany.mockResolvedValue([
+        { id: 1 },
+        { id: 2 },
+        { id: 3 },
+        { id: 4 },
+      ]);
+      const settle = jest
+        .spyOn(service, 'settleExpired')
+        .mockResolvedValueOnce('deleted')
+        .mockRejectedValueOnce(new ConflictException('em atendimento'))
+        .mockResolvedValueOnce('deactivated')
         .mockResolvedValueOnce(null);
       const error = jest
         .spyOn(service['logger'], 'error')
         .mockImplementation(() => undefined);
 
-      await expect(service.purgeExpired()).resolves.toBe(1);
+      await expect(service.purgeExpired()).resolves.toEqual({
+        deleted: 1,
+        deactivated: 1,
+      });
 
-      expect(remove).toHaveBeenCalledTimes(3);
-      expect(remove).toHaveBeenNthCalledWith(2, 2, limit);
+      expect(settle).toHaveBeenCalledTimes(4);
+      expect(settle).toHaveBeenNthCalledWith(2, 2, limit);
       expect(error).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('hasLinkedData', () => {
+    it('should count what the user wrote and what was written about him', async () => {
+      await service.hasLinkedData(tx as never, {
+        id: TARGET_ID,
+        email: STUDENT.email,
+      });
+
+      const writtenOrAbout = {
+        OR: [{ id_student: TARGET_ID }, { id_author: TARGET_ID }],
+      };
+      expect(tx.comments.count).toHaveBeenCalledWith({
+        where: { OR: [{ id_user: TARGET_ID }, { id_author: TARGET_ID }] },
+      });
+      expect(tx.caseStudy.count).toHaveBeenCalledWith({
+        where: writtenOrAbout,
+      });
+      expect(tx.aeePlan.count).toHaveBeenCalledWith({ where: writtenOrAbout });
+      expect(tx.peiEntry.count).toHaveBeenCalledWith({
+        where: writtenOrAbout,
+      });
+      expect(tx.formRevision.count).toHaveBeenCalledWith({
+        where: writtenOrAbout,
+      });
+      expect(tx.screening.count).toHaveBeenCalledWith({
+        where: { email: STUDENT.email },
+      });
+      expect(tx.anamnesis.count).toHaveBeenCalledWith({
+        where: { email: STUDENT.email },
+      });
+    });
+
+    it('should be false when nothing points at the user', async () => {
+      await expect(
+        service.hasLinkedData(tx as never, { id: TARGET_ID, email: 'a@x.com' }),
+      ).resolves.toBe(false);
+    });
+  });
+
+  describe('deletionPreview', () => {
+    const counters = (found: number) => {
+      const make = () => ({ count: jest.fn().mockResolvedValue(0) });
+      Object.assign(prisma, {
+        comments: { count: jest.fn().mockResolvedValue(found) },
+        caseStudy: make(),
+        aeePlan: make(),
+        peiEntry: make(),
+        screening: make(),
+        anamnesis: make(),
+        formRevision: make(),
+      });
+    };
+
+    it('should say the account has data', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: TARGET_ID,
+        email: 'a@x.com',
+      });
+      counters(1);
+
+      await expect(service.deletionPreview(TARGET_ID)).resolves.toEqual({
+        has_data: true,
+      });
+    });
+
+    it('should say the account has no data', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: TARGET_ID,
+        email: 'a@x.com',
+      });
+      counters(0);
+
+      await expect(service.deletionPreview(TARGET_ID)).resolves.toEqual({
+        has_data: false,
+      });
+    });
+
+    it('should answer 404 for a missing user', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.deletionPreview(TARGET_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('findAll por situação', () => {
+    it('should hide the deactivated users by default', async () => {
+      await service.findAll();
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { deactivated_at: null },
+        select: PUBLIC_USER_SELECT,
+      });
+    });
+
+    it('should list only the users in the grace period', async () => {
+      await service.findAll('carencia');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { deleted_at: { not: null }, deactivated_at: null },
+        select: PUBLIC_USER_SELECT,
+      });
+    });
+
+    it('should list only the deactivated users', async () => {
+      await service.findAll('desativados');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { deactivated_at: { not: null } },
+        select: PUBLIC_USER_SELECT,
+      });
     });
   });
 });
