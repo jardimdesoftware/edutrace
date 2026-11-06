@@ -28,6 +28,7 @@ export const PUBLIC_USER_SELECT = {
   current_phase: true,
   created_at: true,
   deleted_at: true,
+  deactivated_at: true,
   email: true,
   id_current_phase: true,
   roles: true,
