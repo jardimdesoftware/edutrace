@@ -4,11 +4,16 @@ import { ADMIN, ESTUDANTE } from '@/consts';
 import { temPapel, type Papeis } from '@/utils/papeis';
 import type { StudentData } from '@/interfaces/StudentData';
 import { nomeDoResponsavel } from '@/utils/responsavelPedagogico';
+import { SITUACAO_PADRAO, type SituacaoDaLista } from '@/utils/filtroPorSituacao';
 
 // Só o administrador lista todos os usuários. Qualquer outro papel, inclusive
-// sessão sem papel, recebe apenas os estudantes.
-export function listarUsuariosDaTabela(roles?: Papeis) {
-  return temPapel(roles, ADMIN) ? getAllUsers() : getAllStudents();
+// sessão sem papel, recebe apenas os estudantes. A situação (carência ou
+// desativados) só existe para o administrador.
+export function listarUsuariosDaTabela(
+  roles?: Papeis,
+  situacao: SituacaoDaLista = SITUACAO_PADRAO,
+) {
+  return temPapel(roles, ADMIN) ? getAllUsers(situacao) : getAllStudents();
 }
 
 // Troca na lista o usuário que a API devolveu depois de uma alteração. A
