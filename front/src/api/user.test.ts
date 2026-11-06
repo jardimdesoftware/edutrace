@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getAllUsers, updateProfile, updateUser } from './user';
+import { getAllUsers, getDeletionPreview, updateProfile, updateUser } from './user';
 
 const API_URL = 'http://api.test';
 
@@ -43,6 +43,24 @@ describe('getAllUsers', () => {
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, `${API_URL}/users`);
     assert.equal(calls[0].init.method, 'GET');
+  });
+
+  it('asks for the grace period or the deactivated users with the situation in the query', async () => {
+    respondWith(200, []);
+
+    await getAllUsers('carencia');
+    await getAllUsers('desativados');
+
+    assert.equal(calls[0].url, `${API_URL}/users?situation=carencia`);
+    assert.equal(calls[1].url, `${API_URL}/users?situation=desativados`);
+  });
+
+  it('sends no query for the default list, which already hides the deactivated users', async () => {
+    respondWith(200, []);
+
+    await getAllUsers('padrao');
+
+    assert.equal(calls[0].url, `${API_URL}/users`);
   });
 
   it('rejects with the API message when the level is not allowed', async () => {
@@ -113,5 +131,25 @@ describe('updateUser', () => {
     assert.equal(calls[0].init.method, 'PATCH');
     assert.deepEqual(body, { roles: [5, 6] });
     assert.equal('id_level' in body, false);
+  });
+});
+
+describe('getDeletionPreview', () => {
+  it('asks the back whether the account has data, by the id', async () => {
+    respondWith(200, { has_data: true });
+
+    const result = await getDeletionPreview(7);
+
+    assert.deepEqual(result, { has_data: true });
+    assert.equal(calls[0].url, `${API_URL}/users/7/deletion-preview`);
+    assert.equal(calls[0].init.method, 'GET');
+  });
+
+  it('rejects with the API message when the level is not allowed', async () => {
+    respondWith(403, { message: 'Nível de acesso insuficiente' });
+
+    await assert.rejects(getDeletionPreview(7), {
+      message: 'Nível de acesso insuficiente',
+    });
   });
 });
