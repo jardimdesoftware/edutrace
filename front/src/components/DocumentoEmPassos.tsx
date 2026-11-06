@@ -218,7 +218,7 @@ export default function DocumentoEmPassos<R extends object, F extends object, P 
     <AppLayout ocuparTela>
       <div className="w-full p-4 lg:min-h-0 lg:flex-1 lg:p-6">
         {documento && modo === "ver" && alvo && (
-          <div className="mb-4 space-y-3">
+          <div className="mb-4 mt-3 space-y-3">
             <HistoricoDeEdicoes<R>
               tipo={tipoDeFormulario}
               email={alvo}
