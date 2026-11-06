@@ -10,6 +10,7 @@ afterEach(() => {
 });
 
 const estudante = { email: 'aluno@example.test', full_name: 'João da Conceição' };
+const gerador = { full_name: 'Ana Lúcia NAPNE', cpf: '***.456.789-**' };
 
 const screening = {
   report: 'Avaliação com acentuação: ç, ã, õ, é, ê, à',
@@ -59,8 +60,16 @@ const peiEntries = [
 ];
 
 describe('renderReportPdf', () => {
+  it('draws who generated the report, with the name and the masked CPF, in the header', async () => {
+    const doc = await renderReportPdf(estudante, gerador, { screening });
+    const pdf = doc.output();
+
+    assert.match(pdf, /Gerado por: Ana L.cia NAPNE/);
+    assert.match(pdf, /CPF \*\*\*\.456\.789-\*\*/);
+  });
+
   it('draws the student, the filled sections and marks the missing one', async () => {
-    const doc = await renderReportPdf(estudante, { screening });
+    const doc = await renderReportPdf(estudante, gerador, { screening });
     const pdf = doc.output();
 
     assert.equal(doc.getNumberOfPages(), 1);
@@ -73,7 +82,7 @@ describe('renderReportPdf', () => {
   });
 
   it('draws the sections of the case study with the author and the checked items', async () => {
-    const doc = await renderReportPdf(estudante, { screening: null, caseStudy });
+    const doc = await renderReportPdf(estudante, gerador, { screening: null, caseStudy });
     const pdf = doc.output();
 
     assert.match(pdf, /Estudo de Caso - Identifica/);
@@ -101,7 +110,7 @@ describe('renderReportPdf', () => {
       },
     ] as unknown as NonNullable<ReportsData['aeePlans']>;
 
-    const doc = await renderReportPdf(estudante, { screening: null, aeePlans });
+    const doc = await renderReportPdf(estudante, gerador, { screening: null, aeePlans });
     const pdf = doc.output();
 
     assert.match(pdf, /PAEE - 2026\.1/);
@@ -114,7 +123,7 @@ describe('renderReportPdf', () => {
   });
 
   it('draws one section per PEI entry, with the semester, the subject, the teacher and the pairs', async () => {
-    const doc = await renderReportPdf(estudante, { screening: null, peiEntries });
+    const doc = await renderReportPdf(estudante, gerador, { screening: null, peiEntries });
     const pdf = doc.output();
 
     assert.match(pdf, /PEI - 2026\.2 - Matem.tica/);
@@ -129,7 +138,7 @@ describe('renderReportPdf', () => {
   });
 
   it('draws the semester opinion of the PEI entry, with the four labels and what the teacher wrote', async () => {
-    const doc = await renderReportPdf(estudante, { screening: null, peiEntries: [peiEntry] });
+    const doc = await renderReportPdf(estudante, gerador, { screening: null, peiEntries: [peiEntry] });
     const pdf = doc.output();
 
     assert.match(pdf, /Avan.os no semestre/);
@@ -143,7 +152,7 @@ describe('renderReportPdf', () => {
   });
 
   it('draws the four labels of the opinion also when it is blank, so the reader sees that it is missing', async () => {
-    const doc = await renderReportPdf(estudante, { screening: null, peiEntries: [peiEntries[1]] });
+    const doc = await renderReportPdf(estudante, gerador, { screening: null, peiEntries: [peiEntries[1]] });
     const pdf = doc.output();
 
     assert.match(pdf, /Avan.os no semestre/);
@@ -156,7 +165,7 @@ describe('renderReportPdf', () => {
       { ...peiEntry, adapted_objectives: 'Objetivo de aprendizagem. '.repeat(1500) },
     ];
 
-    const doc = await renderReportPdf(estudante, { screening, peiEntries });
+    const doc = await renderReportPdf(estudante, gerador, { screening, peiEntries });
     const pages = doc.getNumberOfPages();
 
     assert.ok(pages > 1, `expected more than one page, got ${pages}`);
@@ -180,5 +189,24 @@ describe('exportStudentReportPdf', () => {
 
     assert.equal(result, 'empty');
     assert.deepEqual(urls, ['http://api.test/reports/aluno%40example.test']);
+  });
+
+  it('stops without generating the PDF when the generator cannot be identified', async () => {
+    const saved: string[] = [];
+    process.env.NEXT_PUBLIC_API_EDU_TRACE = 'http://api.test';
+    globalThis.fetch = (async (url: string) => {
+      saved.push(url);
+      const ok = url.endsWith('/reports/aluno%40example.test');
+      return new Response(JSON.stringify(ok ? { screening, peiEntries: [] } : { message: 'x' }), {
+        status: ok ? 200 : 404,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    await assert.rejects(exportStudentReportPdf(estudante));
+    assert.deepEqual(saved, [
+      'http://api.test/reports/aluno%40example.test',
+      'http://api.test/reports/generator',
+    ]);
   });
 });
