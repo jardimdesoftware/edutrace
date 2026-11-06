@@ -15,3 +15,9 @@ export function registrationRedirect(
 
   return pathname === COMPLETE_REGISTRATION_PAGE ? "/home" : null;
 }
+
+// O cabeçalho leva a páginas que a conta pendente não pode abrir, então só
+// aparece depois do cadastro concluído.
+export function showHeader(user: { must_complete_registration?: boolean } | null): boolean {
+  return !user?.must_complete_registration;
+}
