@@ -4,18 +4,37 @@ import { CreateScreeningDto } from 'src/screenings/dto/create-screening.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
 import { ScreeningsService } from 'src/screenings/screenings.service';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { LEVELS } from 'src/constants';
+import { FormRevisionsService } from 'src/form-revisions/form-revisions.service';
+const AUTHOR = { id: 7, name: 'Autor' };
 
 describe('ScreeningsService', () => {
   let service: ScreeningsService;
   let prisma: PrismaService;
+  let formRevisions: {
+    recordCreation: jest.Mock;
+    recordEdit: jest.Mock;
+    removeAll: jest.Mock;
+  };
   let studentsService: StudentsService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ScreeningsService,
+        {
+          provide: FormRevisionsService,
+          useValue: {
+            recordCreation: jest.fn(),
+            recordEdit: jest.fn(),
+            removeAll: jest.fn(),
+          },
+        },
         {
           provide: StudentsService,
           useValue: {
@@ -44,6 +63,16 @@ describe('ScreeningsService', () => {
 
     service = module.get<ScreeningsService>(ScreeningsService);
     prisma = module.get<PrismaService>(PrismaService);
+    formRevisions = module.get(FormRevisionsService);
+    Object.assign(prisma, {
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+        callback(prisma),
+      ),
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ id: 2 }),
+        update: jest.fn(),
+      },
+    });
     studentsService = module.get<StudentsService>(StudentsService);
   });
 
@@ -104,7 +133,7 @@ describe('ScreeningsService', () => {
         .spyOn(prisma.screening, 'create')
         .mockResolvedValue(createdScreening);
 
-      const result = await service.create(createScreeningDto);
+      const result = await service.create(createScreeningDto, AUTHOR);
 
       expect(prisma.screening.create).toHaveBeenCalledWith({
         data: createScreeningDto,
@@ -335,15 +364,25 @@ describe('ScreeningsService', () => {
     it('should update a screening when it exists', async () => {
       const email = 'joao@example.com';
       const updateDto = { full_name: 'João Atualizado' };
-      const existingScreening = { id: 1, email, full_name: 'João Silva' } as any;
+      const existingScreening = {
+        id: 1,
+        email,
+        full_name: 'João Silva',
+      } as any;
       const updatedScreening = { ...existingScreening, ...updateDto };
 
-      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(existingScreening);
-      jest.spyOn(prisma.screening, 'update').mockResolvedValue(updatedScreening);
+      jest
+        .spyOn(prisma.screening, 'findUnique')
+        .mockResolvedValue(existingScreening);
+      jest
+        .spyOn(prisma.screening, 'update')
+        .mockResolvedValue(updatedScreening);
 
-      const result = await service.update(email, updateDto);
+      const result = await service.update(email, updateDto, AUTHOR);
 
-      expect(prisma.screening.findUnique).toHaveBeenCalledWith({ where: { email } });
+      expect(prisma.screening.findUnique).toHaveBeenCalledWith({
+        where: { email },
+      });
       expect(prisma.screening.update).toHaveBeenCalledWith({
         where: { email },
         data: updateDto,
@@ -354,7 +393,9 @@ describe('ScreeningsService', () => {
     it('should throw NotFoundException when screening does not exist', async () => {
       jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.update('notfound@example.com', {})).rejects.toThrow(
+      await expect(
+        service.update('notfound@example.com', {}, AUTHOR),
+      ).rejects.toThrow(
         'Triagem com email notfound@example.com não encontrada',
       );
       expect(prisma.screening.update).not.toHaveBeenCalled();
@@ -366,13 +407,21 @@ describe('ScreeningsService', () => {
       const email = 'joao@example.com';
       const existingScreening = { id: 1, email } as any;
 
-      jest.spyOn(prisma.screening, 'findUnique').mockResolvedValue(existingScreening);
-      jest.spyOn(prisma.screening, 'delete').mockResolvedValue(existingScreening);
+      jest
+        .spyOn(prisma.screening, 'findUnique')
+        .mockResolvedValue(existingScreening);
+      jest
+        .spyOn(prisma.screening, 'delete')
+        .mockResolvedValue(existingScreening);
 
       const result = await service.remove(email);
 
-      expect(prisma.screening.delete).toHaveBeenCalledWith({ where: { email } });
-      expect(result).toEqual({ message: `Triagem com email ${email} foi removida com sucesso` });
+      expect(prisma.screening.delete).toHaveBeenCalledWith({
+        where: { email },
+      });
+      expect(result).toEqual({
+        message: `Triagem com email ${email} foi removida com sucesso`,
+      });
     });
 
     it('should throw NotFoundException when screening does not exist', async () => {
@@ -395,7 +444,13 @@ describe('ScreeningsService', () => {
         .spyOn(studentsService, 'findOneOrFail')
         .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
 
-      await expect(service.update('profissional@example.com', { full_name: 'Outro nome' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(
+          'profissional@example.com',
+          { full_name: 'Outro nome' },
+          AUTHOR,
+        ),
+      ).rejects.toThrow(NotFoundException);
       expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
         email: 'profissional@example.com',
       });
@@ -409,9 +464,12 @@ describe('ScreeningsService', () => {
         .mockRejectedValue(new NotFoundException('Estudante não encontrado'));
 
       await expect(
-        service.create({
-          email: 'profissional@example.com',
-        } as CreateScreeningDto),
+        service.create(
+          {
+            email: 'profissional@example.com',
+          } as CreateScreeningDto,
+          AUTHOR,
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
         email: 'profissional@example.com',
@@ -448,6 +506,85 @@ describe('ScreeningsService', () => {
 
       expect(prisma.screening.findMany).toHaveBeenCalledWith({
         where: { email: { in: ['a@example.com', 'b@example.com'] } },
+      });
+    });
+  });
+
+  describe('histórico de versões', () => {
+    const email = 'estudante@example.com';
+    const existing = {
+      id: 1,
+      email,
+      created_at: new Date('2026-01-01T00:00:00Z'),
+      updated_at: null,
+    };
+
+    it('should record the version 1 when the form is created', async () => {
+      jest
+        .spyOn(prisma.screening, 'create')
+        .mockResolvedValue({ id: 1 } as never);
+
+      await service.create({ email } as any, AUTHOR);
+
+      expect(formRevisions.recordCreation).toHaveBeenCalledWith(
+        expect.anything(),
+        { formType: 'SCREENING', idStudent: 2 },
+        { id: 1 },
+        AUTHOR,
+      );
+    });
+
+    it('should record the edit with the previous and the new content', async () => {
+      jest
+        .spyOn(prisma.screening, 'findUnique')
+        .mockResolvedValue(existing as never);
+      jest
+        .spyOn(prisma.screening, 'update')
+        .mockResolvedValue({ id: 1, novo: true } as never);
+
+      await service.update(email, {}, AUTHOR);
+
+      expect(formRevisions.recordEdit).toHaveBeenCalledWith(
+        expect.anything(),
+        { formType: 'SCREENING', idStudent: 2 },
+        {
+          before: existing,
+          beforeAt: existing.created_at,
+          after: { id: 1, novo: true },
+        },
+        AUTHOR,
+      );
+    });
+
+    it('should let the 409 of the version limit through', async () => {
+      jest
+        .spyOn(prisma.screening, 'findUnique')
+        .mockResolvedValue(existing as never);
+      jest
+        .spyOn(prisma.screening, 'update')
+        .mockResolvedValue({ id: 1 } as never);
+      formRevisions.recordEdit.mockRejectedValue(
+        new ConflictException('limite'),
+      );
+
+      await expect(service.update(email, {}, AUTHOR)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('should delete the history together with the form', async () => {
+      jest
+        .spyOn(prisma.screening, 'findUnique')
+        .mockResolvedValue(existing as never);
+      jest
+        .spyOn(prisma.screening, 'delete')
+        .mockResolvedValue(existing as never);
+
+      await service.remove(email);
+
+      expect(formRevisions.removeAll).toHaveBeenCalledWith(expect.anything(), {
+        formType: 'SCREENING',
+        idStudent: 2,
       });
     });
   });

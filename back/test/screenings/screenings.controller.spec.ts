@@ -6,6 +6,9 @@ import { ScreeningsService } from 'src/screenings/screenings.service';
 import { LEVELS } from 'src/constants';
 import { ALLOW_LEVELS_KEY } from 'src/auth/decorators/allow-levels.decorator';
 
+const REQUEST = { user: { sub: 7, name: 'Autor' } } as any;
+const AUTHOR = { id: 7, name: 'Autor' };
+
 describe('ScreeningsController', () => {
   let controller: ScreeningsController;
   let service: ScreeningsService;
@@ -85,8 +88,10 @@ describe('ScreeningsController', () => {
       };
       jest.spyOn(service, 'create').mockResolvedValue(result);
 
-      expect(await controller.create(createScreeningDto)).toEqual(result);
-      expect(service.create).toHaveBeenCalledWith(createScreeningDto);
+      expect(await controller.create(createScreeningDto, REQUEST)).toEqual(
+        result,
+      );
+      expect(service.create).toHaveBeenCalledWith(createScreeningDto, AUTHOR);
     });
   });
 
@@ -289,8 +294,10 @@ describe('ScreeningsController', () => {
 
       jest.spyOn(service, 'update').mockResolvedValue(result);
 
-      expect(await controller.update(email, updateDto)).toEqual(result);
-      expect(service.update).toHaveBeenCalledWith(email, updateDto);
+      expect(await controller.update(email, updateDto, REQUEST)).toEqual(
+        result,
+      );
+      expect(service.update).toHaveBeenCalledWith(email, updateDto, AUTHOR);
     });
 
     it('should type the body as UpdateScreeningDto so the ValidationPipe validates it', () => {

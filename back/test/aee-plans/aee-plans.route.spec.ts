@@ -12,6 +12,7 @@ import { LEVELS } from 'src/constants';
 import { PrismaService } from 'src/database/prisma.service';
 import { SessionsService } from 'src/sessions/sessions.service';
 import { StudentsService } from 'src/students/students.service';
+import { FormRevisionsService } from 'src/form-revisions/form-revisions.service';
 import {
   BODY_LIMIT_BYTES,
   SECTION_KEYS,
@@ -103,7 +104,9 @@ describe('PAEE, rotas de /aee-plans', () => {
       findMany: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      findUnique: jest.Mock;
     };
+    $transaction: jest.Mock;
   };
   let studentsService: { findOneOrFail: jest.Mock };
 
@@ -115,8 +118,16 @@ describe('PAEE, rotas de /aee-plans', () => {
         create: jest.fn().mockResolvedValue(STORED),
         findMany: jest.fn().mockResolvedValue([STORED]),
         update: jest.fn().mockResolvedValue(STORED),
-        delete: jest.fn().mockResolvedValue({ id: PLAN_ID }),
+        delete: jest
+          .fn()
+          .mockResolvedValue({ id_student: STUDENT_ID, semester: '2026.1' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ ...STORED, id_student: STUDENT_ID }),
       },
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+        callback(prisma),
+      ),
     };
     studentsService = {
       findOneOrFail: jest
@@ -128,6 +139,14 @@ describe('PAEE, rotas de /aee-plans', () => {
       controllers: [AeePlansController],
       providers: [
         AeePlansService,
+        {
+          provide: FormRevisionsService,
+          useValue: {
+            recordCreation: jest.fn(),
+            recordEdit: jest.fn(),
+            removeAll: jest.fn(),
+          },
+        },
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: studentsService },
@@ -495,7 +514,7 @@ describe('PAEE, rotas de /aee-plans', () => {
       expect(response.status).toBe(200);
       expect(prisma.aeePlan.delete).toHaveBeenCalledWith({
         where: { id: PLAN_ID },
-        select: { id: true },
+        select: { id_student: true, semester: true },
       });
     });
 
@@ -532,7 +551,7 @@ describe('PAEE, rotas de /aee-plans', () => {
       expect(response.status).toBe(200);
       expect(prisma.aeePlan.delete).toHaveBeenCalledWith({
         where: { id: 16 },
-        select: { id: true },
+        select: { id_student: true, semester: true },
       });
     });
   });

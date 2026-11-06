@@ -16,6 +16,7 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 import { AEE_PLAN_READERS, LEVELS } from 'src/constants';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
+import { FormRevisionsService } from 'src/form-revisions/form-revisions.service';
 import {
   SEMESTER,
   STUDENT_EMAIL,
@@ -24,6 +25,7 @@ import {
 } from './aee-plan.fixtures';
 
 const STUDENT_ID = 2;
+const AUTHOR = { id: 7, name: 'Autor' };
 const AUTHOR_ID = 7;
 const PLAN_ID = 31;
 
@@ -123,7 +125,14 @@ describe('AeePlansService', () => {
       findMany: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      findUnique: jest.Mock;
     };
+    $transaction: jest.Mock;
+  };
+  let formRevisions: {
+    recordCreation: jest.Mock;
+    recordEdit: jest.Mock;
+    removeAll: jest.Mock;
   };
   let studentsService: { findOneOrFail: jest.Mock };
 
@@ -133,8 +142,21 @@ describe('AeePlansService', () => {
         create: jest.fn().mockResolvedValue(plan),
         findMany: jest.fn().mockResolvedValue([plan]),
         update: jest.fn().mockResolvedValue(plan),
-        delete: jest.fn().mockResolvedValue({ id: PLAN_ID }),
+        delete: jest
+          .fn()
+          .mockResolvedValue({ id_student: STUDENT_ID, semester: '2026.1' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ ...plan, id_student: STUDENT_ID }),
       },
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+        callback(prisma),
+      ),
+    };
+    formRevisions = {
+      recordCreation: jest.fn(),
+      recordEdit: jest.fn(),
+      removeAll: jest.fn(),
     };
     studentsService = {
       findOneOrFail: jest
@@ -147,6 +169,7 @@ describe('AeePlansService', () => {
         AeePlansService,
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: studentsService },
+        { provide: FormRevisionsService, useValue: formRevisions },
       ],
     }).compile();
 
@@ -158,7 +181,7 @@ describe('AeePlansService', () => {
     const dto = validBody() as unknown as CreateAeePlanDto;
 
     it('should create the plan of the student and the semester with the author of the session', async () => {
-      const result = await service.create(dto, AUTHOR_ID);
+      const result = await service.create(dto, AUTHOR);
 
       expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
         email: STUDENT_EMAIL,
@@ -171,7 +194,7 @@ describe('AeePlansService', () => {
     });
 
     it('should not store the e-mail of the student in the record', async () => {
-      await service.create(dto, AUTHOR_ID);
+      await service.create(dto, AUTHOR);
 
       const { data } = prisma.aeePlan.create.mock.calls[0][0] as {
         data: Record<string, unknown>;
@@ -186,7 +209,7 @@ describe('AeePlansService', () => {
         id_student: 55,
       } as unknown as CreateAeePlanDto;
 
-      await service.create(forged, AUTHOR_ID);
+      await service.create(forged, AUTHOR);
 
       const { data } = prisma.aeePlan.create.mock.calls[0][0] as {
         data: { id_author: number; id_student: number };
@@ -200,7 +223,7 @@ describe('AeePlansService', () => {
         new NotFoundException('Estudante não encontrado'),
       );
 
-      await expect(service.create(dto, AUTHOR_ID)).rejects.toThrow(
+      await expect(service.create(dto, AUTHOR)).rejects.toThrow(
         NotFoundException,
       );
       expect(prisma.aeePlan.create).not.toHaveBeenCalled();
@@ -214,7 +237,7 @@ describe('AeePlansService', () => {
       async (_, withTarget) => {
         prisma.aeePlan.create.mockRejectedValue(uniqueViolation(withTarget));
 
-        const result = service.create(dto, AUTHOR_ID);
+        const result = service.create(dto, AUTHOR);
 
         await expect(result).rejects.toThrow(ConflictException);
         await expect(result).rejects.toThrow(
@@ -229,7 +252,7 @@ describe('AeePlansService', () => {
         const error = knownError(code);
         prisma.aeePlan.create.mockRejectedValue(error);
 
-        await expect(service.create(dto, AUTHOR_ID)).rejects.toBe(error);
+        await expect(service.create(dto, AUTHOR)).rejects.toBe(error);
       },
     );
 
@@ -237,7 +260,7 @@ describe('AeePlansService', () => {
       const error = new Error('conexão perdida');
       prisma.aeePlan.create.mockRejectedValue(error);
 
-      await expect(service.create(dto, AUTHOR_ID)).rejects.toBe(error);
+      await expect(service.create(dto, AUTHOR)).rejects.toBe(error);
     });
   });
 
@@ -292,7 +315,10 @@ describe('AeePlansService', () => {
       prisma.aeePlan.findMany.mockResolvedValue([]);
 
       await expect(
-        service.findByStudent(STUDENT_EMAIL, requestOf(LEVELS.PROFISSIONAL_NAPNE)),
+        service.findByStudent(
+          STUDENT_EMAIL,
+          requestOf(LEVELS.PROFISSIONAL_NAPNE),
+        ),
       ).resolves.toEqual([]);
     });
 
@@ -345,7 +371,10 @@ describe('AeePlansService', () => {
       );
 
       await expect(
-        service.findByStudent('prof@example.com', requestOf(LEVELS.PROFISSIONAL_NAPNE)),
+        service.findByStudent(
+          'prof@example.com',
+          requestOf(LEVELS.PROFISSIONAL_NAPNE),
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.aeePlan.findMany).not.toHaveBeenCalled();
     });
@@ -358,7 +387,7 @@ describe('AeePlansService', () => {
     } as unknown as UpdateAeePlanDto;
 
     it('should replace only the sections that were sent', async () => {
-      const result = await service.update(PLAN_ID, dto);
+      const result = await service.update(PLAN_ID, dto, AUTHOR);
 
       expect(prisma.aeePlan.update).toHaveBeenCalledWith({
         where: { id: PLAN_ID },
@@ -372,9 +401,13 @@ describe('AeePlansService', () => {
     });
 
     it('should write has_diagnosis when it is false, which is not the same as missing', async () => {
-      await service.update(PLAN_ID, {
-        has_diagnosis: false,
-      } as UpdateAeePlanDto);
+      await service.update(
+        PLAN_ID,
+        {
+          has_diagnosis: false,
+        } as UpdateAeePlanDto,
+        AUTHOR,
+      );
 
       const { data } = prisma.aeePlan.update.mock.calls[0][0] as {
         data: Record<string, unknown>;
@@ -383,7 +416,7 @@ describe('AeePlansService', () => {
     });
 
     it('should write the whole section that was sent, without merging it with the stored one', async () => {
-      await service.update(PLAN_ID, dto);
+      await service.update(PLAN_ID, dto, AUTHOR);
 
       const { data } = prisma.aeePlan.update.mock.calls[0][0] as {
         data: { objectives: unknown };
@@ -401,7 +434,7 @@ describe('AeePlansService', () => {
         semester: '2030.1',
       } as unknown as UpdateAeePlanDto;
 
-      await service.update(PLAN_ID, forged);
+      await service.update(PLAN_ID, forged, AUTHOR);
 
       const { data } = prisma.aeePlan.update.mock.calls[0][0] as {
         data: Record<string, unknown>;
@@ -420,7 +453,7 @@ describe('AeePlansService', () => {
       async (code) => {
         prisma.aeePlan.update.mockRejectedValue(knownError(code));
 
-        const result = service.update(PLAN_ID, dto);
+        const result = service.update(PLAN_ID, dto, AUTHOR);
 
         await expect(result).rejects.toThrow(NotFoundException);
         await expect(result).rejects.toThrow('PAEE não encontrado');
@@ -431,7 +464,7 @@ describe('AeePlansService', () => {
       const error = knownError('P2003');
       prisma.aeePlan.update.mockRejectedValue(error);
 
-      await expect(service.update(PLAN_ID, dto)).rejects.toBe(error);
+      await expect(service.update(PLAN_ID, dto, AUTHOR)).rejects.toBe(error);
     });
   });
 
@@ -441,7 +474,12 @@ describe('AeePlansService', () => {
 
       expect(prisma.aeePlan.delete).toHaveBeenCalledWith({
         where: { id: PLAN_ID },
-        select: { id: true },
+        select: { id_student: true, semester: true },
+      });
+      expect(formRevisions.removeAll).toHaveBeenCalledWith(expect.anything(), {
+        formType: 'AEE_PLAN',
+        idStudent: STUDENT_ID,
+        recordKey: '2026.1',
       });
       expect(result).toEqual({
         message: `PAEE com id ${PLAN_ID} foi removido com sucesso`,
@@ -465,6 +503,66 @@ describe('AeePlansService', () => {
       prisma.aeePlan.delete.mockRejectedValue(error);
 
       await expect(service.remove(PLAN_ID)).rejects.toBe(error);
+    });
+  });
+
+  describe('histórico de versões', () => {
+    it('should record the version 1 keyed by the semester when the plan is created', async () => {
+      const dto = validBody() as unknown as CreateAeePlanDto;
+
+      await service.create(dto, AUTHOR);
+
+      expect(formRevisions.recordCreation).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          formType: 'AEE_PLAN',
+          idStudent: STUDENT_ID,
+          recordKey: dto.semester,
+        },
+        plan,
+        AUTHOR,
+      );
+    });
+
+    it('should record the edit with the previous content, keyed by the semester of the plan', async () => {
+      const updated = { ...plan, basis: 'Novo embasamento' };
+      prisma.aeePlan.update.mockResolvedValue(updated);
+
+      await service.update(
+        PLAN_ID,
+        { basis: 'Novo embasamento' } as UpdateAeePlanDto,
+        AUTHOR,
+      );
+
+      expect(formRevisions.recordEdit).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          formType: 'AEE_PLAN',
+          idStudent: STUDENT_ID,
+          recordKey: plan.semester,
+        },
+        expect.objectContaining({ after: updated }),
+        AUTHOR,
+      );
+    });
+
+    it('should answer 404 and record nothing when the plan does not exist', async () => {
+      prisma.aeePlan.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.update(PLAN_ID, {} as UpdateAeePlanDto, AUTHOR),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(formRevisions.recordEdit).not.toHaveBeenCalled();
+    });
+
+    it('should let the 409 of the version limit through', async () => {
+      formRevisions.recordEdit.mockRejectedValue(
+        new ConflictException('limite'),
+      );
+
+      await expect(
+        service.update(PLAN_ID, {} as UpdateAeePlanDto, AUTHOR),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 });

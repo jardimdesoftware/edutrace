@@ -2,6 +2,8 @@ import { CommentType } from '@prisma/client';
 import {
   AEE_PLAN_READERS,
   ANAMNESIS_READERS,
+  FORM_MAX_VERSIONS,
+  FORM_REVISION_READERS,
   CASE_STUDY_READERS,
   COMBINING_MARKS_MAX_RUN,
   COMMENT_AUTHOR_AREAS,
@@ -124,9 +126,7 @@ describe('PEI_ENTRIES_MAX_ACTIVE_PER_STUDENT', () => {
 
 describe('MANAGER_CONTACT_READERS', () => {
   it('should list only the NAPNE as readers of the phone and the cpf of the external manager', () => {
-    expect(MANAGER_CONTACT_READERS).toEqual([
-      LEVELS.PROFISSIONAL_NAPNE,
-    ]);
+    expect(MANAGER_CONTACT_READERS).toEqual([LEVELS.PROFISSIONAL_NAPNE]);
   });
 
   it('should not include the student, the education nor the health level', () => {
@@ -203,5 +203,27 @@ describe('PROFESSIONAL_ROLES', () => {
   it('should not include the Administrator nor the student, who stay alone', () => {
     expect(PROFESSIONAL_ROLES).not.toContain(LEVELS.ADMIN);
     expect(PROFESSIONAL_ROLES).not.toContain(LEVELS.ALUNO_ESTUDANTE);
+  });
+});
+
+describe('FORM_MAX_VERSIONS', () => {
+  it('should keep 5 versions per form, the creation included', () => {
+    expect(FORM_MAX_VERSIONS).toBe(5);
+  });
+});
+
+describe('FORM_REVISION_READERS', () => {
+  it.each(['SCREENING', 'ANAMNESIS', 'CASE_STUDY', 'AEE_PLAN'] as const)(
+    'should never list the student nor the administrator as reader of the %s history',
+    (formType) => {
+      expect(FORM_REVISION_READERS[formType]).not.toContain(
+        LEVELS.ALUNO_ESTUDANTE,
+      );
+      expect(FORM_REVISION_READERS[formType]).not.toContain(LEVELS.ADMIN);
+    },
+  );
+
+  it('should give the anamnesis history to the same levels that read the anamnesis', () => {
+    expect(FORM_REVISION_READERS.ANAMNESIS).toEqual(ANAMNESIS_READERS);
   });
 });

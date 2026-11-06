@@ -13,9 +13,11 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 import { CASE_STUDY_READERS, LEVELS } from 'src/constants';
 import { PrismaService } from 'src/database/prisma.service';
 import { StudentsService } from 'src/students/students.service';
+import { FormRevisionsService } from 'src/form-revisions/form-revisions.service';
 import { STUDENT_EMAIL, validBody, validSections } from './case-study.fixtures';
 
 const STUDENT_ID = 2;
+const AUTHOR = { id: 7, name: 'Autor' };
 const AUTHOR_ID = 7;
 
 const caseStudy = {
@@ -100,6 +102,13 @@ describe('CaseStudiesService', () => {
       update: jest.Mock;
       deleteMany: jest.Mock;
     };
+    user: { findUnique: jest.Mock };
+    $transaction: jest.Mock;
+  };
+  let formRevisions: {
+    recordCreation: jest.Mock;
+    recordEdit: jest.Mock;
+    removeAll: jest.Mock;
   };
   let studentsService: { findOneOrFail: jest.Mock };
 
@@ -111,6 +120,15 @@ describe('CaseStudiesService', () => {
         update: jest.fn().mockResolvedValue(caseStudy),
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      user: { findUnique: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+        callback(prisma),
+      ),
+    };
+    formRevisions = {
+      recordCreation: jest.fn(),
+      recordEdit: jest.fn(),
+      removeAll: jest.fn(),
     };
     studentsService = {
       findOneOrFail: jest
@@ -123,6 +141,7 @@ describe('CaseStudiesService', () => {
         CaseStudiesService,
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: studentsService },
+        { provide: FormRevisionsService, useValue: formRevisions },
       ],
     }).compile();
 
@@ -134,7 +153,7 @@ describe('CaseStudiesService', () => {
     const dto = validBody() as unknown as CreateCaseStudyDto;
 
     it('should create the case study of the student with the author of the session', async () => {
-      const result = await service.create(dto, AUTHOR_ID);
+      const result = await service.create(dto, AUTHOR);
 
       expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
         email: STUDENT_EMAIL,
@@ -147,7 +166,7 @@ describe('CaseStudiesService', () => {
     });
 
     it('should not store the e-mail of the student in the record', async () => {
-      await service.create(dto, AUTHOR_ID);
+      await service.create(dto, AUTHOR);
 
       const { data } = prisma.caseStudy.create.mock.calls[0][0] as {
         data: Record<string, unknown>;
@@ -161,7 +180,7 @@ describe('CaseStudiesService', () => {
         id_author: 1234,
       } as unknown as CreateCaseStudyDto;
 
-      await service.create(forged, AUTHOR_ID);
+      await service.create(forged, AUTHOR);
 
       const { data } = prisma.caseStudy.create.mock.calls[0][0] as {
         data: { id_author: number };
@@ -174,7 +193,7 @@ describe('CaseStudiesService', () => {
         new NotFoundException('Estudante não encontrado'),
       );
 
-      await expect(service.create(dto, AUTHOR_ID)).rejects.toThrow(
+      await expect(service.create(dto, AUTHOR)).rejects.toThrow(
         NotFoundException,
       );
       expect(prisma.caseStudy.create).not.toHaveBeenCalled();
@@ -188,7 +207,7 @@ describe('CaseStudiesService', () => {
       async (_, withTarget) => {
         prisma.caseStudy.create.mockRejectedValue(uniqueViolation(withTarget));
 
-        const result = service.create(dto, AUTHOR_ID);
+        const result = service.create(dto, AUTHOR);
 
         await expect(result).rejects.toThrow(ConflictException);
         await expect(result).rejects.toThrow(
@@ -203,7 +222,7 @@ describe('CaseStudiesService', () => {
         const error = knownError(code);
         prisma.caseStudy.create.mockRejectedValue(error);
 
-        await expect(service.create(dto, AUTHOR_ID)).rejects.toBe(error);
+        await expect(service.create(dto, AUTHOR)).rejects.toBe(error);
       },
     );
 
@@ -211,7 +230,7 @@ describe('CaseStudiesService', () => {
       const error = new Error('conexão perdida');
       prisma.caseStudy.create.mockRejectedValue(error);
 
-      await expect(service.create(dto, AUTHOR_ID)).rejects.toBe(error);
+      await expect(service.create(dto, AUTHOR)).rejects.toBe(error);
     });
   });
 
@@ -302,7 +321,10 @@ describe('CaseStudiesService', () => {
       );
 
       await expect(
-        service.findOne('prof@example.com', requestOf(LEVELS.PROFISSIONAL_NAPNE)),
+        service.findOne(
+          'prof@example.com',
+          requestOf(LEVELS.PROFISSIONAL_NAPNE),
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.caseStudy.findUnique).not.toHaveBeenCalled();
     });
@@ -338,7 +360,7 @@ describe('CaseStudiesService', () => {
     } as unknown as UpdateCaseStudyDto;
 
     it('should replace only the sections that were sent', async () => {
-      const result = await service.update(STUDENT_EMAIL, dto);
+      const result = await service.update(STUDENT_EMAIL, dto, AUTHOR);
 
       expect(studentsService.findOneOrFail).toHaveBeenCalledWith({
         email: STUDENT_EMAIL,
@@ -355,9 +377,8 @@ describe('CaseStudiesService', () => {
     });
 
     it('should write the whole section that was sent, without merging it with the stored one', async () => {
-      await service.update(STUDENT_EMAIL, dto);
+      await service.update(STUDENT_EMAIL, dto, AUTHOR);
 
-      expect(prisma.caseStudy.findUnique).not.toHaveBeenCalled();
       const { data } = prisma.caseStudy.update.mock.calls[0][0] as {
         data: { aee_opinion: unknown };
       };
@@ -373,7 +394,7 @@ describe('CaseStudiesService', () => {
         id_student: 55,
       } as unknown as UpdateCaseStudyDto;
 
-      await service.update(STUDENT_EMAIL, forged);
+      await service.update(STUDENT_EMAIL, forged, AUTHOR);
 
       const { data } = prisma.caseStudy.update.mock.calls[0][0] as {
         data: Record<string, unknown>;
@@ -388,16 +409,16 @@ describe('CaseStudiesService', () => {
         new NotFoundException('Estudante não encontrado'),
       );
 
-      await expect(service.update('prof@example.com', dto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('prof@example.com', dto, AUTHOR),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.caseStudy.update).not.toHaveBeenCalled();
     });
 
     it('should answer 404 when the student has no case study', async () => {
       prisma.caseStudy.update.mockRejectedValue(knownError('P2025'));
 
-      const result = service.update(STUDENT_EMAIL, dto);
+      const result = service.update(STUDENT_EMAIL, dto, AUTHOR);
 
       await expect(result).rejects.toThrow(NotFoundException);
       await expect(result).rejects.toThrow('Estudo de caso não encontrado');
@@ -407,7 +428,9 @@ describe('CaseStudiesService', () => {
       const error = knownError('P2003');
       prisma.caseStudy.update.mockRejectedValue(error);
 
-      await expect(service.update(STUDENT_EMAIL, dto)).rejects.toBe(error);
+      await expect(service.update(STUDENT_EMAIL, dto, AUTHOR)).rejects.toBe(
+        error,
+      );
     });
   });
 
@@ -430,6 +453,72 @@ describe('CaseStudiesService', () => {
 
       await expect(result).rejects.toThrow(NotFoundException);
       await expect(result).rejects.toThrow('Estudo de caso não encontrado');
+    });
+  });
+
+  describe('histórico de versões', () => {
+    it('should record the version 1 when the case study is created', async () => {
+      await service.create(
+        validBody() as unknown as CreateCaseStudyDto,
+        AUTHOR,
+      );
+
+      expect(formRevisions.recordCreation).toHaveBeenCalledWith(
+        expect.anything(),
+        { formType: 'CASE_STUDY', idStudent: STUDENT_ID },
+        caseStudy,
+        AUTHOR,
+      );
+    });
+
+    it('should record the edit with the previous content and the original author', async () => {
+      const updated = { ...caseStudy, barriers: 'Novas barreiras' };
+      prisma.caseStudy.update.mockResolvedValue(updated);
+
+      await service.update(
+        STUDENT_EMAIL,
+        { barriers: 'Novas barreiras' } as UpdateCaseStudyDto,
+        AUTHOR,
+      );
+
+      expect(formRevisions.recordEdit).toHaveBeenCalledWith(
+        expect.anything(),
+        { formType: 'CASE_STUDY', idStudent: STUDENT_ID },
+        expect.objectContaining({
+          before: caseStudy,
+          after: updated,
+          beforeAuthor: { id: AUTHOR_ID, name: 'Profissional NAPNE' },
+        }),
+        AUTHOR,
+      );
+    });
+
+    it('should answer 404 and record nothing when there is no case study to edit', async () => {
+      prisma.caseStudy.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.update(STUDENT_EMAIL, {} as UpdateCaseStudyDto, AUTHOR),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(formRevisions.recordEdit).not.toHaveBeenCalled();
+    });
+
+    it('should let the 409 of the version limit through', async () => {
+      formRevisions.recordEdit.mockRejectedValue(
+        new ConflictException('limite'),
+      );
+
+      await expect(
+        service.update(STUDENT_EMAIL, {} as UpdateCaseStudyDto, AUTHOR),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('should delete the history together with the case study', async () => {
+      await service.remove(STUDENT_EMAIL);
+
+      expect(formRevisions.removeAll).toHaveBeenCalledWith(expect.anything(), {
+        formType: 'CASE_STUDY',
+        idStudent: STUDENT_ID,
+      });
     });
   });
 });

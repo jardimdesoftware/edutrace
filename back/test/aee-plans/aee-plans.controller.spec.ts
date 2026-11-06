@@ -61,7 +61,10 @@ describe('AeePlansController', () => {
 
       const result = await controller.create(dto, request);
 
-      expect(service.create).toHaveBeenCalledWith(dto, 7);
+      expect(service.create).toHaveBeenCalledWith(dto, {
+        id: 7,
+        name: request.user.name,
+      });
       expect(result).toBe(plan);
     });
 
@@ -90,9 +93,12 @@ describe('AeePlansController', () => {
     it('should update the plan of the id', async () => {
       const dto = { basis: 'Novo embasamento' } as UpdateAeePlanDto;
 
-      const result = await controller.update(31, dto);
+      const result = await controller.update(31, dto, request);
 
-      expect(service.update).toHaveBeenCalledWith(31, dto);
+      expect(service.update).toHaveBeenCalledWith(31, dto, {
+        id: 7,
+        name: request.user.name,
+      });
       expect(result).toBe(plan);
     });
   });

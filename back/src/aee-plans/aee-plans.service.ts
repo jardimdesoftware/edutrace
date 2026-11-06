@@ -10,6 +10,11 @@ import { AuthenticatedRequest } from 'src/comments/types/express';
 import { AEE_PLAN_READERS } from 'src/constants';
 import { hasAnyRole } from 'src/auth/roles';
 import { StudentsService } from 'src/students/students.service';
+import { FormType } from '@prisma/client';
+import {
+  FormRevisionsService,
+  RevisionAuthor,
+} from 'src/form-revisions/form-revisions.service';
 import { AEE_PLAN_SECTIONS_SELECT, AEE_PLAN_SELECT } from './aee-plan-select';
 import { CreateAeePlanDto } from './dto/create-aee-plan.dto';
 import { UpdateAeePlanDto } from './dto/update-aee-plan.dto';
@@ -58,22 +63,37 @@ export class AeePlansService {
   constructor(
     private prisma: PrismaService,
     private studentsService: StudentsService,
+    private formRevisions: FormRevisionsService,
   ) {}
 
-  async create(createAeePlanDto: CreateAeePlanDto, idAuthor: number) {
+  async create(createAeePlanDto: CreateAeePlanDto, author: RevisionAuthor) {
     const student = await this.studentsService.findOneOrFail({
       email: createAeePlanDto.student_email,
     });
 
     try {
-      return await this.prisma.aeePlan.create({
-        data: {
-          ...pickSections(createAeePlanDto),
-          semester: createAeePlanDto.semester,
-          id_student: student.id,
-          id_author: idAuthor,
-        } as unknown as Prisma.AeePlanUncheckedCreateInput,
-        select: AEE_PLAN_SELECT,
+      // O PAEE e a versão 1 são gravados juntos.
+      return await this.prisma.$transaction(async (tx) => {
+        const created = await tx.aeePlan.create({
+          data: {
+            ...pickSections(createAeePlanDto),
+            semester: createAeePlanDto.semester,
+            id_student: student.id,
+            id_author: author.id,
+          } as unknown as Prisma.AeePlanUncheckedCreateInput,
+          select: AEE_PLAN_SELECT,
+        });
+        await this.formRevisions.recordCreation(
+          tx,
+          {
+            formType: FormType.AEE_PLAN,
+            idStudent: student.id,
+            recordKey: createAeePlanDto.semester,
+          },
+          created,
+          author,
+        );
+        return created;
       });
     } catch (error) {
       if (isPrismaError(error, 'P2002')) {
@@ -110,14 +130,48 @@ export class AeePlansService {
 
   // Cada seção enviada substitui a seção inteira; as que não vieram ficam como
   // estão. O autor, o estudante e o período letivo não mudam.
-  async update(id: number, updateAeePlanDto: UpdateAeePlanDto) {
+  async update(
+    id: number,
+    updateAeePlanDto: UpdateAeePlanDto,
+    author: RevisionAuthor,
+  ) {
     try {
-      return await this.prisma.aeePlan.update({
-        where: { id },
-        data: pickSections(
-          updateAeePlanDto,
-        ) as unknown as Prisma.AeePlanUncheckedUpdateInput,
-        select: AEE_PLAN_SELECT,
+      // A edição e a versão nova são gravadas juntas; a edição que passa do
+      // teto de versões recebe 409 e o PAEE não muda.
+      return await this.prisma.$transaction(async (tx) => {
+        const before = await tx.aeePlan.findUnique({
+          where: { id },
+          select: { ...AEE_PLAN_SELECT, id_student: true },
+        });
+        if (!before) {
+          throw new NotFoundException(NOT_FOUND_MESSAGE);
+        }
+
+        const updated = await tx.aeePlan.update({
+          where: { id },
+          data: pickSections(
+            updateAeePlanDto,
+          ) as unknown as Prisma.AeePlanUncheckedUpdateInput,
+          select: AEE_PLAN_SELECT,
+        });
+        await this.formRevisions.recordEdit(
+          tx,
+          {
+            formType: FormType.AEE_PLAN,
+            idStudent: before.id_student,
+            recordKey: before.semester,
+          },
+          {
+            before,
+            beforeAt: before.updated_at ?? before.created_at,
+            beforeAuthor: before.author
+              ? { id: before.author.id, name: before.author.full_name }
+              : null,
+            after: updated,
+          },
+          author,
+        );
+        return updated;
       });
     } catch (error) {
       if (isNotFound(error)) {
@@ -129,7 +183,17 @@ export class AeePlansService {
 
   async remove(id: number) {
     try {
-      await this.prisma.aeePlan.delete({ where: { id }, select: { id: true } });
+      await this.prisma.$transaction(async (tx) => {
+        const deleted = await tx.aeePlan.delete({
+          where: { id },
+          select: { id_student: true, semester: true },
+        });
+        await this.formRevisions.removeAll(tx, {
+          formType: FormType.AEE_PLAN,
+          idStudent: deleted.id_student,
+          recordKey: deleted.semester,
+        });
+      });
     } catch (error) {
       if (isNotFound(error)) {
         throw new NotFoundException(NOT_FOUND_MESSAGE);

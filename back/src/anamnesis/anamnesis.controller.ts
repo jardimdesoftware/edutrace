@@ -14,6 +14,7 @@ import { UpdateAnamnesisDto } from './dto/update-anamnesis.dto';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { LEVELS } from 'src/constants';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { authorOf } from 'src/form-revisions/revision-author';
 
 @Controller('anamnesis')
 export class AnamnesisController {
@@ -21,8 +22,11 @@ export class AnamnesisController {
 
   @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
   @Post()
-  create(@Body() createAnamnesisDto: CreateAnamnesisDto) {
-    return this.anamnesisService.create(createAnamnesisDto);
+  create(
+    @Body() createAnamnesisDto: CreateAnamnesisDto,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.anamnesisService.create(createAnamnesisDto, authorOf(request));
   }
 
   @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
@@ -50,8 +54,13 @@ export class AnamnesisController {
   update(
     @Param('email') email: string,
     @Body() updateAnamnesisDto: UpdateAnamnesisDto,
+    @Request() request: AuthenticatedRequest,
   ) {
-    return this.anamnesisService.update(email, updateAnamnesisDto);
+    return this.anamnesisService.update(
+      email,
+      updateAnamnesisDto,
+      authorOf(request),
+    );
   }
 
   @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)

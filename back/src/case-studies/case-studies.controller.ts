@@ -11,6 +11,7 @@ import {
 import { ApiOperation } from '@nestjs/swagger';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { authorOf } from 'src/form-revisions/revision-author';
 import { LEVELS } from 'src/constants';
 import { CaseStudiesService } from './case-studies.service';
 import { CreateCaseStudyDto } from './dto/create-case-study.dto';
@@ -27,7 +28,10 @@ export class CaseStudiesController {
     @Body() createCaseStudyDto: CreateCaseStudyDto,
     @Request() request: AuthenticatedRequest,
   ) {
-    return this.caseStudiesService.create(createCaseStudyDto, request.user.sub);
+    return this.caseStudiesService.create(
+      createCaseStudyDto,
+      authorOf(request),
+    );
   }
 
   // O estudante entra na lista, e o service o limita ao próprio estudo de caso.
@@ -57,8 +61,13 @@ export class CaseStudiesController {
   update(
     @Param('email') email: string,
     @Body() updateCaseStudyDto: UpdateCaseStudyDto,
+    @Request() request: AuthenticatedRequest,
   ) {
-    return this.caseStudiesService.update(email, updateCaseStudyDto);
+    return this.caseStudiesService.update(
+      email,
+      updateCaseStudyDto,
+      authorOf(request),
+    );
   }
 
   @AllowLevels(LEVELS.PROFESSOR_AEE)

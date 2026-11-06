@@ -56,7 +56,10 @@ describe('CaseStudiesController', () => {
 
       const result = await controller.create(dto, request);
 
-      expect(service.create).toHaveBeenCalledWith(dto, 7);
+      expect(service.create).toHaveBeenCalledWith(dto, {
+        id: 7,
+        name: request.user.name,
+      });
       expect(result).toBe(caseStudy);
     });
 
@@ -85,9 +88,12 @@ describe('CaseStudiesController', () => {
     it('should update the case study of the e-mail', async () => {
       const dto = { barriers: 'Novas barreiras' } as UpdateCaseStudyDto;
 
-      const result = await controller.update(STUDENT_EMAIL, dto);
+      const result = await controller.update(STUDENT_EMAIL, dto, request);
 
-      expect(service.update).toHaveBeenCalledWith(STUDENT_EMAIL, dto);
+      expect(service.update).toHaveBeenCalledWith(STUDENT_EMAIL, dto, {
+        id: 7,
+        name: request.user.name,
+      });
       expect(result).toBe(caseStudy);
     });
   });

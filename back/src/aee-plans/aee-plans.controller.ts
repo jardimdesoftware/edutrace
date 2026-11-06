@@ -11,6 +11,7 @@ import {
 import { ApiOperation, ApiParam } from '@nestjs/swagger';
 import { AllowLevels } from 'src/auth/decorators/allow-levels.decorator';
 import { AuthenticatedRequest } from 'src/comments/types/express';
+import { authorOf } from 'src/form-revisions/revision-author';
 import {
   ParsePositiveIdPipe,
   PositiveIdParam,
@@ -31,7 +32,7 @@ export class AeePlansController {
     @Body() createAeePlanDto: CreateAeePlanDto,
     @Request() request: AuthenticatedRequest,
   ) {
-    return this.aeePlansService.create(createAeePlanDto, request.user.sub);
+    return this.aeePlansService.create(createAeePlanDto, authorOf(request));
   }
 
   // O estudante entra na lista, e o service o limita aos próprios PAEE.
@@ -67,8 +68,9 @@ export class AeePlansController {
   update(
     @PositiveIdParam('id', ParsePositiveIdPipe) id: number,
     @Body() updateAeePlanDto: UpdateAeePlanDto,
+    @Request() request: AuthenticatedRequest,
   ) {
-    return this.aeePlansService.update(id, updateAeePlanDto);
+    return this.aeePlansService.update(id, updateAeePlanDto, authorOf(request));
   }
 
   @ApiParam({ name: 'id', type: Number })

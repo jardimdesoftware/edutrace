@@ -1,4 +1,4 @@
-import type { CommentType } from '@prisma/client';
+import type { CommentType, FormType } from '@prisma/client';
 
 export const PHASES = {
   TRIAGEM: 1,
@@ -55,6 +55,25 @@ export const AEE_PLAN_READERS: readonly number[] = [
   LEVELS.PROFISSIONAL_NAPNE,
   LEVELS.PROFESSOR_AEE,
 ];
+
+// Versões que cada formulário do estudante guarda, somando todas as pessoas que
+// editaram. A criação é a versão 1, e a edição que passaria disso recebe 409.
+// O mesmo teto existe como CHECK na tabela FormRevision.
+export const FORM_MAX_VERSIONS = 5;
+
+// Quem lê o histórico de cada formulário: os mesmos profissionais que leem o
+// formulário. O estudante lê o próprio formulário, mas não vê quem o editou.
+export const FORM_REVISION_READERS = {
+  SCREENING: [
+    LEVELS.PROFISSIONAL_EDUCACAO,
+    LEVELS.PROFISSIONAL_SAUDE,
+    LEVELS.PROFISSIONAL_NAPNE,
+    LEVELS.PROFESSOR_AEE,
+  ],
+  ANAMNESIS: ANAMNESIS_READERS,
+  CASE_STUDY: CASE_STUDY_READERS,
+  AEE_PLAN: AEE_PLAN_READERS,
+} as const satisfies Record<FormType, readonly number[]>;
 
 // Quem lê os registros do PEI de qualquer estudante. O estudante lê só os
 // próprios, e quem escreve é só o Profissional da Educação (declarado nas rotas).
