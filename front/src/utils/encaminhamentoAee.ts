@@ -55,3 +55,13 @@ export function podeEscolherProfessor(professor: Pick<ProfessionalLoad, "free">)
 export function textoDaConfirmacaoDoEncaminhamento(aluno: string | null, professor: string): string {
   return `Encaminhar ${aluno?.trim() || "o estudante"} para ${professor}? O estudante passa a ser atendido agora por este professor, que recebe um aviso.`;
 }
+
+// O encaminhamento fica na última página do documento do estudante em qualquer
+// modo (criação, edição e leitura), porque depende do estudante e não do
+// documento já salvo. Só some enquanto se lê uma versão antiga.
+export function mostrarExtraDoUltimoPasso(
+  alvo: string | null | undefined,
+  lendoVersaoAntiga: boolean,
+): boolean {
+  return Boolean(alvo) && !lendoVersaoAntiga;
+}
