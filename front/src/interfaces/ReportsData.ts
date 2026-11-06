@@ -29,3 +29,9 @@ export interface ReportsData {
     caseStudy?: CaseStudyDoRelatorio | null
     aeePlans?: AeePlanDoRelatorio[]
 }
+
+// Quem gerou o relatório: o nome e o CPF já mascarado pelo back.
+export interface ReportGenerator {
+    full_name: string
+    cpf: string
+}

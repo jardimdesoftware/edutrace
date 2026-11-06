@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getReportByEmail } from './reports';
+import { getReportByEmail, getReportGenerator } from './reports';
 
 const API_URL = 'http://api.test';
 // '#' cortaria o resto da URL como fragmento, '?' viraria query string e '/'
@@ -33,5 +33,11 @@ describe('reports', () => {
     await getReportByEmail(EMAIL);
 
     assert.deepEqual(urls, [`${API_URL}/reports/${ENCODED}`]);
+  });
+
+  it('getReportGenerator asks for the generator of the session', async () => {
+    await getReportGenerator();
+
+    assert.deepEqual(urls, [`${API_URL}/reports/generator`]);
   });
 });
