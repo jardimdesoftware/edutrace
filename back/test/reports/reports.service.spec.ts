@@ -141,6 +141,7 @@ describe('ReportsService', () => {
             caseStudy: { findUnique: jest.fn() },
             aeePlan: { findMany: jest.fn().mockResolvedValue([]) },
             anamnesis: { findUnique: jest.fn() },
+            user: { findUnique: jest.fn() },
           },
         },
       ],
@@ -392,6 +393,41 @@ describe('ReportsService', () => {
       expect(prisma.peiEntry.findMany).not.toHaveBeenCalled();
       expect(prisma.caseStudy.findUnique).not.toHaveBeenCalled();
       expect(prisma.aeePlan.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('generator', () => {
+    it('should return the name and the masked CPF of the user, never the full CPF', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+        full_name: 'Ana NAPNE',
+        cpf: '123.456.789-09',
+      } as never);
+
+      const result = await service.generator(7);
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 7 },
+        select: { full_name: true, cpf: true },
+      });
+      expect(result).toEqual({ full_name: 'Ana NAPNE', cpf: '***.456.789-**' });
+      expect(JSON.stringify(result)).not.toContain('123');
+    });
+
+    it('should hide the CPF entirely when it is not a CPF', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+        full_name: 'Ana NAPNE',
+        cpf: '12',
+      } as never);
+
+      const result = await service.generator(7);
+
+      expect(result.cpf).toBe('***');
+    });
+
+    it('should throw NotFoundException when the user does not exist', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.generator(7)).rejects.toThrow(NotFoundException);
     });
   });
 });
