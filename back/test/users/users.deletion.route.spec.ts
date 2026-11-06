@@ -47,6 +47,7 @@ describe('exclusão de usuário, rotas de /users', () => {
     confirmDeletionCredentials: jest.Mock;
     markForDeletion: jest.Mock;
     restore: jest.Mock;
+    deletionPreview: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -58,6 +59,7 @@ describe('exclusão de usuário, rotas de /users', () => {
       confirmDeletionCredentials: jest.fn().mockResolvedValue(null),
       markForDeletion: jest.fn().mockResolvedValue(MARKED),
       restore: jest.fn().mockResolvedValue({ ...MARKED, deleted_at: null }),
+      deletionPreview: jest.fn().mockResolvedValue({ has_data: true }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -214,6 +216,87 @@ describe('exclusão de usuário, rotas de /users', () => {
 
       expect(response.status).toBe(400);
       expect(usersService.restore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /users, situação', () => {
+    const list = (query = '') =>
+      request(app.getHttpServer())
+        .get('/users' + query)
+        .set('Authorization', 'Bearer token');
+
+    it('should ask for the default list, which hides the deactivated users, when no situation comes', async () => {
+      usersService.findAll.mockResolvedValue([]);
+
+      const response = await list();
+
+      expect(response.status).toBe(200);
+      expect(usersService.findAll).toHaveBeenCalledWith(undefined);
+    });
+
+    it.each(['padrao', 'carencia', 'desativados'])(
+      'should pass the situation %s to the service',
+      async (situation) => {
+        usersService.findAll.mockResolvedValue([]);
+
+        const response = await list('?situation=' + situation);
+
+        expect(response.status).toBe(200);
+        expect(usersService.findAll).toHaveBeenCalledWith(situation);
+      },
+    );
+
+    it.each(['todos', 'DESATIVADOS', '1', 'deleted_at'])(
+      'should answer 400 for the situation %s, without querying',
+      async (situation) => {
+        const response = await list('?situation=' + situation);
+
+        expect(response.status).toBe(400);
+        expect(usersService.findAll).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(NOT_ADMIN)(
+      'should answer 403 to the %s, also for the deactivated list',
+      async (_, level) => {
+        sessionLevel = level;
+
+        const response = await list('?situation=desativados');
+
+        expect(response.status).toBe(403);
+        expect(usersService.findAll).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('GET /users/:id/deletion-preview', () => {
+    const preview = (id: string | number) =>
+      request(app.getHttpServer())
+        .get('/users/' + id + '/deletion-preview')
+        .set('Authorization', 'Bearer token');
+
+    it('should tell the administrator whether the account has data', async () => {
+      const response = await preview(7);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ has_data: true });
+      expect(usersService.deletionPreview).toHaveBeenCalledWith(7);
+    });
+
+    it.each(NOT_ADMIN)('should answer 403 to the %s', async (_, level) => {
+      sessionLevel = level;
+
+      const response = await preview(7);
+
+      expect(response.status).toBe(403);
+      expect(usersService.deletionPreview).not.toHaveBeenCalled();
+    });
+
+    it('should answer 400 for an id that is not an integer', async () => {
+      const response = await preview('abc');
+
+      expect(response.status).toBe(400);
+      expect(usersService.deletionPreview).not.toHaveBeenCalled();
     });
   });
 
