@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   COMPLETE_REGISTRATION_PAGE,
   registrationRedirect,
+  showHeader,
 } from "./registrationRedirect";
 
 describe("registrationRedirect", () => {
@@ -26,5 +27,17 @@ describe("registrationRedirect", () => {
 
   it("sends an account with complete registration away from the registration page", () => {
     assert.equal(registrationRedirect(complete, COMPLETE_REGISTRATION_PAGE), "/home");
+  });
+});
+
+describe("showHeader", () => {
+  it("hides the header while the registration is pending", () => {
+    assert.equal(showHeader({ must_complete_registration: true }), false);
+  });
+
+  it("shows the header once the registration is complete", () => {
+    assert.equal(showHeader({ must_complete_registration: false }), true);
+    assert.equal(showHeader({}), true);
+    assert.equal(showHeader(null), true);
   });
 });
