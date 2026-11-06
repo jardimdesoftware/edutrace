@@ -37,6 +37,10 @@ interface FormularioPorTabelaProps<F extends object> {
   resumo?: ReactNode;
   // Botões do documento que não são do formulário, como Excluir.
   acoesDoDocumento?: ReactNode;
+  // Autoria do documento, à direita do título.
+  ladoDoTitulo?: ReactNode;
+  // Aviso do documento, sob o título (por exemplo, uma versão antiga aberta).
+  aviso?: ReactNode;
   secoes: readonly SecaoDef[];
   // Prefixo dos ids dos campos, para o rótulo e o foco de erro acharem o campo.
   prefixoDosIds: string;
@@ -64,6 +68,8 @@ export default function FormularioPorTabela<F extends object>({
   estudante,
   resumo,
   acoesDoDocumento,
+  ladoDoTitulo,
+  aviso,
   secoes,
   prefixoDosIds,
   inicial,
@@ -193,6 +199,8 @@ export default function FormularioPorTabela<F extends object>({
         estudante={estudante}
         resumo={resumo}
         acoesDoDocumento={acoesDoDocumento}
+        ladoDoTitulo={ladoDoTitulo}
+        aviso={aviso}
         passos={passos}
         atual={atual}
         comPendencia={situacao.comPendencia.map((pendente, indice) => pendente && aparece(indice))}
