@@ -33,8 +33,8 @@ const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 
 // Só quem provou a identidade (senha correta ou Conta Google vinculada) chega a
 // ver esta mensagem, então ela não revela quais contas existem.
-const PENDING_DELETION_MESSAGE =
-  'Esta conta está em processo de exclusão. Procure a administração.';
+const DEACTIVATED_ACCOUNT_MESSAGE =
+  'Esta conta foi desativada. Entre em contato com um administrador.';
 
 // O Google Workspace do IFPE é a autoridade sobre os endereços discentes, e os
 // tokens desses endereços trazem o claim hd com o domínio. Sem hd, o Google não
@@ -377,7 +377,9 @@ export class AuthService {
       );
 
       request.on('timeout', () => {
-        request.destroy(new Error('Tempo limite ao validar credencial Google.'));
+        request.destroy(
+          new Error('Tempo limite ao validar credencial Google.'),
+        );
       });
       request.on('error', reject);
     });
@@ -422,7 +424,7 @@ export class AuthService {
     context?: SessionContext,
   ): Promise<{ access_token: string }> {
     if (user.deleted_at) {
-      throw new UnauthorizedException(PENDING_DELETION_MESSAGE);
+      throw new UnauthorizedException(DEACTIVATED_ACCOUNT_MESSAGE);
     }
 
     await this.sessionsService.revokeAllFromUser(user.id);
