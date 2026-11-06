@@ -49,10 +49,9 @@ interface CampoDaTabelaProps {
   valor: unknown;
   erro?: string;
   onChange: AoAlterar;
-  rotuloOculto?: boolean;
 }
 
-function CampoDaTabela({ campo, id, valor, erro, onChange, rotuloOculto }: CampoDaTabelaProps) {
+function CampoDaTabela({ campo, id, valor, erro, onChange }: CampoDaTabelaProps) {
   const texto = typeof valor === "string" ? valor : "";
   const alterar = (novo: string) => onChange(campo.caminho, novo);
 
@@ -71,7 +70,6 @@ function CampoDaTabela({ campo, id, valor, erro, onChange, rotuloOculto }: Campo
         <TextAreaField
           id={id}
           rotulo={campo.rotulo}
-          rotuloOculto={rotuloOculto}
           obrigatorio={campo.obrigatorio}
           valor={texto}
           tamanhoMaximo={campo.max}
@@ -122,11 +120,10 @@ function CampoDaTabela({ campo, id, valor, erro, onChange, rotuloOculto }: Campo
 
 interface GrupoDaTabelaProps<F> {
   grupo: GrupoDef;
-  tituloDaSecao: string;
   controle: ControleDoFormulario<F>;
 }
 
-export function GrupoDaTabela<F>({ grupo, tituloDaSecao, controle }: GrupoDaTabelaProps<F>) {
+export function GrupoDaTabela<F>({ grupo, controle }: GrupoDaTabelaProps<F>) {
   const { valores, erros, alterar, idDoCampo } = controle;
   const renderizar = (campo: CampoDef) => (
     <CampoDaTabela
@@ -136,13 +133,12 @@ export function GrupoDaTabela<F>({ grupo, tituloDaSecao, controle }: GrupoDaTabe
       valor={lerCaminho(valores, campo.caminho)}
       erro={erros[campo.caminho]}
       onChange={alterar}
-      rotuloOculto={campo.rotulo === tituloDaSecao}
     />
   );
 
   if (grupo.lista) {
     return (
-      <FormFieldset legenda={grupo.titulo} legendaOculta={grupo.titulo === tituloDaSecao}>
+      <FormFieldset legenda={grupo.titulo}>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {grupo.campos.filter((campo) => campo.tipo === "marcacao").map(renderizar)}
         </div>
