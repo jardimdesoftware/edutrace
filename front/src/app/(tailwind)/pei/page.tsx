@@ -227,7 +227,7 @@ function PeiPage() {
         <div className="mx-auto w-full max-w-3xl space-y-6">
           <header className="space-y-1">
             <h1 className="edutrace-page-title">PEI</h1>
-            <p className="text-gray-600">Plano de Ensino Individualizado</p>
+            <p className="text-gray-600">Plano Educacional Individualizado</p>
             {nome && <p className="text-gray-600">Estudante: {nome}</p>}
           </header>
 
