@@ -1822,6 +1822,46 @@ jobs:
           echo "OK: as duas esteiras rodam em fila e reservam versão e release uma de cada vez."
 
 # --------------------------------------------------------------------
+# CONFIG: EXEMPLO DE AMBIENTE LOCAL DO BACK --------------------------
+# --------------------------------------------------------------------
+  back-env-example-check:
+    name: "Config: Exemplo de ambiente local do back"
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true' }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # Fora do Docker o back usa PORT ?? 3000 (back/src/main.ts) e o front
+      # local aponta a API para a 3001, então o exemplo precisa declarar PORT.
+      # Sem quebra de linha final, "echo VAR=x >> back/.env" cola a variável
+      # na última linha do arquivo.
+      - name: Verificar PORT e a quebra de linha final do exemplo
+        run: |
+          arquivo=back/.env.local.example
+          status=0
+
+          if ! grep -q '^PORT=' "$arquivo"; then
+            echo "ERRO: $arquivo não declara PORT; sem ela o back sobe na 3000 e o front local aponta para a 3001."
+            status=1
+          fi
+
+          if [ -n "$(tail -c 1 "$arquivo")" ]; then
+            echo "ERRO: $arquivo não termina com quebra de linha; um echo VAR=x >> .env cola a variável na última linha."
+            status=1
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "OK: $arquivo declara PORT e termina com quebra de linha."
+
+# --------------------------------------------------------------------
 # RESULTADO DO GATE --------------------------------------------------
 # --------------------------------------------------------------------
   # Único check exigido pela proteção da main, para que a lista de jobs mude
@@ -1830,7 +1870,7 @@ jobs:
   pr-checks-result:
     name: pr-checks-result
     runs-on: ubuntu-latest
-    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check]
+    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check]
     if: ${{ always() }}
     timeout-minutes: 5
 
