@@ -1905,6 +1905,47 @@ jobs:
         run: bash .github/scripts/ci-consistency.sh
 
 # --------------------------------------------------------------------
+# CONFIG: TEMPLATE DO PR ---------------------------------------------
+# --------------------------------------------------------------------
+  pr-template-check:
+    name: "Config: Template do PR"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # O corpo de cada PR começa com este template, e as esteiras de backend e
+      # frontend leem as opções marcadas em "[x] ..." do corpo. Texto colado da
+      # interface do GitHub e emojis não podem entrar no template.
+      - name: Verificar o template de PR
+        run: |
+          python3 - .github/pull_request_template.md <<'PY'
+          import re
+          import sys
+
+          caminho = sys.argv[1]
+          with open(caminho, encoding="utf-8") as arquivo:
+              linhas = arquivo.read().splitlines()
+
+          erros = []
+          for numero, linha in enumerate(linhas, 1):
+              if "Add commentMore actions" in linha:
+                  erros.append(f"linha {numero}: texto colado da interface do GitHub")
+              if re.search("[\U0001F300-\U0001FAFF☀-➿]", linha):
+                  erros.append(f"linha {numero}: emoji")
+
+          if erros:
+              for erro in erros:
+                  print(f"ERRO em {caminho}, {erro}")
+              sys.exit(1)
+
+          print(f"OK: {caminho} sem texto colado nem emoji.")
+          PY
+
+# --------------------------------------------------------------------
 # RESULTADO DO GATE --------------------------------------------------
 # --------------------------------------------------------------------
   # Único check exigido pela proteção da main, para que a lista de jobs mude
@@ -1913,7 +1954,7 @@ jobs:
   pr-checks-result:
     name: pr-checks-result
     runs-on: ubuntu-latest
-    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check, front-gitignore-check, ci-consistency-check]
+    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check, front-gitignore-check, ci-consistency-check, pr-template-check]
     if: ${{ always() }}
     timeout-minutes: 5
 
