@@ -1,15 +1,15 @@
-## 📌 Tipo de mudançaAdd commentMore actions
+## Tipo de mudança
 
 <!-- Selecione UMA das opções abaixo -->
 
-(Selecione apenas uma opçaõ)
+(Selecione apenas uma opção)
 tipo:
 
 - [ ] marco-no-projeto
 - [ ] nova-feature
 - [ ] bug-fix
 
-## ✅ Checklist
+## Checklist
 
 <!-- Marque com um "x" os itens que se aplicam -->
 
