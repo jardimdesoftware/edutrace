@@ -159,6 +159,22 @@ k6 run -e BASE_URL=http://localhost:3000 -e NAPNE_EMAIL=... -e NAPNE_PASSWORD=..
 k6 run --out json=k6/results.json k6/tests/smoke/smoke.test.js
 ```
 
+### Produção pública controlada
+
+O cenário `production-public.test.js` acessa somente `/` e `/login`, sem
+autenticação e sem gravar dados. Ele cresce até 10 VUs durante um minuto e
+exporta o resumo para `evidencias/k6-edutrace-summary.json`:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD:/work" -w /work \
+  grafana/k6:1.8.2 run k6/tests/load/production-public.test.js
+```
+
+Critérios: menos de 1% de falhas, mais de 99% dos checks aprovados e p95 abaixo
+de 750 ms. Testes de stress e cenários CRUD não devem ser executados em
+produção.
+
 ---
 
 ## 📊 Thresholds de Performance
