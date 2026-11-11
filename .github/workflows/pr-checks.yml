@@ -66,7 +66,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:15
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -819,7 +819,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:15
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -1887,6 +1887,24 @@ jobs:
           echo "OK: $arquivo declara PORT e termina com quebra de linha."
 
 # --------------------------------------------------------------------
+# CONFIG: CONSISTÊNCIA DO CI -----------------------------------------
+# --------------------------------------------------------------------
+  ci-consistency-check:
+    name: "Config: Consistência do CI"
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.ci_config == 'true' }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Verificar consistência dos workflows com a produção
+        run: bash .github/scripts/ci-consistency.sh
+
+# --------------------------------------------------------------------
 # RESULTADO DO GATE --------------------------------------------------
 # --------------------------------------------------------------------
   # Único check exigido pela proteção da main, para que a lista de jobs mude
@@ -1895,7 +1913,7 @@ jobs:
   pr-checks-result:
     name: pr-checks-result
     runs-on: ubuntu-latest
-    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check, front-gitignore-check]
+    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check, front-gitignore-check, ci-consistency-check]
     if: ${{ always() }}
     timeout-minutes: 5
 
