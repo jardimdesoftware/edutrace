@@ -9,7 +9,6 @@ on:
       version:
         description: "Version tag"
         required: true
-        default: "1.10.3"
 
 permissions:
   contents: read
@@ -78,7 +77,6 @@ jobs:
           sbom: true
           provenance: mode=min
           build-args: |
-            ${{ matrix.component == 'frontend' && format('NEXT_PUBLIC_API_EDU_TRACE={0}', secrets.NEXT_PUBLIC_API_EDU_TRACE) || '' }}
             ${{ matrix.component == 'frontend' && format('APP_VERSION={0}', env.VERSION) || '' }}
           labels: |
             org.opencontainers.image.title=${{ matrix.title }}
