@@ -17,6 +17,7 @@
 /.next/
 /out/
 /public/runtime-config.js
+/AGENTS.md
 
 # production
 /build

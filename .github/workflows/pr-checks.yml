@@ -1228,6 +1228,31 @@ jobs:
 
           echo "OK: a tela de login mostra a versão gravada no build da imagem."
 
+  front-gitignore-check:
+    name: "Frontend: Arquivos gerados pelo Next ignorados"
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true' }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # next dev cria front/AGENTS.md. Sem a entrada no front/.gitignore, o
+      # arquivo aparece como não rastreado em cada clone após o primeiro dev.
+      - name: Verificar que front/AGENTS.md é ignorado pelo git
+        run: |
+          touch front/AGENTS.md
+
+          if git check-ignore -q front/AGENTS.md; then
+            echo "OK: front/AGENTS.md é ignorado pelo git."
+          else
+            echo "ERRO: front/AGENTS.md não é ignorado pelo git; adicione /AGENTS.md ao front/.gitignore."
+            exit 1
+          fi
+
 # --------------------------------------------------------------------
 # CONFIG – URL INTERNA DA API ----------------------------------------
 # --------------------------------------------------------------------
@@ -1870,7 +1895,7 @@ jobs:
   pr-checks-result:
     name: pr-checks-result
     runs-on: ubuntu-latest
-    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check]
+    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check, back-env-example-check, front-gitignore-check]
     if: ${{ always() }}
     timeout-minutes: 5
 
