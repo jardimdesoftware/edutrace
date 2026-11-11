@@ -1,0 +1,34 @@
+name: k6 production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: Digite true para confirmar o teste controlado em produção
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    if: ${{ inputs.confirm_production }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Executar carga pública controlada
+        run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" -w /work grafana/k6:1.8.2 run k6/tests/load/production-public.test.js
+      - name: Guardar evidência do teste
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: k6-edutrace-production-${{ github.run_id }}
+          path: evidencias/k6-edutrace-summary.json
+          if-no-files-found: warn
+          retention-days: 90
