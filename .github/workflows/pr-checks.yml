@@ -1537,6 +1537,83 @@ jobs:
           echo "OK: o PostgreSQL do compose de produção não publica porta no host."
 
 # --------------------------------------------------------------------
+# CONFIG: PORTA DO FRONT NO COMPOSE DE DESENVOLVIMENTO ---------------
+# --------------------------------------------------------------------
+  compose-dev-config-check:
+    name: "Config: Porta do front no compose de desenvolvimento"
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.deploy_config == 'true' }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # O Dockerfile do front expõe a 3000 e o compose publica
+      # "${PORT_MACHINE_FRONTEND}:3000". O Next escuta na porta de PORT; com
+      # PORT=${PORT_MACHINE_FRONTEND} e a variável diferente de 3000, o
+      # processo escuta em outra porta e o mapeamento para a 3000 recusa a
+      # conexão. A porta do host muda só em ports; dentro do container PORT
+      # fica fixa em 3000, como em docker-compose-prod.yml. A variável é
+      # definida como 13000 para que PORT=${PORT_MACHINE_FRONTEND} apareça na
+      # renderização e reprove o job.
+      - name: Verificar que o front escuta na 3000 dentro do container
+        run: |
+          cat > ci.env <<'VARS'
+          PORT_MACHINE_FRONTEND=13000
+          PORT_MACHINE_BACKEND=13001
+          PORT_MACHINE_DB=15432
+          POSTGRES_USER=ci
+          POSTGRES_PASSWORD=ci
+          POSTGRES_DB=ci
+          DATABASE_URL=postgresql://ci:ci@postgres-db:5432/ci
+          NODE_ENV=development
+          SECRET_KEY=ci
+          FRONTEND_URL=http://localhost:13000
+          ADMIN_EMAIL=ci@exemplo.com
+          ADMIN_CPF=00000000000
+          ADMIN_PASSWORD=ci
+          SMTP_HOST=ci
+          SMTP_PORT=587
+          SMTP_USER=ci
+          SMTP_PASS=ci
+          MAIL_FROM=ci
+          GOOGLE_CLIENT_ID=ci
+          API_URL=http://localhost:13001
+          NEXT_PUBLIC_API_EDU_TRACE=http://localhost:13001
+          INTERNAL_API_URL=http://nest-app:3000
+          CLARITY_PROJECT_ID=off
+          VARS
+
+          docker compose --env-file ci.env -f docker-compose-dev.yml config --format json > compose.json
+
+          python3 - <<'PY'
+          import json
+          import sys
+
+          servico = json.load(open("compose.json"))["services"]["next-app"]
+          falhas = []
+
+          porta_interna = (servico.get("environment") or {}).get("PORT")
+          if porta_interna != "3000":
+              falhas.append(f"PORT do container é {porta_interna!r}, esperado '3000'")
+
+          alvos = [p.get("target") for p in servico.get("ports", [])]
+          if alvos != [3000]:
+              falhas.append(f"portas de destino publicadas são {alvos}, esperado [3000]")
+
+          for falha in falhas:
+              print(f"ERRO: docker-compose-dev.yml, next-app: {falha}.")
+              print("   O Next escuta na porta de PORT; ela precisa ser igual ao destino do mapeamento (3000).")
+
+          sys.exit(1 if falhas else 0)
+          PY
+
+          echo "OK: o next-app do compose de desenvolvimento escuta na 3000, o destino do mapeamento."
+
+# --------------------------------------------------------------------
 # CONFIG: DEPENDÊNCIAS DO CI -----------------------------------------
 # --------------------------------------------------------------------
   ci-dependencies-check:
@@ -1753,7 +1830,7 @@ jobs:
   pr-checks-result:
     name: pr-checks-result
     runs-on: ubuntu-latest
-    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, ci-dependencies-check, native-image-build-check, release-version-check]
+    needs: [changes, backend-tests, backend-docker-build, frontend-checks, frontend-docker-build, internal-api-url-check, frontend-service-check, infra-compose-hardening-check, database-port-check, compose-dev-config-check, ci-dependencies-check, native-image-build-check, release-version-check]
     if: ${{ always() }}
     timeout-minutes: 5
 
