@@ -55,11 +55,24 @@ for pipeline in backend-pipeline frontend-pipeline; do
   fi
 done
 
+# O CHANGELOG.md precisa existir e ser regenerado a cada release publicada.
+if [ ! -f CHANGELOG.md ]; then
+  echo "ERRO: CHANGELOG.md não existe na raiz."
+  status=1
+fi
+for pipeline in backend-pipeline frontend-pipeline; do
+  arquivo=".github/workflows/$pipeline.yml"
+  if [ "$(yq '[.jobs.create-release.steps[] | select(.name == "Atualizar CHANGELOG.md")] | length' "$arquivo")" != "1" ]; then
+    echo "ERRO: $arquivo não atualiza o CHANGELOG.md no job create-release."
+    status=1
+  fi
+done
+
 # Sem regra FAIL o ZAP nunca reprova o job, mesmo com fail_action ligado.
 if ! grep -qE '^[0-9]+[[:space:]]+FAIL[[:space:]]' .zap/rules.tsv; then
   echo "ERRO: .zap/rules.tsv não tem nenhuma regra FAIL; o scan do ZAP nunca falharia."
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags e ZAP com regras FAIL."
+[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags, CHANGELOG atualizado a cada release e ZAP com regras FAIL."
 exit "$status"
