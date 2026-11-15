@@ -110,6 +110,14 @@
       "src/**/*.(t|j)s"
     ],
     "coverageDirectory": "./coverage",
+    "coverageThreshold": {
+      "global": {
+        "lines": 70,
+        "functions": 70,
+        "statements": 70,
+        "branches": 70
+      }
+    },
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^src/(.*)$": "<rootDir>/src/$1"

@@ -117,7 +117,7 @@ jobs:
 
       - name: Rodar testes
         working-directory: ./back
-        run: npm test -- --ci
+        run: npm test -- --ci --coverage
 
       # Aplica as migrations no banco de teste antes do smoke test do seed.
       - name: Aplicar migrations
