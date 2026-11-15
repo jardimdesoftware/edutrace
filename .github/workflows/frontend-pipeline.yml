@@ -211,6 +211,20 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ env.TAG }}
 
+      # O digest ainda não tem tag; se o scan reprovar, o job para antes de o
+      # digest seguir para o job que cria as tags e a imagem não é publicada.
+      - name: Trivy Scan (reprova com CRITICAL ou HIGH que tenha correção)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Exportar o digest
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -227,10 +241,10 @@ jobs:
           retention-days: 1
 
 # --------------------------------------------------------------------
-# 4) PUBLICAR A IMAGEM MULTI-ARQUITETURA E ESCANEAR -------------------
+# 4) PUBLICAR A IMAGEM MULTI-ARQUITETURA ---------------------
 # --------------------------------------------------------------------
   docker-publish:
-    name: 4. Publicar e escanear a imagem
+    name: 4. Publicar a imagem
     runs-on: ubuntu-latest
     needs: [prepare-tag, docker-build]
     timeout-minutes: 15
@@ -270,18 +284,6 @@ jobs:
 
       - name: Conferir as plataformas publicadas
         run: docker buildx imagetools inspect "$REGISTRY/$IMAGE_NAME:$TAG"
-
-      # Scan Docker image
-      - name: Trivy Scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
-          format: table
-          exit-code: 0
-          severity: CRITICAL,HIGH
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
 # --------------------------------------------------------------------
 # 5) CREATE RELEASE --------------------------------------------------
