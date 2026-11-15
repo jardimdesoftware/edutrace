@@ -1253,6 +1253,16 @@ jobs:
             exit 1
           fi
 
+      # O .gitignore ignora .env.local, mas um arquivo já rastreado continua
+      # versionado; só o .env.local.example pode estar no git.
+      - name: Verificar que front/.env.local não está versionado
+        run: |
+          if [ -n "$(git ls-files front/.env.local)" ]; then
+            echo "ERRO: front/.env.local está versionado; remova-o do git e mantenha só front/.env.local.example."
+            exit 1
+          fi
+          echo "OK: front/.env.local não está versionado."
+
 # --------------------------------------------------------------------
 # CONFIG – URL INTERNA DA API ----------------------------------------
 # --------------------------------------------------------------------
