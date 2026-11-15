@@ -424,6 +424,30 @@ jobs:
             --notes "$notas" \
             --latest="$latest"
 
+      # O CHANGELOG.md é regenerado a partir das releases e gravado na main pela
+      # API do GitHub, como o badge de cobertura. Com a main protegida, o
+      # GitHub Actions precisa estar na lista de bypass da proteção.
+      - name: Atualizar CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/generate-changelog.sh > "$RUNNER_TEMP/CHANGELOG.md"
+
+          atual=$(gh api "repos/${GITHUB_REPOSITORY}/contents/CHANGELOG.md" 2>/dev/null || echo '{}')
+          if [ "$(jq -r '.content // empty' <<< "$atual" | base64 -d 2>/dev/null)" = "$(cat "$RUNNER_TEMP/CHANGELOG.md")" ]; then
+            echo "CHANGELOG.md já está atualizado."
+            exit 0
+          fi
+
+          sha=$(jq -r '.sha // empty' <<< "$atual")
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github.v3+json" \
+            "/repos/${GITHUB_REPOSITORY}/contents/CHANGELOG.md" \
+            -f message="docs: atualizar CHANGELOG.md até a release ${NEW_TAG}" \
+            -f content="$(base64 -w0 "$RUNNER_TEMP/CHANGELOG.md")" \
+            ${sha:+-f sha="$sha"}
+
 # --------------------------------------------------------------------
 # 7) DEPLOY APP (Desabilitado temporariamente) -----------------------
 # --------------------------------------------------------------------
