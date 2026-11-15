@@ -24,6 +24,18 @@ Acesse agora pelo [Link](https://edutrace.ruancarvalho.me/)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)  ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white) ![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white) ![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white) ![PostgreSql](https://img.shields.io/badge/postgresql-4169e1?style=for-the-badge&logo=postgresql&logoColor=white)
 
 
+## Equipe
+
+| Nome | Função |
+| --- | --- |
+| Guilherme Lyare | Dev Front-end e DevSecOps |
+| João Bosco | PO (Product Owner), UX/UI e Dev Front-end |
+| Luiz Carlos | Dev Back-end e DevSecOps |
+| Ruan da Silva Carvalho | Dev Full-stack e QA |
+| Valéria Cristina Galindo de Lima | QA e DevSecOps |
+
+As responsabilidades de cada papel estão na [Wiki](https://github.com/jardimdesoftware/edutrace/wiki).
+
 ## Documentação e Wiki
 Páginas da [Wiki do projeto](https://github.com/jardimdesoftware/edutrace/wiki):
 
@@ -32,6 +44,8 @@ Páginas da [Wiki do projeto](https://github.com/jardimdesoftware/edutrace/wiki)
 - [Arquitetura](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Arquitetura-de-Desenvolvimento)
 - [Perfis e Permissões](https://github.com/jardimdesoftware/edutrace/wiki/Perfis-e-Permissões)
 - [CI/CD e Deploy](https://github.com/jardimdesoftware/edutrace/wiki/CI-CD-e-Deploy)
+- [Documento de Visão](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Visão) e [Documento de Requisitos](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Requisitos-(User-Stories))
+- [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md) e [SECURITY](SECURITY.md)
 
 
 ## Como rodar
