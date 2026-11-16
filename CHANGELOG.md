@@ -4,6 +4,10 @@ Todas as mudanças relevantes do projeto ficam neste arquivo, geradas a partir
 das releases do GitHub. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/)
 e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.61.14] - 2026-11-16
+
+- fix: atualizar o npm das imagens para 12.2.2 e sair das CVEs HIGH do Trivy (#941)
+
 ## [1.61.10] - 2026-11-11
 
 - fix(front): chamar o PEI de Plano Educacional Individualizado na tela (#912)
@@ -439,10 +443,6 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 ## [1.24.0] - 2026-10-03
 
 - feat: cabeçalhos de segurança HTTP no back e no front, com CSP estrita por nonce (#627)
-
-## [1.23.1] - 2026-10-03
-
-- fix: reservar a versão das releases em fila e marcar a Latest pela maior versão (#625)
 
 ## [1.23.1] - 2026-10-03
 
