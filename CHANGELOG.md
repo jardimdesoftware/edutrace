@@ -444,6 +444,10 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 - fix: reservar a versão das releases em fila e marcar a Latest pela maior versão (#625)
 
+## [1.23.1] - 2026-10-03
+
+- fix: reservar a versão das releases em fila e marcar a Latest pela maior versão (#625)
+
 ## [1.22.2] - 2026-10-03
 
 - Sem alterações listadas na release.
