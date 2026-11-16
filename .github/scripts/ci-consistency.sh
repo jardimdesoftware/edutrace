@@ -44,9 +44,14 @@ fi
 # O scan do Trivy precisa reprovar a imagem antes de as tags serem criadas.
 for pipeline in backend-pipeline frontend-pipeline; do
   arquivo=".github/workflows/$pipeline.yml"
-  scan='.jobs.docker-build.steps[] | select((.uses // "") | test("trivy-action")) | .with'
+  scan_step='.jobs.docker-build.steps[] | select((.uses // "") | test("trivy-action"))'
+  scan="$scan_step | .with"
   if [ "$(yq "$scan | .\"exit-code\"" "$arquivo")" != "1" ]     || [ "$(yq "$scan | .\"ignore-unfixed\"" "$arquivo")" != "true" ]     || [ "$(yq "$scan | .severity" "$arquivo")" != "CRITICAL,HIGH" ]; then
     echo "ERRO: $arquivo precisa de um scan Trivy no docker-build com exit-code 1, ignore-unfixed true e severity CRITICAL,HIGH."
+    status=1
+  fi
+  if [ "$(yq "$scan_step | .env.TRIVY_PLATFORM" "$arquivo")" != 'linux/${{ matrix.arch }}' ]; then
+    echo "ERRO: $arquivo precisa definir TRIVY_PLATFORM como linux/\${{ matrix.arch }} no scan Trivy; o digest é um índice e o Trivy procura amd64 por padrão."
     status=1
   fi
   if [ "$(yq '[.jobs.docker-publish.steps[] | select((.uses // "") | test("trivy-action"))] | length' "$arquivo")" != "0" ]; then
