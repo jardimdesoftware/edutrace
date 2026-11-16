@@ -222,6 +222,7 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL,HIGH
         env:
+          TRIVY_PLATFORM: linux/${{ matrix.arch }}
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
