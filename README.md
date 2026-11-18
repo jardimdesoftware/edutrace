@@ -45,7 +45,7 @@ Páginas da [Wiki do projeto](https://github.com/jardimdesoftware/edutrace/wiki)
 - [Perfis e Permissões](https://github.com/jardimdesoftware/edutrace/wiki/Perfis-e-Permissões)
 - [CI/CD e Deploy](https://github.com/jardimdesoftware/edutrace/wiki/CI-CD-e-Deploy)
 - [Documento de Visão](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Visão) e [Documento de Requisitos](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Requisitos-(User-Stories))
-- [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md) e [SECURITY](SECURITY.md)
+- [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) e [CODEOWNERS](.github/CODEOWNERS)
 
 
 ## Como rodar
