@@ -8,6 +8,7 @@
 ![Forks](https://img.shields.io/github/forks/jardimdesoftware/edutrace)
 ![Stars](https://img.shields.io/github/stars/jardimdesoftware/edutrace)
 ![Coverage](https://img.shields.io/badge/Coverage-97.37%25-brightgreen) <!-- COVERAGE_BADGE -->
+![Branch Coverage](https://img.shields.io/badge/Branches-94.42%25-brightgreen) <!-- BRANCH_COVERAGE_BADGE -->
 ![OWASP ZAP](https://github.com/jardimdesoftware/edutrace/actions/workflows/owasp-zap.yml/badge.svg)
 
 # Edutrace - Prontuário Eletrônico para Estudantes NEE
