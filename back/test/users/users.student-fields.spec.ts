@@ -134,7 +134,9 @@ describe('POST e PATCH /users, matrícula e curso', () => {
       requesterLevel = LEVELS.PROFISSIONAL_NAPNE;
       const { enrollment_number, ...body } = student;
 
-      const response = await post(body);
+      const response = await request(app.getHttpServer())
+        .post('/users/students')
+        .send(body);
 
       expect(response.status).toBe(400);
       expect(usersService.create).not.toHaveBeenCalled();
