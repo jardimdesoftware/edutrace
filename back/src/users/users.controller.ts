@@ -34,11 +34,10 @@ import { USER_SITUATIONS, type UserSituation } from './user-situation';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @AllowLevels(LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE)
+  @AllowLevels(LEVELS.ADMIN)
   @ApiBody({
     type: CreateUserDto,
-    description:
-      'Objeto para criação de um novo usuário por um administrador ou pelo Profissional NAPNE, que cadastra apenas estudantes.',
+    description: 'Objeto para criação de um novo usuário por um administrador.',
   })
   @Throttle(USER_CREATE_THROTTLE)
   @Post()
@@ -46,22 +45,41 @@ export class UsersController {
     @Body() createUserDto: CreateUserDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    const requesterRoles = req.user?.roles;
-
-    if (
-      !hasAnyRole(requesterRoles, [LEVELS.ADMIN, LEVELS.PROFISSIONAL_NAPNE])
-    ) {
+    if (!hasAnyRole(req.user?.roles, [LEVELS.ADMIN])) {
       throw new ForbiddenException(
-        'Apenas administradores e o Profissional NAPNE podem cadastrar usuários',
+        'Apenas administradores podem cadastrar usuários',
+      );
+    }
+
+    return maskUserCpf(
+      await this.usersService.create({
+        ...createUserDto,
+        roles: createUserDto.roles ?? [LEVELS.ALUNO_ESTUDANTE],
+      }),
+    );
+  }
+
+  @AllowLevels(LEVELS.PROFISSIONAL_NAPNE)
+  @ApiBody({
+    type: CreateUserDto,
+    description:
+      'Objeto para criação de um novo estudante pelo Profissional NAPNE, que cadastra apenas estudantes.',
+  })
+  @Throttle(USER_CREATE_THROTTLE)
+  @Post('students')
+  async createStudent(
+    @Body() createUserDto: CreateUserDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    if (!hasAnyRole(req.user?.roles, [LEVELS.PROFISSIONAL_NAPNE])) {
+      throw new ForbiddenException(
+        'Apenas o Profissional NAPNE pode cadastrar estudantes por esta rota',
       );
     }
 
     const createdRoles = createUserDto.roles ?? [LEVELS.ALUNO_ESTUDANTE];
 
-    if (
-      !hasAnyRole(requesterRoles, [LEVELS.ADMIN]) &&
-      !sameRoles(createdRoles, [LEVELS.ALUNO_ESTUDANTE])
-    ) {
+    if (!sameRoles(createdRoles, [LEVELS.ALUNO_ESTUDANTE])) {
       throw new ForbiddenException(
         'O Profissional NAPNE cadastra apenas estudantes.',
       );
