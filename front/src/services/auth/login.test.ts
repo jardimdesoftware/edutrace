@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createUserByAdmin, login, loginWithGoogle } from './login';
+import {
+  createUserByAdmin,
+  login,
+  loginWithGoogle,
+  registerUser,
+} from './login';
 import { buildRegisterData } from '@/utils/registerForm';
 
 const API_URL = 'http://api.test';
@@ -75,5 +80,43 @@ describe('createUserByAdmin', () => {
     assert.deepEqual(body.roles, [5, 6]);
     assert.ok(body.roles.every((papel: unknown) => typeof papel === 'number'));
     assert.equal('id_level' in body, false);
+  });
+});
+
+describe('registerUser', () => {
+  const resultado = buildRegisterData(
+    {
+      nome: 'Maria Souza',
+      email: 'maria@escola.br',
+      cpf: '111.444.777-35',
+      roles: [2],
+      matricula: '20261TADS0012',
+      curso: 'Análise e Desenvolvimento de Sistemas',
+    },
+    true,
+  );
+
+  it('posts to /users when the requester is an administrator', async () => {
+    assert.ok(resultado.ok);
+
+    await registerUser(resultado.data, [1]);
+
+    assert.equal(calls[0].url, `${API_URL}/users`);
+  });
+
+  it('posts to /users/students when the requester is the NAPNE professional', async () => {
+    assert.ok(resultado.ok);
+
+    await registerUser(resultado.data, [5]);
+
+    assert.equal(calls[0].url, `${API_URL}/users/students`);
+  });
+
+  it('posts to /users when the requester has the administrator and NAPNE roles', async () => {
+    assert.ok(resultado.ok);
+
+    await registerUser(resultado.data, [1, 5]);
+
+    assert.equal(calls[0].url, `${API_URL}/users`);
   });
 });
