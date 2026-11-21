@@ -38,7 +38,8 @@ const MATRIZ: [string, number[]][] = [
   ],
   ["/editar-triagem", [PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]],
   ["/editar-anamnese", [PROFISSIONAL_NAPNE]],
-  ["/admin/usuarios/cadastro", [ADMIN, PROFISSIONAL_NAPNE]],
+  ["/admin/usuarios/cadastro", [ADMIN]],
+  ["/napne/usuarios/cadastro", [PROFISSIONAL_NAPNE]],
 ];
 
 describe("canAccessPage", () => {
@@ -138,7 +139,7 @@ describe("canAccessPage with several roles", () => {
     // 5+6: NAPNE abre anamnese e edição de anamnese
     assert.equal(canAccessPage("/editar-anamnese", [PROFISSIONAL_NAPNE, PROFESSOR_AEE]), true);
     assert.equal(canAccessPage("/anamnese", [PROFISSIONAL_NAPNE, PROFESSOR_AEE]), true);
-    assert.equal(canAccessPage("/admin/usuarios/cadastro", [PROFISSIONAL_NAPNE, PROFESSOR_AEE]), true);
+    assert.equal(canAccessPage("/napne/usuarios/cadastro", [PROFISSIONAL_NAPNE, PROFESSOR_AEE]), true);
     // 4+5: Saúde e NAPNE
     assert.equal(canAccessPage("/editar-triagem", [PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]), true);
     assert.equal(canAccessPage("/admin", [PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE]), false);
@@ -166,6 +167,7 @@ describe("canAccessPage with several roles", () => {
       "/editar-triagem",
       "/admin",
       "/admin/usuarios/cadastro",
+      "/napne/usuarios/cadastro",
     ]) {
       assert.equal(canAccessPage(pagina, [PROFESSOR_AEE]), false, pagina);
     }
