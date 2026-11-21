@@ -1,5 +1,7 @@
 import type { RegisterData } from "@/interfaces/RegisterData";
 import { apiRequest } from "@/services/http";
+import { ADMIN } from "@/consts";
+import { temPapel, type Papeis } from "@/utils/papeis";
 
 export async function login(email: string, password: string) {
   const data = await apiRequest('/auth/login', {
@@ -37,4 +39,22 @@ export async function createUserByAdmin(registerData: RegisterData) {
     method: 'POST',
     body: registerData,
   });
+}
+
+export async function createStudentByNapne(registerData: RegisterData) {
+  return apiRequest('/users/students', {
+    method: 'POST',
+    body: registerData,
+  });
+}
+
+// O administrador cadastra por POST /users e o NAPNE, só de estudante, por
+// POST /users/students. Conta com os dois papéis cadastra como administrador.
+export async function registerUser(
+  registerData: RegisterData,
+  requesterRoles: Papeis,
+) {
+  return temPapel(requesterRoles, ADMIN)
+    ? createUserByAdmin(registerData)
+    : createStudentByNapne(registerData);
 }

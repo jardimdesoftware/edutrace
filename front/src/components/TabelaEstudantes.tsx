@@ -51,8 +51,8 @@ import {
   temPapel,
 } from "@/utils/papeis";
 import { rotaDoEstudante } from "@/utils/estudanteDaUrl";
-import { canAccessPage } from "@/utils/pageAccess";
 import { papeisDoCadastro } from "@/utils/papeisDoCadastro";
+import { rotaDoCadastro } from "@/utils/rotaDoCadastro";
 import { podeDefinirResponsavel } from "@/utils/responsavelPedagogico";
 import {
   listarUsuariosDaTabela,
@@ -117,7 +117,7 @@ export default function TabelaEstudantes() {
   const { user, loading } = useAuth();
 
   const isAdmin = temPapel(user?.roles, ADMIN);
-  const podeCadastrar = !!user && canAccessPage("/admin/usuarios/cadastro", user.roles);
+  const rotaDeCadastro = rotaDoCadastro(user?.roles);
   const totalColunas = 7;
 
   // O administrador gerencia contas, então filtra pelos papéis do sistema; o
@@ -380,10 +380,10 @@ export default function TabelaEstudantes() {
         )}
 
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          {podeCadastrar && (
+          {rotaDeCadastro && (
             <button
               type="button"
-              onClick={() => router.push("/admin/usuarios/cadastro")}
+              onClick={() => router.push(rotaDeCadastro)}
               className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-lg bg-[#006ee8] px-4 text-sm font-bold text-white shadow-[0_6px_14px_rgba(0,110,232,0.20)] transition hover:bg-[#005fc9] focus:outline-none focus:ring-4 focus:ring-[#b8dcff]"
             >
               <UserPlus className="h-5 w-5" aria-hidden="true" />
