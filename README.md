@@ -8,7 +8,15 @@
 ![Forks](https://img.shields.io/github/forks/jardimdesoftware/edutrace)
 ![Stars](https://img.shields.io/github/stars/jardimdesoftware/edutrace)
 ![Coverage](https://img.shields.io/badge/Coverage-97.37%25-brightgreen) <!-- COVERAGE_BADGE -->
-![OWASP ZAP](https://github.com/jardimdesoftware/edutrace/actions/workflows/owasp-zap.yml/badge.svg)
+[![PR Checks](https://github.com/jardimdesoftware/edutrace/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/pr-checks.yml)
+[![Backend Pipeline](https://github.com/jardimdesoftware/edutrace/actions/workflows/backend-pipeline.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/backend-pipeline.yml)
+[![Frontend Pipeline](https://github.com/jardimdesoftware/edutrace/actions/workflows/frontend-pipeline.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/frontend-pipeline.yml)
+[![Deploy OCI](https://github.com/jardimdesoftware/edutrace/actions/workflows/deploy-oci.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/deploy-oci.yml)
+[![Publish Docker](https://github.com/jardimdesoftware/edutrace/actions/workflows/publish-docker.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/publish-docker.yml)
+[![Semgrep](https://github.com/jardimdesoftware/edutrace/actions/workflows/semgrep.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/semgrep.yml)
+[![OWASP ZAP](https://github.com/jardimdesoftware/edutrace/actions/workflows/owasp-zap.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/owasp-zap.yml)
+[![k6 Production](https://github.com/jardimdesoftware/edutrace/actions/workflows/k6-production.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/k6-production.yml)
+[![k6 Capacity Production](https://github.com/jardimdesoftware/edutrace/actions/workflows/k6-capacity-production.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/k6-capacity-production.yml)
 
 # Edutrace - Prontuário Eletrônico para Estudantes NEE
 
