@@ -300,6 +300,7 @@ jobs:
       queue: max
     permissions:
       contents: write
+      actions: write
     env:
       NEW_TAG: ${{ needs.prepare-tag.outputs.new_tag }}
       TIPO:    ${{ needs.prepare-tag.outputs.tipo }}
@@ -333,6 +334,10 @@ jobs:
             --generate-notes \
             --notes "$notas" \
             --latest="$latest"
+
+          # Release criada com o GITHUB_TOKEN não dispara o evento
+          # release: published, então o publish-docker é chamado direto.
+          gh workflow run publish-docker.yml -f version="$NEW_TAG"
 
       # O CHANGELOG.md é regenerado a partir das releases e gravado na main pela
       # API do GitHub, como o badge de cobertura. Com a main protegida, o
