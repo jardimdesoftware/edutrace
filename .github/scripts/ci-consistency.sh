@@ -73,11 +73,21 @@ for pipeline in backend-pipeline frontend-pipeline; do
   fi
 done
 
+# Release criada com o GITHUB_TOKEN não dispara o evento release: published,
+# então o create-release precisa chamar o publish-docker por workflow_dispatch.
+for pipeline in backend-pipeline frontend-pipeline; do
+  arquivo=".github/workflows/$pipeline.yml"
+  if [ "$(yq '[.jobs.create-release.steps[].run // "" | select(test("gh workflow run publish-docker.yml"))] | length' "$arquivo")" != "1" ]     || [ "$(yq '.jobs.create-release.permissions.actions' "$arquivo")" != "write" ]; then
+    echo "ERRO: $arquivo precisa disparar o publish-docker.yml no create-release, com permissions.actions write."
+    status=1
+  fi
+done
+
 # Sem regra FAIL o ZAP nunca reprova o job, mesmo com fail_action ligado.
 if ! grep -qE '^[0-9]+[[:space:]]+FAIL[[:space:]]' .zap/rules.tsv; then
   echo "ERRO: .zap/rules.tsv não tem nenhuma regra FAIL; o scan do ZAP nunca falharia."
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags, CHANGELOG atualizado a cada release e ZAP com regras FAIL."
+[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags, CHANGELOG atualizado a cada release, publish-docker disparado após a release e ZAP com regras FAIL."
 exit "$status"
