@@ -1,0 +1,9 @@
+# Responsáveis padrão por revisar mudanças no EduTrace.
+# Ambos os usuários abaixo são administradores ativos do repositório.
+* @RuanCarvalhoo @ValeriaCristinaGL
+
+# A automação de entrega e as políticas de segurança exigem revisão DevSecOps.
+/.github/ @RuanCarvalhoo @ValeriaCristinaGL
+/.zap/ @RuanCarvalhoo @ValeriaCristinaGL
+/SECURITY.md @RuanCarvalhoo @ValeriaCristinaGL
+/docs/security/ @RuanCarvalhoo @ValeriaCristinaGL

@@ -41,5 +41,43 @@ if [ "$(yq '.on.workflow_dispatch.inputs.version | has("default")' .github/workf
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front e sem versão padrão no publish-docker."
+# O scan do Trivy precisa reprovar a imagem antes de as tags serem criadas.
+for pipeline in backend-pipeline frontend-pipeline; do
+  arquivo=".github/workflows/$pipeline.yml"
+  scan_step='.jobs.docker-build.steps[] | select((.uses // "") | test("trivy-action"))'
+  scan="$scan_step | .with"
+  if [ "$(yq "$scan | .\"exit-code\"" "$arquivo")" != "1" ]     || [ "$(yq "$scan | .\"ignore-unfixed\"" "$arquivo")" != "true" ]     || [ "$(yq "$scan | .severity" "$arquivo")" != "CRITICAL,HIGH" ]; then
+    echo "ERRO: $arquivo precisa de um scan Trivy no docker-build com exit-code 1, ignore-unfixed true e severity CRITICAL,HIGH."
+    status=1
+  fi
+  if [ "$(yq "$scan_step | .env.TRIVY_PLATFORM" "$arquivo")" != 'linux/${{ matrix.arch }}' ]; then
+    echo "ERRO: $arquivo precisa definir TRIVY_PLATFORM como linux/\${{ matrix.arch }} no scan Trivy; o digest é um índice e o Trivy procura amd64 por padrão."
+    status=1
+  fi
+  if [ "$(yq '[.jobs.docker-publish.steps[] | select((.uses // "") | test("trivy-action"))] | length' "$arquivo")" != "0" ]; then
+    echo "ERRO: $arquivo escaneia a imagem depois de criar as tags; o scan fica no docker-build."
+    status=1
+  fi
+done
+
+# O CHANGELOG.md precisa existir e ser regenerado a cada release publicada.
+if [ ! -f CHANGELOG.md ]; then
+  echo "ERRO: CHANGELOG.md não existe na raiz."
+  status=1
+fi
+for pipeline in backend-pipeline frontend-pipeline; do
+  arquivo=".github/workflows/$pipeline.yml"
+  if [ "$(yq '[.jobs.create-release.steps[] | select(.name == "Atualizar CHANGELOG.md")] | length' "$arquivo")" != "1" ]; then
+    echo "ERRO: $arquivo não atualiza o CHANGELOG.md no job create-release."
+    status=1
+  fi
+done
+
+# Sem regra FAIL o ZAP nunca reprova o job, mesmo com fail_action ligado.
+if ! grep -qE '^[0-9]+[[:space:]]+FAIL[[:space:]]' .zap/rules.tsv; then
+  echo "ERRO: .zap/rules.tsv não tem nenhuma regra FAIL; o scan do ZAP nunca falharia."
+  status=1
+fi
+
+[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags, CHANGELOG atualizado a cada release e ZAP com regras FAIL."
 exit "$status"

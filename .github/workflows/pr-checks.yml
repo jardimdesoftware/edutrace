@@ -117,7 +117,7 @@ jobs:
 
       - name: Rodar testes
         working-directory: ./back
-        run: npm test -- --ci
+        run: npm test -- --ci --coverage
 
       # Aplica as migrations no banco de teste antes do smoke test do seed.
       - name: Aplicar migrations
@@ -1252,6 +1252,16 @@ jobs:
             echo "ERRO: front/AGENTS.md não é ignorado pelo git; adicione /AGENTS.md ao front/.gitignore."
             exit 1
           fi
+
+      # O .gitignore ignora .env.local, mas um arquivo já rastreado continua
+      # versionado; só o .env.local.example pode estar no git.
+      - name: Verificar que front/.env.local não está versionado
+        run: |
+          if [ -n "$(git ls-files front/.env.local)" ]; then
+            echo "ERRO: front/.env.local está versionado; remova-o do git e mantenha só front/.env.local.example."
+            exit 1
+          fi
+          echo "OK: front/.env.local não está versionado."
 
 # --------------------------------------------------------------------
 # CONFIG – URL INTERNA DA API ----------------------------------------

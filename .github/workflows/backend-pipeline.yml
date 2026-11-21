@@ -140,6 +140,7 @@ jobs:
       contents: read
     outputs:
       coverage: ${{ steps.coverage.outputs.coverage }}
+      branches: ${{ steps.coverage.outputs.branches }}
 
     # Os testes unitários mockam o Prisma, mas o PrismaService valida a
     # presença de DATABASE_URL na construção — o valor não precisa apontar
@@ -186,6 +187,9 @@ jobs:
           COVERAGE=$(jq '.total.lines.pct' coverage/coverage-summary.json)
           echo "Cobertura total: $COVERAGE%"
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
+          echo "Cobertura de branches: $BRANCHES%"
+          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
 
   update-coverage-badge:
     name: 2.1 Atualizar badge de cobertura
@@ -204,21 +208,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERAGE: ${{ needs.run-tests.outputs.coverage }}
+          BRANCHES: ${{ needs.run-tests.outputs.branches }}
         run: |
           if ! [[ "$COVERAGE" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
             echo "Cobertura inválida: '$COVERAGE'."
+            exit 1
+          fi
+          if ! [[ "$BRANCHES" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "Cobertura de branches inválida: '$BRANCHES'."
             exit 1
           fi
 
           BADGE="![Coverage](https://img.shields.io/badge/Coverage-${COVERAGE}%25-brightgreen)"
           sed -i '0,/<!-- COVERAGE_BADGE -->/s|.*<!-- COVERAGE_BADGE -->|'"$BADGE"' <!-- COVERAGE_BADGE -->|' README.md
 
+          BADGE_BRANCHES="![Branch Coverage](https://img.shields.io/badge/Branches-${BRANCHES}%25-brightgreen)"
+          sed -i '0,/<!-- BRANCH_COVERAGE_BADGE -->/s|.*<!-- BRANCH_COVERAGE_BADGE -->|'"$BADGE_BRANCHES"' <!-- BRANCH_COVERAGE_BADGE -->|' README.md
+
           # Commit via API do GitHub, com o GH_TOKEN; o checkout não guarda credencial.
           gh api \
             --method PUT \
             -H "Accept: application/vnd.github.v3+json" \
             "/repos/${GITHUB_REPOSITORY}/contents/README.md" \
-            -f message="ci: atualizar badge de cobertura para ${COVERAGE}%" \
+            -f message="ci: atualizar badge de cobertura para ${COVERAGE}% (branches ${BRANCHES}%)" \
             -f content="$(base64 -w0 README.md)" \
             -f sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/README.md" --jq .sha)"
 
@@ -302,6 +314,21 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ env.TAG }}
 
+      # O digest ainda não tem tag; se o scan reprovar, o job para antes de o
+      # digest seguir para o job que cria as tags e a imagem não é publicada.
+      - name: Trivy Scan (reprova com CRITICAL ou HIGH que tenha correção)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+        env:
+          TRIVY_PLATFORM: linux/${{ matrix.arch }}
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Exportar o digest
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -318,10 +345,10 @@ jobs:
           retention-days: 1
 
 # --------------------------------------------------------------------
-# 5) PUBLICAR A IMAGEM MULTI-ARQUITETURA E ESCANEAR -------------------
+# 5) PUBLICAR A IMAGEM MULTI-ARQUITETURA ---------------------
 # --------------------------------------------------------------------
   docker-publish:
-    name: 5. Publicar e escanear a imagem
+    name: 5. Publicar a imagem
     runs-on: ubuntu-latest
     needs: [prepare-tag, docker-build]
     timeout-minutes: 15
@@ -361,18 +388,6 @@ jobs:
 
       - name: Conferir as plataformas publicadas
         run: docker buildx imagetools inspect "$REGISTRY/$IMAGE_NAME:$TAG"
-
-      # Scan Docker image
-      - name: Trivy Scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
-          format: table
-          exit-code: 0
-          severity: CRITICAL,HIGH
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
 # --------------------------------------------------------------------
 # 6) CREATE RELEASE --------------------------------------------------
@@ -421,6 +436,30 @@ jobs:
             --generate-notes \
             --notes "$notas" \
             --latest="$latest"
+
+      # O CHANGELOG.md é regenerado a partir das releases e gravado na main pela
+      # API do GitHub, como o badge de cobertura. Com a main protegida, o
+      # GitHub Actions precisa estar na lista de bypass da proteção.
+      - name: Atualizar CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/generate-changelog.sh > "$RUNNER_TEMP/CHANGELOG.md"
+
+          atual=$(gh api "repos/${GITHUB_REPOSITORY}/contents/CHANGELOG.md" 2>/dev/null || echo '{}')
+          if [ "$(jq -r '.content // empty' <<< "$atual" | base64 -d 2>/dev/null)" = "$(cat "$RUNNER_TEMP/CHANGELOG.md")" ]; then
+            echo "CHANGELOG.md já está atualizado."
+            exit 0
+          fi
+
+          sha=$(jq -r '.sha // empty' <<< "$atual")
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github.v3+json" \
+            "/repos/${GITHUB_REPOSITORY}/contents/CHANGELOG.md" \
+            -f message="docs: atualizar CHANGELOG.md até a release ${NEW_TAG}" \
+            -f content="$(base64 -w0 "$RUNNER_TEMP/CHANGELOG.md")" \
+            ${sha:+-f sha="$sha"}
 
 # --------------------------------------------------------------------
 # 7) DEPLOY APP (Desabilitado temporariamente) -----------------------
