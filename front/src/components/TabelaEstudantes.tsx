@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StudentData } from "@/interfaces/StudentData";
 import { excluirUsuarioComConfirmacao } from "@/lib/excluirUsuarioComConfirmacao";
 import { exportStudentReportPdf } from "@/lib/exportStudentReport";
+import { escolherFichasDoRelatorio } from "@/lib/escolherFichasDoRelatorio";
 import {
   contarPorStatus,
   FiltroStatus,
@@ -135,8 +136,11 @@ export default function TabelaEstudantes() {
   };
 
   const handleExportar = async (estudante: StudentData) => {
+    const fichas = await escolherFichasDoRelatorio();
+    if (!fichas) return;
+
     try {
-      const resultado = await exportStudentReportPdf(estudante);
+      const resultado = await exportStudentReportPdf(estudante, fichas);
       if (resultado === "empty") {
         Swal.fire({
           icon: "info",
