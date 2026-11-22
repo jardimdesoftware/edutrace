@@ -1,7 +1,12 @@
 import { getReportByEmail, getReportGenerator } from "@/api/reports";
 import type { ReportGenerator, ReportsData } from "@/interfaces/ReportsData";
 import type { StudentData } from "@/interfaces/StudentData";
-import { buildReportSections, relatorioVazio, reportFileName } from "@/utils/reportSections";
+import {
+  buildReportSections,
+  fichasPreenchidas,
+  reportFileName,
+  type FichaDoRelatorio,
+} from "@/utils/reportSections";
 import type { jsPDF } from "jspdf";
 
 type Estudante = Pick<StudentData, "email" | "full_name">;
@@ -21,6 +26,7 @@ export async function renderReportPdf(
   gerador: ReportGenerator,
   report: ReportsData,
   geradoEm: Date = new Date(),
+  fichas?: readonly FichaDoRelatorio[],
 ): Promise<jsPDF> {
   const [{ jsPDF }, { autoTable }] = await Promise.all([
     import("jspdf"),
@@ -46,7 +52,7 @@ export async function renderReportPdf(
   doc.text(`Gerado em: ${geradoEm.toLocaleString("pt-BR")}`, MARGEM, 122);
   doc.text(`Gerado por: ${gerador.full_name} (CPF ${gerador.cpf})`, MARGEM, 136);
 
-  const body = buildReportSections(report).flatMap((section) => [
+  const body = buildReportSections(report, fichas).flatMap((section) => [
     [
       {
         content: section.title,
@@ -79,19 +85,24 @@ export async function renderReportPdf(
   return doc;
 }
 
-// Gera e baixa o relatório do estudante em PDF, com a triagem, o PEI, o estudo de caso e o PAEE.
-// Retorna "empty" quando o estudante não tem nenhuma das quatro fichas; lança em erros inesperados.
-export async function exportStudentReportPdf(estudante: Estudante): Promise<"downloaded" | "empty"> {
+// Gera e baixa o relatório do estudante em PDF. Sem `fichas`, traz a triagem, o PEI, o estudo de
+// caso e o PAEE; com `fichas`, só as escolhidas.
+// Retorna "empty" quando o estudante não tem nenhuma das fichas pedidas; lança em erros inesperados.
+export async function exportStudentReportPdf(
+  estudante: Estudante,
+  fichas?: readonly FichaDoRelatorio[],
+): Promise<"downloaded" | "empty"> {
   const report: ReportsData = await getReportByEmail(estudante.email);
 
-  if (relatorioVazio(report)) {
+  const preenchidas = fichasPreenchidas(report);
+  if (!preenchidas.some((ficha) => !fichas || fichas.includes(ficha))) {
     return "empty";
   }
 
   // Sem a identificação de quem gera, o relatório não sai: a busca falha e a
   // exportação é interrompida.
   const gerador = await getReportGenerator();
-  const doc = await renderReportPdf(estudante, gerador, report);
+  const doc = await renderReportPdf(estudante, gerador, report, new Date(), fichas);
   doc.save(reportFileName(estudante.full_name));
 
   return "downloaded";
