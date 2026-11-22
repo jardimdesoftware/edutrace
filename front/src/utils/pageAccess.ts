@@ -47,6 +47,7 @@ const PAGE_LEVELS: Record<string, readonly number[] | typeof ANY_LEVEL> = {
   "/editar-triagem": [PROFISSIONAL_SAUDE, PROFISSIONAL_NAPNE],
   "/editar-anamnese": [PROFISSIONAL_NAPNE],
   "/napne/usuarios/cadastro": [PROFISSIONAL_NAPNE],
+  "/agenda": [PROFESSOR_AEE],
   "/admin": [ADMIN],
 };
 
