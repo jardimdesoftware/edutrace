@@ -98,6 +98,9 @@ model User {
   referrals_received AeeReferral[] @relation("ReferralTo")
   referrals_about    AeeReferral[] @relation("ReferralStudent")
 
+  appointments_as_teacher AeeAppointment[] @relation("AppointmentTeacher")
+  appointments_as_student AeeAppointment[] @relation("AppointmentStudent")
+
   roles Int[]
 
   id_current_phase Int
@@ -349,5 +352,25 @@ model AeeReferral {
   to    User @relation("ReferralTo", fields: [id_to], references: [id], onDelete: Cascade)
 
   @@index([id_to, seen_at])
+  @@index([id_student])
+}
+
+// Horário de atendimento na agenda do Professor do AEE. Só o professor dono
+// (id_teacher) lê e altera; o estudante precisa ser um dos que ele atende.
+model AeeAppointment {
+  id         Int       @id @default(autoincrement())
+  starts_at  DateTime
+  ends_at    DateTime
+  notes      String?
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  id_teacher Int
+  teacher    User @relation("AppointmentTeacher", fields: [id_teacher], references: [id], onDelete: Cascade)
+
+  id_student Int
+  student    User @relation("AppointmentStudent", fields: [id_student], references: [id], onDelete: Cascade)
+
+  @@index([id_teacher, starts_at])
   @@index([id_student])
 }
