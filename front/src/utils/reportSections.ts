@@ -107,8 +107,32 @@ function secoesDoPei(registros: ReportsData['peiEntries']): ReportSection[] {
   }));
 }
 
-export function buildReportSections(report: ReportsData): ReportSection[] {
-  const fichas = REPORT_SECTIONS.map((section) => {
+// As fichas que o relatório em PDF pode trazer. A exportação deixa escolher
+// quais entram; sem escolha, entram todas.
+export type FichaDoRelatorio = 'screening' | 'peiEntries' | 'caseStudy' | 'aeePlans';
+
+export const FICHAS_DO_RELATORIO: ReadonlyArray<{ chave: FichaDoRelatorio; rotulo: string }> = [
+  { chave: 'screening', rotulo: 'Triagem' },
+  { chave: 'peiEntries', rotulo: TITULO_PEI },
+  { chave: 'caseStudy', rotulo: TITULO_ESTUDO_DE_CASO },
+  { chave: 'aeePlans', rotulo: TITULO_PAEE },
+];
+
+const TODAS_AS_FICHAS: readonly FichaDoRelatorio[] = FICHAS_DO_RELATORIO.map((ficha) => ficha.chave);
+
+// As fichas que o estudante já tem preenchidas.
+export function fichasPreenchidas(report: ReportsData): FichaDoRelatorio[] {
+  return TODAS_AS_FICHAS.filter((chave) => {
+    const valor = report[chave];
+    return Array.isArray(valor) ? valor.length > 0 : Boolean(valor);
+  });
+}
+
+export function buildReportSections(
+  report: ReportsData,
+  fichasEscolhidas: readonly FichaDoRelatorio[] = TODAS_AS_FICHAS,
+): ReportSection[] {
+  const triagem = REPORT_SECTIONS.map((section) => {
     const dados = report[section.key] as Record<string, unknown> | null;
 
     return {
@@ -122,11 +146,14 @@ export function buildReportSections(report: ReportsData): ReportSection[] {
     };
   });
 
+  const incluir = (ficha: FichaDoRelatorio, secoes: () => ReportSection[]) =>
+    fichasEscolhidas.includes(ficha) ? secoes() : [];
+
   return [
-    ...fichas,
-    ...secoesDoPei(report.peiEntries),
-    ...secoesDoEstudoDeCaso(report.caseStudy),
-    ...secoesDoPaee(report.aeePlans),
+    ...incluir('screening', () => triagem),
+    ...incluir('peiEntries', () => secoesDoPei(report.peiEntries)),
+    ...incluir('caseStudy', () => secoesDoEstudoDeCaso(report.caseStudy)),
+    ...incluir('aeePlans', () => secoesDoPaee(report.aeePlans)),
   ];
 }
 
