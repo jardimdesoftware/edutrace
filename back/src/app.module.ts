@@ -16,6 +16,7 @@ import { CaseStudiesModule } from './case-studies/case-studies.module';
 import { AeePlansModule } from './aee-plans/aee-plans.module';
 import { FormRevisionsModule } from './form-revisions/form-revisions.module';
 import { AeeReferralsModule } from './aee-referrals/aee-referrals.module';
+import { AeeAppointmentsModule } from './aee-appointments/aee-appointments.module';
 import { PeiEntriesModule } from './pei-entries/pei-entries.module';
 import { ReportsModule } from './reports/reports.module';
 import { SessionsModule } from './sessions/sessions.module';
@@ -36,6 +37,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     AeePlansModule,
     FormRevisionsModule,
     AeeReferralsModule,
+    AeeAppointmentsModule,
     PeiEntriesModule,
     ReportsModule,
     SessionsModule,

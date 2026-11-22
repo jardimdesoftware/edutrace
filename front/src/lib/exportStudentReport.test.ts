@@ -173,7 +173,40 @@ describe('renderReportPdf', () => {
   });
 });
 
+describe('renderReportPdf with a chosen set of forms', () => {
+  it('draws only the chosen forms', async () => {
+    const doc = await renderReportPdf(
+      estudante,
+      gerador,
+      { screening, peiEntries },
+      new Date(),
+      ['peiEntries'],
+    );
+    const pdf = doc.output();
+
+    assert.match(pdf, /PEI - 2026\.2 - Matem.tica/);
+    assert.doesNotMatch(pdf, /Avalia..o com acentua/);
+  });
+});
+
 describe('exportStudentReportPdf', () => {
+  it('returns "empty" when the student has no filled form among the chosen ones', async () => {
+    const urls: string[] = [];
+    process.env.NEXT_PUBLIC_API_EDU_TRACE = 'http://api.test';
+    globalThis.fetch = (async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ screening, peiEntries: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    const result = await exportStudentReportPdf(estudante, ['peiEntries', 'caseStudy']);
+
+    assert.equal(result, 'empty');
+    assert.deepEqual(urls, ['http://api.test/reports/aluno%40example.test']);
+  });
+
   it('returns "empty" without drawing when the student has neither screening nor PEI', async () => {
     const urls: string[] = [];
     process.env.NEXT_PUBLIC_API_EDU_TRACE = 'http://api.test';

@@ -1,7 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ReportsData } from '@/interfaces/ReportsData';
-import { buildReportSections, relatorioVazio, reportFileName } from './reportSections';
+import {
+  buildReportSections,
+  fichasPreenchidas,
+  relatorioVazio,
+  reportFileName,
+} from './reportSections';
 
 type Screening = NonNullable<ReportsData['screening']>;
 type PeiEntriesReport = NonNullable<ReportsData['peiEntries']>;
@@ -534,5 +539,57 @@ describe('reportFileName', () => {
 
   it('falls back to a generic name without the student name', () => {
     assert.equal(reportFileName(''), 'Relatorio_estudante.pdf');
+  });
+});
+
+describe('fichasPreenchidas', () => {
+  it('lists only the forms the student has filled in', () => {
+    assert.deepEqual(fichasPreenchidas({ screening: null, peiEntries: [], caseStudy: null, aeePlans: [] }), []);
+    assert.deepEqual(fichasPreenchidas({ screening, peiEntries, caseStudy: null, aeePlans: [] }), [
+      'screening',
+      'peiEntries',
+    ]);
+    assert.deepEqual(fichasPreenchidas({ screening: null, caseStudy, aeePlans }), ['caseStudy', 'aeePlans']);
+  });
+});
+
+describe('buildReportSections with a chosen set of forms', () => {
+  const completo: ReportsData = { screening, peiEntries, caseStudy, aeePlans };
+  const titulos = (fichas?: Parameters<typeof buildReportSections>[1]) =>
+    buildReportSections(completo, fichas).map((s) => s.title);
+
+  it('brings every form when none is chosen', () => {
+    const todos = titulos();
+
+    assert.ok(todos.includes('Triagem'));
+    assert.ok(todos.some((t) => t.startsWith('PEI - ')));
+    assert.ok(todos.some((t) => t.startsWith('Estudo de Caso - ')));
+    assert.ok(todos.some((t) => t.startsWith('PAEE - ')));
+  });
+
+  it('brings only the screening when only it is chosen', () => {
+    assert.deepEqual(titulos(['screening']), ['Triagem']);
+  });
+
+  it('brings only the PEI entries when only the PEI is chosen', () => {
+    const resultado = titulos(['peiEntries']);
+
+    assert.ok(resultado.length > 0);
+    assert.ok(resultado.every((t) => t.startsWith('PEI - ')));
+  });
+
+  it('brings only the PAEE when only it is chosen', () => {
+    const resultado = titulos(['aeePlans']);
+
+    assert.ok(resultado.length > 0);
+    assert.ok(resultado.every((t) => t.startsWith('PAEE - ')));
+  });
+
+  it('brings the chosen forms together and nothing else', () => {
+    const resultado = titulos(['screening', 'caseStudy']);
+
+    assert.ok(resultado.includes('Triagem'));
+    assert.ok(resultado.some((t) => t.startsWith('Estudo de Caso - ')));
+    assert.ok(!resultado.some((t) => t.startsWith('PEI - ') || t.startsWith('PAEE - ')));
   });
 });

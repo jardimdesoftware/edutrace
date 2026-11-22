@@ -40,6 +40,7 @@ const MATRIZ: [string, number[]][] = [
   ["/editar-anamnese", [PROFISSIONAL_NAPNE]],
   ["/admin/usuarios/cadastro", [ADMIN]],
   ["/napne/usuarios/cadastro", [PROFISSIONAL_NAPNE]],
+  ["/agenda", [PROFESSOR_AEE]],
 ];
 
 describe("canAccessPage", () => {
