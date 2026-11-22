@@ -3,7 +3,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import PapeisTag from './PapeisTag';
 import { podeVerEstatisticas } from '@/utils/estatisticasAtendimento';
-import { ChartColumn, LogOut, UserCog } from 'lucide-react';
+import { CalendarDays, ChartColumn, LogOut, UserCog } from 'lucide-react';
+import { podeVerAgenda } from '@/utils/agenda';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -115,6 +116,20 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
               <UserCog className="h-5 w-5" aria-hidden="true" />
               Meus dados
             </button>
+
+            {podeVerAgenda(user?.roles) && (
+              <>
+                <span className="mx-1 h-7 w-px bg-[#bfd3ec] sm:mx-2" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => router.push('/agenda')}
+                  className="edutrace-header-action"
+                >
+                  <CalendarDays className="h-5 w-5" aria-hidden="true" />
+                  Agenda
+                </button>
+              </>
+            )}
 
             {podeVerEstatisticas(user?.roles) && (
               <>
