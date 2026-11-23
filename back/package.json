@@ -75,10 +75,10 @@
     "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^7.2.1",
     "dotenv": "^16.4.7",
-    "eslint": "^10.13.0",
+    "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.7",
-    "globals": "^17.13.0",
+    "globals": "^17.14.0",
     "jest": "^30.5.2",
     "jest-util": "^30.5.0",
     "prettier": "^3.9.10",
@@ -90,7 +90,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.72.2"
   },
   "jest": {
     "moduleFileExtensions": [
