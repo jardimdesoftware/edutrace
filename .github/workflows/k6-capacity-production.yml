@@ -19,14 +19,14 @@ jobs:
     environment: production
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Executar patamares públicos de capacidade
         run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" -w /work -e SUMMARY_PATH=evidencias/k6-edutrace-capacity-summary.json grafana/k6:1.8.2 run k6/capacity.js
       - name: Guardar evidência do teste
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: k6-edutrace-capacity-${{ github.run_id }}
           path: evidencias/k6-edutrace-capacity-summary.json
