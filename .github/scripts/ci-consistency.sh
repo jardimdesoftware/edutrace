@@ -73,6 +73,30 @@ for pipeline in backend-pipeline frontend-pipeline; do
   fi
 done
 
+# A main é protegida e recusa commit direto: os pipelines gravam na branch
+# status. Essa gravação é documentação e não pode derrubar o pipeline, porque o
+# deploy só roda quando o pipeline termina com sucesso.
+for pipeline in backend-pipeline frontend-pipeline; do
+  arquivo=".github/workflows/$pipeline.yml"
+  gravacoes=$(grep -cE -- '--method PUT' "$arquivo")
+  na_status=$(grep -cE -- '-f branch=status( |$)' "$arquivo")
+  if [ "$gravacoes" != "$na_status" ]; then
+    echo "ERRO: $arquivo grava pela API sem -f branch=status ($na_status de $gravacoes gravações)."
+    status=1
+  fi
+  passos='- name: (Atualizar CHANGELOG\.md|Publicar cobertura na branch status)[[:space:]]*$'
+  total=$(grep -cE -- "$passos" "$arquivo")
+  tolerantes=$(grep -A1 -E -- "$passos" "$arquivo" | grep -cE '^[[:space:]]+continue-on-error: true[[:space:]]*$')
+  if [ "$total" != "$tolerantes" ]; then
+    echo "ERRO: $arquivo precisa de continue-on-error: true logo abaixo do nome dos passos que gravam na branch status."
+    status=1
+  fi
+done
+if [ "$(grep -cE -- '- name: Publicar cobertura na branch status' .github/workflows/backend-pipeline.yml)" != "1" ]; then
+  echo "ERRO: backend-pipeline.yml não publica a cobertura na branch status."
+  status=1
+fi
+
 # Release criada com o GITHUB_TOKEN não dispara o evento release: published,
 # então o create-release precisa chamar o publish-docker por workflow_dispatch.
 for pipeline in backend-pipeline frontend-pipeline; do
@@ -89,5 +113,5 @@ if ! grep -qE '^[0-9]+[[:space:]]+FAIL[[:space:]]' .zap/rules.tsv; then
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags, CHANGELOG atualizado a cada release, publish-docker disparado após a release e ZAP com regras FAIL."
+[ "$status" -eq 0 ] && echo "OK: postgres do CI igual ao da produção, sem build-arg morto no front, sem versão padrão no publish-docker, Trivy reprovando antes das tags, CHANGELOG atualizado a cada release, CHANGELOG e cobertura gravados na branch status sem bloquear o deploy, publish-docker disparado após a release e ZAP com regras FAIL."
 exit "$status"
