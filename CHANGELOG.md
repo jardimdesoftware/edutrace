@@ -4,6 +4,10 @@ Todas as mudanças relevantes do projeto ficam neste arquivo, geradas a partir
 das releases do GitHub. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/)
 e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.62.1] - 2026-11-24
+
+- ci: gravar cobertura e CHANGELOG na branch status sem bloquear o deploy (#962)
+
 ## [1.62.0] - 2026-11-22
 
 - feat: agenda de atendimento do Professor do AEE e exportação do relatório por formulário (#953)
