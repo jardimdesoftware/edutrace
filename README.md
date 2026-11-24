@@ -7,8 +7,8 @@
 ![Open PRs](https://img.shields.io/github/issues-pr/jardimdesoftware/edutrace)
 ![Forks](https://img.shields.io/github/forks/jardimdesoftware/edutrace)
 ![Stars](https://img.shields.io/github/stars/jardimdesoftware/edutrace)
-![Coverage](https://img.shields.io/badge/Coverage-97.37%25-brightgreen) <!-- COVERAGE_BADGE -->
-![Branch Coverage](https://img.shields.io/badge/Branches-94.42%25-brightgreen) <!-- BRANCH_COVERAGE_BADGE -->
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jardimdesoftware/edutrace/status/coverage.json)
+![Branch Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jardimdesoftware/edutrace/status/branches.json)
 [![PR Checks](https://github.com/jardimdesoftware/edutrace/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/pr-checks.yml)
 [![Backend Pipeline](https://github.com/jardimdesoftware/edutrace/actions/workflows/backend-pipeline.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/backend-pipeline.yml)
 [![Frontend Pipeline](https://github.com/jardimdesoftware/edutrace/actions/workflows/frontend-pipeline.yml/badge.svg)](https://github.com/jardimdesoftware/edutrace/actions/workflows/frontend-pipeline.yml)
@@ -54,7 +54,7 @@ Páginas da [Wiki do projeto](https://github.com/jardimdesoftware/edutrace/wiki)
 - [Perfis e Permissões](https://github.com/jardimdesoftware/edutrace/wiki/Perfis-e-Permissões)
 - [CI/CD e Deploy](https://github.com/jardimdesoftware/edutrace/wiki/CI-CD-e-Deploy)
 - [Documento de Visão](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Visão) e [Documento de Requisitos](https://github.com/jardimdesoftware/edutrace/wiki/Documento-de-Requisitos-(User-Stories))
-- [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) e [CODEOWNERS](.github/CODEOWNERS)
+- [CHANGELOG](https://github.com/jardimdesoftware/edutrace/blob/status/CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) e [CODEOWNERS](.github/CODEOWNERS)
 
 
 ## Como rodar
