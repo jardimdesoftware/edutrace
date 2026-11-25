@@ -59,12 +59,10 @@ describe('UpdateUserDto, campo roles', () => {
   });
 });
 
-// UsersService.update grava só o nome e o nível. Os demais campos do cadastro
-// são recusados, em vez de responder 200 sem alterar nada.
+// UsersService.update grava só os campos declarados no DTO. Os demais campos do
+// cadastro são recusados, em vez de responder 200 sem alterar nada.
 describe('UpdateUserDto, campos do cadastro', () => {
   it.each([
-    ['email', 'outro@example.com'],
-    ['cpf', '01234567890'],
     ['affliation', 'Outra'],
     ['pedagogical_manager', 'Outro'],
     ['pedagogical_manager_id', 3],
@@ -78,10 +76,50 @@ describe('UpdateUserDto, campos do cadastro', () => {
     );
   });
 
-  it('should accept the name', async () => {
-    await expect(validate({ full_name: 'Novo Nome' })).resolves.toEqual({
+  it('should accept the name, trimmed', async () => {
+    await expect(validate({ full_name: ' Novo Nome ' })).resolves.toEqual({
       full_name: 'Novo Nome',
     });
+  });
+
+  it.each([null, '', '   ', 42])(
+    'should refuse full_name = %j with 400',
+    async (full_name) => {
+      await expect(validate({ full_name })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    },
+  );
+});
+
+// O Administrador corrige e-mail e CPF digitados errados no cadastro, com as
+// mesmas regras de formato do cadastro.
+describe('UpdateUserDto, e-mail e CPF', () => {
+  it('should accept a valid e-mail, trimmed', async () => {
+    await expect(
+      validate({ email: ' outro@example.com ' }),
+    ).resolves.toEqual({ email: 'outro@example.com' });
+  });
+
+  it('should accept a masked CPF and keep only the digits', async () => {
+    await expect(validate({ cpf: '529.982.247-25' })).resolves.toEqual({
+      cpf: '52998224725',
+    });
+  });
+
+  it.each([
+    ['email', null],
+    ['email', ''],
+    ['email', 'sem-arroba'],
+    ['cpf', null],
+    ['cpf', ''],
+    ['cpf', '11111111111'],
+    ['cpf', '12345678900'],
+    ['cpf', 52998224725],
+  ])('should refuse %s = %j with 400', async (field, value) => {
+    await expect(validate({ [field]: value })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
 
