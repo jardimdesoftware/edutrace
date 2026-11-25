@@ -171,3 +171,9 @@ export const COMMENT_AUTHOR_AREAS: readonly number[] = [
 export type Phase = keyof typeof PHASES;
 export type Level = keyof typeof LEVELS;
 export type LevelValue = (typeof LEVELS)[Level];
+
+// Registros do log de auditoria por página, o tamanho máximo do termo de busca
+// e o máximo de registros de uma exportação.
+export const AUDIT_LOG_PAGE_SIZE = 50;
+export const AUDIT_LOG_SEARCH_MAX_LENGTH = 200;
+export const AUDIT_LOG_EXPORT_LIMIT = 10000;
