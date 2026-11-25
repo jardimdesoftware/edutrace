@@ -357,7 +357,11 @@ export class UsersService {
   // A transação usa o isolamento padrão (READ COMMITTED), em que cada comando
   // enxerga o que a transação anterior confirmou.
   async update(email: string, updateUserDto: UpdateUserDto) {
-    let result: { user: PublicUser; rolesChanged: boolean };
+    let result: {
+      user: PublicUser;
+      rolesChanged: boolean;
+      emailChanged: boolean;
+    };
 
     try {
       result = await this.prisma.$transaction((tx) =>
@@ -369,10 +373,11 @@ export class UsersService {
 
     // O guard lê os papéis do banco a cada requisição, mas a sessão aberta
     // continua valendo. Encerrar as sessões obriga quem foi rebaixado a entrar
-    // de novo e a ver a tela do papel novo. A revogação vem depois do commit: com
-    // a transação aberta, a sessão cairia por uma troca que ainda pode ser
+    // de novo e a ver a tela do papel novo; o token também carrega o e-mail, que
+    // deixa de existir na troca. A revogação vem depois do commit: com a
+    // transação aberta, a sessão cairia por uma troca que ainda pode ser
     // desfeita.
-    if (result.rolesChanged) {
+    if (result.rolesChanged || result.emailChanged) {
       await this.sessionsService.revokeAllFromUser(result.user.id);
     }
 
@@ -384,7 +389,11 @@ export class UsersService {
     email: string,
     updateUserDto: UpdateUserDto,
   ) {
-    const { full_name, roles, enrollment_number, course } = updateUserDto;
+    const { full_name, cpf, roles, enrollment_number, course } = updateUserDto;
+    const newEmail =
+      updateUserDto.email !== undefined && updateUserDto.email !== email
+        ? updateUserDto.email
+        : undefined;
 
     const [current] = await tx.$queryRaw<{ id: number; roles: number[] }[]>`
       SELECT "id", "roles" FROM "User" WHERE "email" = ${email} FOR UPDATE`;
@@ -392,8 +401,15 @@ export class UsersService {
     // Conta inexistente (current indefinido) fica para o update, que falha.
     const finalRoles = roles ?? current?.roles;
     this.assertStudentOnlyFields(finalRoles, updateUserDto);
-    if (current && roles !== undefined && !sameRoles(roles, current.roles)) {
-      this.assertDiscenteStaysStudent(email, roles);
+    if (current) {
+      const rolesDiffer =
+        roles !== undefined && !sameRoles(roles, current.roles);
+      if (rolesDiffer || newEmail) {
+        this.assertDiscenteStaysStudent(
+          newEmail ?? email,
+          roles ?? current.roles,
+        );
+      }
     }
 
     const rolesChange = await this.applyRolesChange(tx, current, roles);
@@ -403,6 +419,8 @@ export class UsersService {
       where: { email: email },
       data: {
         full_name,
+        email: newEmail,
+        cpf,
         roles: rolesChange?.to,
         enrollment_number,
         course,
@@ -412,7 +430,15 @@ export class UsersService {
       },
     });
 
-    return { user, rolesChanged: rolesChange !== null };
+    if (newEmail) {
+      await this.propagateEmailChange(tx, email, newEmail);
+    }
+
+    return {
+      user,
+      rolesChanged: rolesChange !== null,
+      emailChanged: newEmail !== undefined,
+    };
   }
 
   // O DTO aceita os papéis que a conta já tem: nesse caso nada muda. Chamado
@@ -519,27 +545,35 @@ export class UsersService {
       });
 
       if (isChangingEmail) {
-        await tx.screening.updateMany({
-          where: { email: currentEmail },
-          data: { email: newEmail },
-        });
-        await tx.anamnesis.updateMany({
-          where: { email: currentEmail },
-          data: { email: newEmail },
-        });
-        // O PEI antigo ficou na tabela PlansEducation_legacy, fora da API, e
-        // guarda os e-mails em texto. O PeiEntry liga por id, sem e-mail.
-        await tx.plansEducationLegacy.updateMany({
-          where: { student_email: currentEmail },
-          data: { student_email: newEmail },
-        });
-        await tx.plansEducationLegacy.updateMany({
-          where: { professor_email: currentEmail },
-          data: { professor_email: newEmail },
-        });
+        await this.propagateEmailChange(tx, currentEmail, newEmail);
       }
 
       return user;
+    });
+  }
+
+  private async propagateEmailChange(
+    tx: Prisma.TransactionClient,
+    from: string,
+    to: string,
+  ) {
+    await tx.screening.updateMany({
+      where: { email: from },
+      data: { email: to },
+    });
+    await tx.anamnesis.updateMany({
+      where: { email: from },
+      data: { email: to },
+    });
+    // O PEI antigo ficou na tabela PlansEducation_legacy, fora da API, e
+    // guarda os e-mails em texto. O PeiEntry liga por id, sem e-mail.
+    await tx.plansEducationLegacy.updateMany({
+      where: { student_email: from },
+      data: { student_email: to },
+    });
+    await tx.plansEducationLegacy.updateMany({
+      where: { professor_email: from },
+      data: { professor_email: to },
     });
   }
 
