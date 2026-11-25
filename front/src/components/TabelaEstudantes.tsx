@@ -61,13 +61,14 @@ import {
   responsavelDaLinha,
   substituirUsuario,
 } from "@/utils/tabelaUsuarios";
-import { ChevronLeft, ChevronRight, Eye, FileDown, Search, Trash2, Undo2, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, FileDown, Pencil, Search, Trash2, Undo2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import AtendimentoEstudante from "./AtendimentoEstudante";
 import Loading from "./Loading";
 import EditorDePapeis from "./EditorDePapeis";
+import EditarDadosDoUsuarioModal from "./EditarDadosDoUsuarioModal";
 import ResponsavelPedagogico from "./ResponsavelPedagogico";
 
 interface AcaoAtendimento {
@@ -110,6 +111,7 @@ export default function TabelaEstudantes() {
   const [filtroSituacao, setFiltroSituacao] = useState<SituacaoDaLista>(SITUACAO_PADRAO);
   const [pagina, setPagina] = useState(1);
   const [acaoEmAndamento, setAcaoEmAndamento] = useState(false);
+  const [emEdicao, setEmEdicao] = useState<StudentData | null>(null);
   // Fim da janela de senha que o back abriu com "lembrar". O back é quem vale; o
   // valor só decide se o modal mostra o campo de senha.
   const janelaDeSenha = useRef<string | null>(null);
@@ -550,6 +552,16 @@ export default function TabelaEstudantes() {
                   {estaDesativado(estudante) ? "Reativar" : "Restaurar"}
                 </button>
               )}
+              {isAdmin && (
+                <button
+                  onClick={() => setEmEdicao(estudante)}
+                  title="Editar dados"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Editar
+                </button>
+              )}
               {isAdmin && !estaMarcado(estudante) && (
                 <button
                   onClick={() => handleExcluir(estudante)}
@@ -643,6 +655,17 @@ export default function TabelaEstudantes() {
                         <Undo2 className="w-5 h-5" />
                       </button>
                     )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        title="Editar dados"
+                        aria-label={`Editar dados de ${estudante.full_name}`}
+                        onClick={() => setEmEdicao(estudante)}
+                        className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:shadow"
+                      >
+                        <Pencil className="w-5 h-5" />
+                      </button>
+                    )}
                     {isAdmin && !estaMarcado(estudante) && (
                       <button
                         type="button"
@@ -714,6 +737,16 @@ export default function TabelaEstudantes() {
             </button>
           </nav>
         </div>
+      )}
+
+      {emEdicao && (
+        <EditarDadosDoUsuarioModal
+          usuario={emEdicao}
+          onClose={() => setEmEdicao(null)}
+          onAtualizado={(atualizado) =>
+            setStudents((prev) => prev && substituirUsuario(prev, atualizado))
+          }
+        />
       )}
     </div>
   );
