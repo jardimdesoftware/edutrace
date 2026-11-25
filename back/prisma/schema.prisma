@@ -374,3 +374,37 @@ model AeeAppointment {
   @@index([id_teacher, starts_at])
   @@index([id_student])
 }
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  DOWNLOAD
+  VIEW_LOG
+}
+
+// Trilha de auditoria: quem alterou o quê e quando. Só aceita inserção; o
+// trigger da migration 20261123200000 recusa UPDATE, DELETE e TRUNCATE. Não há
+// chave estrangeira para User, para o registro sobreviver à exclusão da conta.
+// changes guarda { campo: { from, to } }, com o valor dos campos sensíveis
+// substituído (audit-changes.ts).
+model AuditLog {
+  id          Int         @id @default(autoincrement())
+  created_at  DateTime    @default(now())
+  action      AuditAction
+  entity      String
+  entity_id   Int?
+  changes     Json?
+  detail      Json?
+  succeeded   Boolean     @default(true)
+  actor_id    Int?
+  actor_name  String?
+  actor_email String?
+  method      String?
+  route       String?
+  ip          String?
+
+  @@index([created_at])
+  @@index([actor_id, created_at])
+  @@index([entity, entity_id])
+}
