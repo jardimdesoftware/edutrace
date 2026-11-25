@@ -4,6 +4,11 @@ Todas as mudanças relevantes do projeto ficam neste arquivo, geradas a partir
 das releases do GitHub. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/)
 e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.63.0] - 2026-11-25
+
+- fix(front): atualizar next e eslint-config-next de 16.4.3 para 16.4.5… (#965)
+- Feat/admin editar dados usuario (#966)
+
 ## [1.62.1] - 2026-11-24
 
 - ci: gravar cobertura e CHANGELOG na branch status sem bloquear o deploy (#962)
