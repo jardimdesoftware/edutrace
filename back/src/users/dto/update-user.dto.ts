@@ -1,13 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsEmail,
   IsNotEmpty,
-  IsOptional,
   IsString,
   Matches,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { IsCpf, onlyDigits } from 'src/common/validators/is-cpf.validator';
 import { sortRoles } from '../roles';
 import { IsRoles } from './is-roles.validator';
 import {
@@ -19,18 +20,46 @@ import {
   trimText,
 } from './student-fields';
 
-// UsersService.update grava só o nome, os papéis, a matrícula, o curso e o limite
-// de atendimentos. O DTO declara só esses campos, para que e-mail, CPF e os
-// demais campos do cadastro sejam recusados com 400, e não aceitos com 200 sem
-// alterar nada.
+// UsersService.update grava só o nome, o e-mail, o CPF, os papéis, a matrícula e
+// o curso. O DTO declara só esses campos, para que os demais campos do cadastro
+// sejam recusados com 400, e não aceitos com 200 sem alterar nada.
 export class UpdateUserDto {
   @ApiProperty({
     description: 'Nome do usuário',
     example: 'Luizin',
+    required: false,
   })
-  @IsOptional()
+  @ValidateIf((dto: UpdateUserDto) => dto.full_name !== undefined)
   @IsString({ message: 'O campo full_name deve ser uma string.' })
+  @Transform(trimText)
+  @IsNotEmpty({ message: 'O campo full_name não deve estar vazio.' })
   full_name?: string;
+
+  @ApiProperty({
+    description:
+      'Correção do e-mail. A troca encerra as sessões abertas da conta.',
+    example: 'luizin@hotmail.com',
+    required: false,
+  })
+  @ValidateIf((dto: UpdateUserDto) => dto.email !== undefined)
+  @Transform(trimText)
+  @IsNotEmpty({ message: 'O campo email não deve estar vazio.' })
+  @IsEmail({}, { message: 'O campo email deve ser um e-mail válido.' })
+  email?: string;
+
+  @ApiProperty({
+    description:
+      'Correção do CPF, com ou sem máscara. É gravado sempre com os 11 dígitos.',
+    example: '01234567890',
+    required: false,
+  })
+  @ValidateIf((dto: UpdateUserDto) => dto.cpf !== undefined)
+  @IsString({ message: 'O campo CPF deve ser uma string.' })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? onlyDigits(value) : value,
+  )
+  @IsCpf({ message: 'O campo CPF deve ser um CPF válido.' })
+  cpf?: string;
 
   @ApiProperty({
     description:
