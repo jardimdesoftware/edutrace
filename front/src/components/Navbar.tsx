@@ -3,7 +3,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import PapeisTag from './PapeisTag';
 import { podeVerEstatisticas } from '@/utils/estatisticasAtendimento';
-import { CalendarDays, ChartColumn, LogOut, UserCog } from 'lucide-react';
+import { CalendarDays, ChartColumn, LogOut, ScrollText, UserCog } from 'lucide-react';
+import { ADMIN } from '@/consts';
+import { temPapel } from '@/utils/papeis';
 import { podeVerAgenda } from '@/utils/agenda';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -127,6 +129,20 @@ export default function Navbar({ previewLevelLabel }: { previewLevelLabel?: stri
                 >
                   <CalendarDays className="h-5 w-5" aria-hidden="true" />
                   Agenda
+                </button>
+              </>
+            )}
+
+            {temPapel(user?.roles, ADMIN) && (
+              <>
+                <span className="mx-1 h-7 w-px bg-[#bfd3ec] sm:mx-2" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => router.push('/admin/auditoria')}
+                  className="edutrace-header-action"
+                >
+                  <ScrollText className="h-5 w-5" aria-hidden="true" />
+                  Auditoria
                 </button>
               </>
             )}

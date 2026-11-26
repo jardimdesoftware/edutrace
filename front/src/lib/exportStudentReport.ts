@@ -1,4 +1,5 @@
 import { getReportByEmail, getReportGenerator } from "@/api/reports";
+import { registrarDownload } from "@/api/auditLogs";
 import type { ReportGenerator, ReportsData } from "@/interfaces/ReportsData";
 import type { StudentData } from "@/interfaces/StudentData";
 import {
@@ -9,7 +10,7 @@ import {
 } from "@/utils/reportSections";
 import type { jsPDF } from "jspdf";
 
-type Estudante = Pick<StudentData, "email" | "full_name">;
+type Estudante = Pick<StudentData, "id" | "email" | "full_name">;
 
 const MARGEM = 40;
 // Verde dos botões e alertas do sistema (#047857).
@@ -103,6 +104,7 @@ export async function exportStudentReportPdf(
   // exportação é interrompida.
   const gerador = await getReportGenerator();
   const doc = await renderReportPdf(estudante, gerador, report, new Date(), fichas);
+  await registrarDownload("StudentReport", estudante.id);
   doc.save(reportFileName(estudante.full_name));
 
   return "downloaded";

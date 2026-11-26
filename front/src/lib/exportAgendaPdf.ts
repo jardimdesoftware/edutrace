@@ -1,4 +1,5 @@
 import type { jsPDF } from "jspdf";
+import { registrarDownload } from "@/api/auditLogs";
 import {
   linhasDoPdf,
   nomeDoArquivoDaAgenda,
@@ -70,6 +71,7 @@ export async function exportAgendaPdf(
   if (atendimentos.length === 0) return "empty";
 
   const doc = await renderAgendaPdf(professor, inicioDaSemana, atendimentos);
+  await registrarDownload("AeeAgenda");
   doc.save(nomeDoArquivoDaAgenda(inicioDaSemana));
 
   return "downloaded";

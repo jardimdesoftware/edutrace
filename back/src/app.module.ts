@@ -4,7 +4,7 @@ import { PrismaService } from './database/prisma.service';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -20,6 +20,8 @@ import { AeeAppointmentsModule } from './aee-appointments/aee-appointments.modul
 import { PeiEntriesModule } from './pei-entries/pei-entries.module';
 import { ReportsModule } from './reports/reports.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { AuditContextInterceptor } from './audit-logs/audit-context.interceptor';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { UserThrottlerGuard } from './common/user-throttler.guard';
 
@@ -41,6 +43,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     PeiEntriesModule,
     ReportsModule,
     SessionsModule,
+    AuditLogsModule,
     // Limite de requisições de cada usuário em cada rota, contra a repetição
     // automatizada de chamadas e a varredura das consultas por chave. As rotas
     // de AuthController que recebem senha, código ou credencial têm limite
@@ -63,6 +66,7 @@ import { UserThrottlerGuard } from './common/user-throttler.guard';
     // por usuário do UserThrottlerGuard.
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: UserThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditContextInterceptor },
   ],
   exports: [AppService],
 })

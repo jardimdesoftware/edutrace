@@ -9,7 +9,7 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-const estudante = { email: 'aluno@example.test', full_name: 'João da Conceição' };
+const estudante = { id: 3, email: 'aluno@example.test', full_name: 'João da Conceição' };
 const gerador = { full_name: 'Ana Lúcia NAPNE', cpf: '***.456.789-**' };
 
 const screening = {
@@ -241,5 +241,25 @@ describe('exportStudentReportPdf', () => {
       'http://api.test/reports/aluno%40example.test',
       'http://api.test/reports/generator',
     ]);
+  });
+
+  it('does not save the PDF when the download cannot be registered in the audit log', async () => {
+    const calls: { url: string; body?: string }[] = [];
+    process.env.NEXT_PUBLIC_API_EDU_TRACE = 'http://api.test';
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, body: init?.body as string | undefined });
+      const isDownload = url.endsWith('/audit-logs/downloads');
+      const body = url.endsWith('/generator') ? gerador : { screening, peiEntries: [] };
+      return new Response(JSON.stringify(isDownload ? { message: 'x' } : body), {
+        status: isDownload ? 500 : 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    await assert.rejects(exportStudentReportPdf(estudante));
+    assert.deepEqual(calls.at(-1), {
+      url: 'http://api.test/audit-logs/downloads',
+      body: JSON.stringify({ entity: 'StudentReport', entity_id: 3 }),
+    });
   });
 });
