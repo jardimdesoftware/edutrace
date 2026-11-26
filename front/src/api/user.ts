@@ -1,5 +1,6 @@
 import type { StudentData } from "@/interfaces/StudentData";
 import { apiRequest } from "@/services/http";
+import type { AlteracoesDaEdicao } from "@/utils/edicaoDeDados";
 import { SITUACAO_PADRAO, type SituacaoDaLista } from "@/utils/filtroPorSituacao";
 
 // A lista padrão não leva query: o back já esconde os desativados. Só o
@@ -18,6 +19,19 @@ export async function updateUser(email: string, roles: number[]): Promise<Studen
   return apiRequest(`/users/${encodeURIComponent(email)}`, {
     method: 'PATCH',
     body: { roles },
+  });
+}
+
+// Correção, pelo administrador, dos dados que a pessoa digitou errado no
+// cadastro. A troca de e-mail encerra as sessões abertas da conta.
+export async function editarDadosDoUsuario(
+  email: string,
+  alteracoes: AlteracoesDaEdicao,
+): Promise<StudentData> {
+  return apiRequest(`/users/${encodeURIComponent(email)}`, {
+    method: 'PATCH',
+    body: alteracoes,
+    errorMessage: 'Erro ao atualizar os dados do usuário',
   });
 }
 

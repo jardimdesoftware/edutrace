@@ -854,6 +854,73 @@ describe('UsersService', () => {
       });
       expect(result).toEqual(updatedUser);
     });
+
+    it('should store the new e-mail and CPF, propagate the e-mail and end the sessions', async () => {
+      await service.update('test@test.com', {
+        email: 'novo@test.com',
+        cpf: '52998224725',
+      } as UpdateUserDto);
+
+      expect(tx.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { email: 'test@test.com' },
+          data: expect.objectContaining({
+            email: 'novo@test.com',
+            cpf: '52998224725',
+          }),
+        }),
+      );
+      expect(tx.screening.updateMany).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { email: 'novo@test.com' },
+      });
+      expect(tx.anamnesis.updateMany).toHaveBeenCalledWith({
+        where: { email: 'test@test.com' },
+        data: { email: 'novo@test.com' },
+      });
+      expect(tx.plansEducationLegacy.updateMany).toHaveBeenCalledTimes(2);
+      expect(sessionsService.revokeAllFromUser).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+    });
+
+    it('should neither propagate nor end the sessions when the e-mail is the same', async () => {
+      await service.update('test@test.com', {
+        email: 'test@test.com',
+        cpf: '52998224725',
+      } as UpdateUserDto);
+
+      expect(tx.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ email: undefined }),
+        }),
+      );
+      expect(tx.screening.updateMany).not.toHaveBeenCalled();
+      expect(sessionsService.revokeAllFromUser).not.toHaveBeenCalled();
+    });
+
+    it('should answer 409 when the new e-mail belongs to another account', async () => {
+      tx.user.update.mockRejectedValue(uniqueViolation('User_email_key'));
+
+      await expect(
+        service.update('test@test.com', {
+          email: 'outro@test.com',
+        } as UpdateUserDto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(sessionsService.revokeAllFromUser).not.toHaveBeenCalled();
+    });
+
+    it('should answer 409 when the new CPF belongs to another account', async () => {
+      tx.user.update.mockRejectedValue(
+        uniqueViolation('User_cpf_account_type_key'),
+      );
+
+      await expect(
+        service.update('test@test.com', {
+          cpf: '52998224725',
+        } as UpdateUserDto),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
   });
 
   describe('contas com e-mail discente', () => {
@@ -888,6 +955,15 @@ describe('UsersService', () => {
           roles: [LEVELS.ADMIN],
         } as any),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should refuse to move a professional account to a discente e-mail', async () => {
+      currentRoles([LEVELS.PROFISSIONAL_NAPNE]);
+
+      await expect(
+        service.update('prof@test.com', { email: discente } as UpdateUserDto),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(tx.user.update).not.toHaveBeenCalled();
     });
 
     it('should refuse to raise the roles of a discente account', async () => {
